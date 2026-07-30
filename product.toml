@@ -1,0 +1,7 @@
+[product]
+name = "Local AI App Starter"
+slug = "local-ai-app-starter"
+version = "0.1.0"
+description_en = "A secure, local-only foundation for small AI desktop utilities."
+description_it = "Una base sicura e solo locale per piccole utilità desktop con IA."
+default_language = "it"

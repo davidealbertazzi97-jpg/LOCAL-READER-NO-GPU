@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Local AI App Starter">
+  <rect width="64" height="64" rx="16" fill="#102a2b"/>
+  <path d="M20 21h24v22H20z" fill="none" stroke="#a8e6cf" stroke-width="3"/>
+  <path d="M26 16v10m12-10v10M16 28h10m22 0h-10M16 37h10m22 0h-10M27 32h10v7H27z" fill="none" stroke="#f6c85f" stroke-width="3" stroke-linecap="round"/>
+</svg>
