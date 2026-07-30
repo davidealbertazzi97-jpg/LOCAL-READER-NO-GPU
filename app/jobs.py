@@ -8,6 +8,7 @@ from typing import Any
 
 from .config import PATHS
 from .engines import ENGINES
+from .speech_jobs import queue_speech_job
 from .store import STORE
 from .utils import remove_output_tree, remove_work_tree
 
@@ -97,11 +98,32 @@ class JobRunner:
                 if root not in resolved.parents or not resolved.is_file():
                     raise RuntimeError("engine returned an artifact outside its output")
                 artifact_names.append(resolved.relative_to(root).as_posix())
+            summary = dict(result.summary)
+            if engine.engine_id == "accessible-document" and job["options"].get(
+                "auto_speech"
+            ):
+                try:
+                    queue_speech_job(
+                        self,
+                        STORE,
+                        output_dir / "reading.txt",
+                        source_job=job_id,
+                        voice=job["options"].get("voice", "im_nicola"),
+                        speed=job["options"].get("speed", 1.0),
+                    )
+                    summary["audio"] = "Kokoro queued automatically"
+                except (OSError, RuntimeError, ValueError) as exc:
+                    LOGGER.warning(
+                        "Automatic speech for job %s could not be queued: %s",
+                        job_id,
+                        type(exc).__name__,
+                    )
+                    summary["audio"] = "Kokoro could not be queued"
             STORE.update(
                 job_id,
                 status="completed",
                 message="Completed",
-                summary=result.summary,
+                summary=summary,
                 artifacts=artifact_names,
             )
         except Exception as exc:

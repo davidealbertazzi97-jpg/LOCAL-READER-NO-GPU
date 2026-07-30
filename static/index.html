@@ -53,6 +53,11 @@
             <span data-i18n="file">Documento locale</span>
             <input id="file" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp" required>
           </label>
+          <label class="check-option">
+            <input id="auto-speech" type="checkbox" checked>
+            <span data-i18n="autoSpeech">Crea anche una bozza audio Kokoro dopo l’OCR</span>
+          </label>
+          <p class="muted compact" data-i18n="autoSpeechHelp">Usa la voce Nicola. Puoi correggere il testo e rigenerare l’audio in seguito.</p>
           <button type="submit" data-i18n="start">Avvia OCR locale</button>
           <p id="form-status" role="status" aria-live="polite"></p>
         </form>

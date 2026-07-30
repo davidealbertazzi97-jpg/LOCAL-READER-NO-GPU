@@ -36,6 +36,7 @@ template; user text is never interpreted as HTML. A revision number prevents a
 stale browser tab from silently overwriting a newer edit.
 
 Speech is created only from a saved `reading.txt` artifact. The server makes a
-private child-job copy, verifies Kokoro model and voice hashes, and starts a
-separate worker. The worker synthesizes bounded chunks and streams PCM samples
-to WAV, avoiding a full-document audio array in memory.
+private child-job copy either automatically after OCR or after a reviewed
+manual request, verifies Kokoro model and voice hashes, and starts a separate
+worker. The worker synthesizes bounded chunks and streams PCM samples to WAV,
+avoiding a full-document audio array in memory.

@@ -7,12 +7,15 @@ const COPY = {
     newJob: "Riconosci un documento",
     newJobHelp: "Carica un PDF o un’immagine. Verranno create copie revisionabili; l’originale non viene modificato.",
     file: "Documento locale",
+    autoSpeech: "Crea anche una bozza audio Kokoro dopo l’OCR",
+    autoSpeechHelp: "Usa la voce Nicola. Puoi correggere il testo e rigenerare l’audio in seguito.",
     start: "Avvia OCR locale",
     jobs: "Lavori locali",
     refresh: "Aggiorna",
     empty: "Nessun lavoro.",
     sending: "Preparazione della copia locale…",
-    accepted: "OCR inserito in coda.",
+    accepted: "OCR inserito in coda. L’audio Kokoro partirà automaticamente.",
+    acceptedOcr: "OCR inserito in coda.",
     failed: "Operazione non riuscita.",
     ready: "Pronto e offline",
     unavailable: "Non installato",
@@ -58,12 +61,15 @@ const COPY = {
     newJob: "Recognize a document",
     newJobHelp: "Upload a PDF or image. The app creates reviewable copies and never changes the original.",
     file: "Local document",
+    autoSpeech: "Also create a Kokoro audio draft after OCR",
+    autoSpeechHelp: "Uses the Nicola voice. You can correct the text and regenerate audio later.",
     start: "Start local OCR",
     jobs: "Local jobs",
     refresh: "Refresh",
     empty: "No jobs yet.",
     sending: "Preparing the local working copy…",
-    accepted: "OCR job queued.",
+    accepted: "OCR queued. Kokoro audio will start automatically.",
+    acceptedOcr: "OCR job queued.",
     failed: "The operation failed.",
     ready: "Ready and offline",
     unavailable: "Not installed",
@@ -149,6 +155,9 @@ async function renderStatus() {
     document.querySelector(`#${name}-status`).textContent = t(ready ? "ready" : "unavailable");
   }
   document.querySelector("#job-form button[type=submit]").disabled = !status.ocr.ready;
+  const automaticSpeech = document.querySelector("#auto-speech");
+  automaticSpeech.disabled = !status.speech.ready;
+  if (!status.speech.ready) automaticSpeech.checked = false;
   document.querySelector("#create-speech").disabled = !status.speech.ready;
 }
 
@@ -361,12 +370,19 @@ document.querySelector("#job-form").addEventListener("submit", async (event) => 
   button.disabled = true;
   status.textContent = t("sending");
   try {
+    const automaticSpeech = document.querySelector("#auto-speech");
+    const createAutomaticSpeech = automaticSpeech.checked;
     const data = new FormData(form);
     data.set("engine", engine.id);
-    data.set("options", "{}");
+    data.set("options", JSON.stringify({
+      auto_speech: createAutomaticSpeech,
+      voice: "im_nicola",
+      speed: 1.0,
+    }));
     await api("/api/jobs", {method: "POST", body: data});
-    status.textContent = t("accepted");
+    status.textContent = t(createAutomaticSpeech ? "accepted" : "acceptedOcr");
     form.reset();
+    if (automaticSpeech.disabled) automaticSpeech.checked = false;
     await renderJobs();
   } catch (error) {
     status.textContent = `${t("failed")} ${error.message}`;

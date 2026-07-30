@@ -56,9 +56,10 @@ def request_json(
         return exc.code, json.load(exc)
 
 
-def multipart(path: Path) -> tuple[bytes, str]:
+def multipart(path: Path, options: dict | None = None) -> tuple[bytes, str]:
     boundary = "----accessibility-" + uuid.uuid4().hex
     content_type = "application/pdf" if path.suffix == ".pdf" else "image/png"
+    encoded_options = json.dumps(options or {})
     parts = [
         (
             f"--{boundary}\r\n"
@@ -68,7 +69,7 @@ def multipart(path: Path) -> tuple[bytes, str]:
         (
             f"--{boundary}\r\n"
             'Content-Disposition: form-data; name="options"\r\n\r\n'
-            "{}\r\n"
+            f"{encoded_options}\r\n"
         ).encode(),
         (
             f"--{boundary}\r\n"
@@ -170,7 +171,14 @@ def main() -> int:
                     check=True,
                     cwd=APP_DIR,
                 )
-                body, content_type = multipart(sample)
+                body, content_type = multipart(
+                    sample,
+                    {
+                        "auto_speech": True,
+                        "voice": "im_nicola",
+                        "speed": 1.0,
+                    },
+                )
                 status, queued = request_json(
                     f"{base}/api/jobs",
                     token=True,
@@ -180,7 +188,18 @@ def main() -> int:
                 assert status == 202, (status, queued)
                 ocr_job = wait_for_job(base, queued["id"])
                 assert ocr_job["status"] == "completed", ocr_job
+                assert ocr_job["summary"]["audio"] == "Kokoro queued automatically"
                 assert not (root / "data" / "work" / ocr_job["id"]).exists()
+
+                status, jobs = request_json(f"{base}/api/jobs", token=True)
+                assert status == 200
+                automatic = next(
+                    job for job in jobs if job["engine"] == "kokoro-italian"
+                )
+                automatic = wait_for_job(base, automatic["id"], timeout=300)
+                assert automatic["status"] == "completed", automatic
+                automatic_audio = root / "outputs" / automatic["id"] / "speech.wav"
+                assert automatic_audio.stat().st_size > 10_000
 
                 status, document = request_json(
                     f"{base}/api/jobs/{ocr_job['id']}/document",
@@ -213,6 +232,14 @@ def main() -> int:
                 assert speech_job["status"] == "completed", speech_job
                 audio = root / "outputs" / speech_job["id"] / "speech.wav"
                 assert audio.stat().st_size > 10_000
+                status, deleted = request_json(
+                    f"{base}/api/jobs/{automatic['id']}",
+                    token=True,
+                    data=b"",
+                    method="DELETE",
+                )
+                assert status == 200 and deleted["deleted"]
+                assert not (root / "outputs" / automatic["id"]).exists()
                 status, deleted = request_json(
                     f"{base}/api/jobs/{speech_job['id']}",
                     token=True,
