@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the verified Kokoro INT8 CPU model and Italian voice bundle."""
+"""Install a verified Kokoro CPU model and Italian/English voice bundle."""
 
 from __future__ import annotations
 
@@ -66,9 +66,11 @@ def download(name: str, expected_size: int, expected_hash: str) -> None:
         temporary.unlink()
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "Local-Accessibility-Studio/0.1"},
+        headers={"User-Agent": "Local-Accessibility-Studio/0.2"},
     )
     try:
+        # HTTPS host, expected size, and SHA-256 are fixed and checked here.
+        # nosemgrep
         response = urllib.request.urlopen(request, timeout=60)  # nosec B310
         received = 0
         with (

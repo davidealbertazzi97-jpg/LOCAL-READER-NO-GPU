@@ -41,8 +41,8 @@ link to installers that have not been built and verified.
 | Platform | Current verification | Architecture |
 | --- | --- | --- |
 | Linux | Full OCR, review, export, and Kokoro pipeline | x86-64 |
-| Windows 10/11 | Installer/core CI job prepared; native run pending | x86-64 |
-| macOS 13+ | Installer/core CI job prepared; native run pending | Apple Silicon |
+| Windows 10/11 | Installer and live core server verified in CI; native engines pending | x86-64 |
+| macOS 13+ | Installer and live core server verified in CI; native engines pending | Apple Silicon |
 
 The complete model pipeline is exercised automatically on Linux. Windows and
 macOS users should treat the current source release as an early test profile
@@ -67,9 +67,10 @@ On Windows, use PowerShell:
 Linux installation also adds **Local Accessibility Studio** to the desktop
 application menu without requiring `sudo`.
 
-The first installation needs internet access to download pinned Python
-packages and verified model files. Normal document processing runs locally and
-does not require internet access.
+The first installation needs internet access to download Python packages locked
+with SHA-256 hashes and verified model files. The installer accepts prebuilt
+wheels only and does not build source distributions. Normal document processing
+runs locally and does not require internet access.
 
 ### Plug-and-play setup with an AI agent
 
@@ -172,6 +173,7 @@ See [`DISCLAIMER.md`](DISCLAIMER.md) for the complete limitations.
 - The service binds only to numeric loopback `127.0.0.1`.
 - API requests require a random per-installation token.
 - State-changing requests enforce the exact local browser origin.
+- Oversized upload requests are rejected before multipart parsing.
 - Python runtime processes reject non-loopback network connections.
 - Linux adds a native outbound-network guard when a C compiler is available.
 - The interface contains no telemetry, CDN assets, account, or remote inference.
@@ -183,10 +185,14 @@ See [`DISCLAIMER.md`](DISCLAIMER.md) for the complete limitations.
   as markup.
 - Private working copies are removed after completion, failure, and interrupted
   restart.
+- Active OCR and speech process groups are terminated during an orderly
+  application shutdown.
 
 Installation needs network access for third-party packages and models. The
 default browser is outside the application's network guard and may perform its
-own background traffic.
+own background traffic. The runtime guards are defense in depth, not an
+operating-system sandbox and not protection against malicious native code or
+another process already running as the same user.
 
 Local processing does not by itself establish GDPR, accessibility, or other
 regulatory compliance. Review every output before using or sharing it.
@@ -271,8 +277,8 @@ promette installer che non sono stati costruiti e verificati.
 | Sistema | Verifica attuale | Architettura |
 | --- | --- | --- |
 | Linux | Pipeline completa OCR, revisione, export e Kokoro | x86-64 |
-| Windows 10/11 | Job CI installer/core pronto; prova nativa da fare | x86-64 |
-| macOS 13+ | Job CI installer/core pronto; prova nativa da fare | Apple Silicon |
+| Windows 10/11 | Installer e server core reale verificati in CI; motori nativi da provare | x86-64 |
+| macOS 13+ | Installer e server core reale verificati in CI; motori nativi da provare | Apple Silicon |
 
 La pipeline completa dei modelli viene provata automaticamente su Linux. Su
 Windows e macOS il profilo sorgente va considerato ancora preliminare finché
@@ -298,9 +304,10 @@ Su Windows usa PowerShell:
 Su Linux viene aggiunta anche **Local Accessibility Studio** al menu delle
 applicazioni, senza richiedere `sudo`.
 
-La prima installazione usa internet per scaricare pacchetti Python versionati e
-modelli verificati. La normale elaborazione dei documenti resta locale e non
-richiede la rete.
+La prima installazione usa internet per scaricare pacchetti Python bloccati con
+hash SHA-256 e modelli verificati. L'installer accetta soltanto wheel
+precompilate e non costruisce distribuzioni sorgente. La normale elaborazione
+dei documenti resta locale e non richiede la rete.
 
 ### Installazione plug-and-play con un agente IA
 
@@ -404,6 +411,7 @@ Consulta [`DISCLAIMER.md`](DISCLAIMER.md) per tutti i limiti.
 - Il servizio ascolta soltanto sul loopback numerico `127.0.0.1`.
 - Le API richiedono un token casuale dell'installazione.
 - Le richieste che modificano dati verificano l'origine esatta del browser.
+- Gli upload troppo grandi vengono rifiutati prima del parser multipart.
 - I processi Python rifiutano connessioni non loopback.
 - Su Linux viene aggiunto un guard nativo quando è disponibile un compilatore C.
 - L'interfaccia non contiene telemetria, CDN, account o inferenza remota.
@@ -415,9 +423,14 @@ Consulta [`DISCLAIMER.md`](DISCLAIMER.md) per tutti i limiti.
   fisso e non è mai interpretato come markup.
 - Le copie di lavoro vengono eliminate dopo completamento, errore e riavvio
   interrotto.
+- I gruppi di processi OCR e sintesi attivi vengono terminati durante la chiusura
+  ordinata dell'applicazione.
 
 La rete serve durante l'installazione. Il browser predefinito è esterno al
-guard dell'applicazione e può generare traffico proprio in background.
+guard dell'applicazione e può generare traffico proprio in background. I guard
+sono una difesa aggiuntiva, non una sandbox del sistema operativo e non
+proteggono da codice nativo malevolo o da un altro processo già attivo con lo
+stesso utente.
 
 L'elaborazione locale non dimostra da sola conformità GDPR, accessibilità o
 altri adempimenti. Controlla ogni risultato prima di usarlo o condividerlo.

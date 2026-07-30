@@ -72,6 +72,8 @@ def get_json(url: str, timeout: float = 1.0) -> dict[str, Any] | None:
     if parsed.scheme != "http" or parsed.hostname != "127.0.0.1":
         raise ValueError("The launcher accepts numeric loopback HTTP endpoints only.")
     try:
+        # The URL is validated as numeric loopback immediately above.
+        # nosemgrep
         with urllib.request.urlopen(url, timeout=timeout) as response:  # nosec B310
             value = json.load(response)
         return value if isinstance(value, dict) else None
@@ -90,6 +92,8 @@ def token_is_authorized(port: int, token: str) -> bool:
         headers={"X-Local-AI-Token": token},
     )
     try:
+        # The request URL is constructed from a validated local integer port.
+        # nosemgrep
         with urllib.request.urlopen(request, timeout=1) as response:  # nosec B310
             return response.status == 200
     except (OSError, urllib.error.URLError):
@@ -114,27 +118,27 @@ def free_port() -> int:
 
 def guarded_environment(token: str, port: int) -> dict[str, str]:
     environment = os.environ.copy()
-    for variable in (
-        "DYLD_INSERT_LIBRARIES",
-        "DYLD_LIBRARY_PATH",
-        "LD_LIBRARY_PATH",
-        "LD_PRELOAD",
-        "PYTHONBREAKPOINT",
-        "PYTHONEXECUTABLE",
-        "PYTHONHOME",
-        "PYTHONINSPECT",
-        "PYTHONPLATLIBDIR",
-        "PYTHONSTARTUP",
-        "PYTHONUSERBASE",
-        "PYTHONWARNINGS",
-    ):
-        environment.pop(variable, None)
+    for variable in tuple(environment):
+        if variable.startswith(("DYLD_", "LD_", "PYTHON")) or variable in {
+            "GETCONF_DIR",
+            "GCONV_PATH",
+            "LOCPATH",
+            "NLSPATH",
+            "OPENSSL_CONF",
+            "OPENSSL_MODULES",
+            "SSLKEYLOGFILE",
+        }:
+            environment.pop(variable, None)
     environment.update(
         {
             "LOCAL_AI_APP_TOKEN": token,
             "LOCAL_AI_APP_PORT": str(port),
             "HF_HUB_OFFLINE": "1",
             "TRANSFORMERS_OFFLINE": "1",
+            "OMP_NUM_THREADS": str(max(1, min(4, os.cpu_count() or 2))),
+            "OMP_WAIT_POLICY": "PASSIVE",
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONNOUSERSITE": "1",
             "PYTHONUNBUFFERED": "1",
             "PYTHONPATH": str(APP_DIR / "runtime_guard"),
         }
@@ -154,11 +158,42 @@ def open_app(port: int, token: str) -> None:
 def stop_process(process: subprocess.Popen[Any] | None) -> None:
     if process is None or process.poll() is not None:
         return
-    process.terminate()
+    try:
+        if os.name == "nt":
+            process.send_signal(signal.CTRL_BREAK_EVENT)
+        else:
+            os.killpg(process.pid, signal.SIGTERM)
+    except OSError:
+        process.terminate()
     try:
         process.wait(timeout=12)
     except subprocess.TimeoutExpired:
-        process.kill()
+        if os.name == "nt":
+            taskkill = (
+                Path(os.environ.get("SYSTEMROOT", r"C:\Windows"))
+                / "System32"
+                / "taskkill.exe"
+            )
+            if taskkill.is_file():
+                subprocess.run(
+                    [
+                        str(taskkill),
+                        "/PID",
+                        str(process.pid),
+                        "/T",
+                        "/F",
+                    ],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            else:
+                process.kill()
+        else:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except OSError:
+                process.kill()
         process.wait(timeout=5)
 
 
@@ -196,6 +231,13 @@ def main() -> int:
     if os.name != "nt":
         log_path.chmod(0o600)
     with log_path.open("ab") as log:
+        process_group: dict[str, Any]
+        if os.name == "nt":
+            process_group = {
+                "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP,
+            }
+        else:
+            process_group = {"start_new_session": True}
         server = subprocess.Popen(
             [
                 sys.executable,
@@ -212,6 +254,7 @@ def main() -> int:
             env=environment,
             stdout=log,
             stderr=subprocess.STDOUT,
+            **process_group,
         )
         try:
             for _ in range(120):

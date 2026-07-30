@@ -28,7 +28,11 @@ def venv_python(name: str) -> Path:
 
 def run(command: list[str]) -> None:
     print(f"\n-> {' '.join(command)}", flush=True)
-    subprocess.run(command, cwd=APP_DIR, check=True)
+    environment = os.environ.copy()
+    for variable in tuple(environment):
+        if variable.startswith(("PIP_", "UV_", "PYTHON")):
+            environment.pop(variable, None)
+    subprocess.run(command, cwd=APP_DIR, env=environment, check=True)
 
 
 def install_requirements(uv: str, name: str, requirements: str) -> Path:
@@ -39,10 +43,15 @@ def install_requirements(uv: str, name: str, requirements: str) -> Path:
         [
             uv,
             "pip",
-            "install",
+            "sync",
+            "--no-config",
+            "--default-index",
+            "https://pypi.org/simple",
+            "--only-binary",
+            ":all:",
+            "--require-hashes",
             "--python",
             str(python),
-            "--requirement",
             str(APP_DIR / requirements),
         ]
     )
@@ -120,13 +129,18 @@ def main() -> int:
     print(json.dumps(plan, indent=2))
     if args.dry_run:
         return 0
+    if (system, machine) not in SUPPORTED:
+        raise SystemExit(
+            f"Unsupported installer platform: {system}/{machine}. "
+            "Use Linux x86-64, macOS Apple Silicon, or Windows x86-64."
+        )
 
     uv = os.environ.get("LOCAL_AI_APP_UV") or shutil.which("uv")
     if not uv:
         raise SystemExit(
             "uv is unavailable. Run install.sh or install.ps1 from the project root."
         )
-    core_python = install_requirements(uv, ".venv", "requirements-core.txt")
+    core_python = install_requirements(uv, ".venv", "requirements-core.lock")
     run(
         [
             str(core_python),
@@ -139,7 +153,7 @@ def main() -> int:
         ocr_python = install_requirements(
             uv,
             ".venv-ocr",
-            "requirements-ocr.txt",
+            "requirements-ocr.lock",
         )
         run(
             [
@@ -151,7 +165,7 @@ def main() -> int:
         tts_python = install_requirements(
             uv,
             ".venv-tts",
-            "requirements-tts.txt",
+            "requirements-tts.lock",
         )
         run(
             [

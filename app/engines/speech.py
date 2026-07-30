@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 from ..config import PATHS
+from ..processes import run_worker
 from ..speech_jobs import normalized_options
 from .base import EngineResult, LocalEngine
 
@@ -19,8 +19,14 @@ VOICES_HASH = "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d"
 
 
 @lru_cache(maxsize=8)
-def _digest(path: str, size: int, modified_ns: int) -> str:
-    del size, modified_ns
+def _digest(
+    path: str,
+    size: int,
+    modified_ns: int,
+    changed_ns: int,
+    inode: int,
+) -> str:
+    del size, modified_ns, changed_ns, inode
     value = hashlib.sha256()
     with Path(path).open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -36,12 +42,24 @@ def verified_kokoro() -> tuple[Path, Path]:
     model_stat = model.stat()
     voices_stat = voices.stat()
     if (
-        _digest(str(model), model_stat.st_size, model_stat.st_mtime_ns)
+        _digest(
+            str(model),
+            model_stat.st_size,
+            model_stat.st_mtime_ns,
+            model_stat.st_ctime_ns,
+            model_stat.st_ino,
+        )
         not in MODEL_HASHES
     ):
         raise RuntimeError("Kokoro model checksum is not approved")
     if (
-        _digest(str(voices), voices_stat.st_size, voices_stat.st_mtime_ns)
+        _digest(
+            str(voices),
+            voices_stat.st_size,
+            voices_stat.st_mtime_ns,
+            voices_stat.st_ctime_ns,
+            voices_stat.st_ino,
+        )
         != VOICES_HASH
     ):
         raise RuntimeError("Kokoro voice checksum is not approved")
@@ -97,12 +115,9 @@ class KokoroSpeechEngine(LocalEngine):
             "--language",
             language,
         ]
-        completed = subprocess.run(
+        completed = run_worker(
             command,
             cwd=PATHS.app,
-            check=False,
-            capture_output=True,
-            text=True,
             timeout=6 * 60 * 60,
         )
         if completed.returncode:

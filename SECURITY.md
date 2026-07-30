@@ -30,6 +30,7 @@ The launcher:
 - binds the service to numeric loopback `127.0.0.1`;
 - creates a private random token per installation;
 - checks the exact browser origin on state-changing API requests;
+- rejects oversized uploads before multipart parsing;
 - injects a Python outbound-network guard into web, OCR, and speech processes;
 - adds a native `LD_PRELOAD` network guard on Linux when compilation is
   available.
@@ -40,10 +41,11 @@ validated. User/OCR text is escaped into fixed HTML and is never executed as
 markup.
 
 Private working copies are removed after completion, failure, deletion, and an
-interrupted restart. Page previews, reviewed text, HTML, reports, and WAV files
-are intentional durable results and can contain confidential information.
-They are stored in the user's results directory with private permissions where
-the operating system supports them.
+interrupted restart. Active OCR and speech process groups are terminated during
+an orderly application shutdown. Page previews, reviewed text, HTML, reports,
+and WAV files are intentional durable results and can contain confidential
+information. They are stored in the user's results directory with private
+permissions where the operating system supports them.
 
 ## Known non-security limitations
 
@@ -54,3 +56,9 @@ matter: users must review output before relying on or sharing it.
 The default browser runs outside the application's network guard and may
 perform its own background network requests. Local processing alone does not
 establish accessibility, GDPR, or other regulatory compliance.
+
+The Python and native network guards are defense-in-depth controls. They are
+not an operating-system sandbox and cannot protect against malicious native
+code, a compromised dependency, or another process already running as the same
+user. Use an appropriate OS sandbox or virtual machine when handling a crafted
+file from an untrusted source.

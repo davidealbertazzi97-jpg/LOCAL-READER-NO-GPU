@@ -34,9 +34,8 @@ def _platform_roots() -> tuple[Path, Path, Path]:
 
 
 def _private_directory(path: Path) -> None:
-    existed = path.exists()
     path.mkdir(parents=True, exist_ok=True)
-    if os.name != "nt" and not existed:
+    if os.name != "nt":
         path.chmod(0o700)
 
 

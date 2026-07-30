@@ -18,7 +18,7 @@ DEFAULT_VOICES = {
     "en-us": "am_michael",
     "en-gb": "bm_george",
 }
-MAX_SPEECH_SOURCE_BYTES = 8 * 1024 * 1024
+MAX_SPEECH_SOURCE_BYTES = 2 * 1024 * 1024
 COPY_CHUNK = 1024 * 1024
 
 

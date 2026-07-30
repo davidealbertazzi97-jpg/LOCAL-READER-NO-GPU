@@ -34,11 +34,12 @@ def request_json(
     data: bytes | None = None,
     content_type: str | None = None,
     method: str | None = None,
+    origin: bool = True,
 ) -> tuple[int, object]:
     headers = {}
     if token:
         headers["X-Local-AI-Token"] = TOKEN
-    if data is not None:
+    if data is not None and origin:
         parsed = urllib.parse.urlsplit(url)
         headers["Origin"] = f"{parsed.scheme}://{parsed.netloc}"
     if content_type:
@@ -157,8 +158,26 @@ def main() -> int:
             status, product = request_json(f"{base}/api/product", token=True)
             assert status == 200
             assert product["slug"] == "local-accessibility-studio"
+            header_request = urllib.request.Request(
+                f"{base}/api/product",
+                headers={"X-Local-AI-Token": TOKEN},
+            )
+            with urllib.request.urlopen(header_request, timeout=5) as response:
+                headers = response.headers
+                assert headers["Cache-Control"] == "no-store"
+                assert headers["Cross-Origin-Opener-Policy"] == "same-origin"
+                assert headers["Cross-Origin-Resource-Policy"] == "same-origin"
+                assert "default-src 'self'" in headers["Content-Security-Policy"]
             status, engines = request_json(f"{base}/api/engines", token=True)
             assert status == 200 and len(engines) == 2
+            status, _ = request_json(
+                f"{base}/api/jobs",
+                token=True,
+                data=b"",
+                method="DELETE",
+                origin=False,
+            )
+            assert status == 403
             if not args.full:
                 status, cleared = request_json(
                     f"{base}/api/jobs",
