@@ -1,13 +1,23 @@
+# Local Python environments
 /.venv/
 /.venv-*/
+
+# Downloaded and compiled runtime artifacts
 /.tools/
 /bin/
+/models/
+*.download
+
+# Python caches and tooling
 __pycache__/
 *.py[cod]
 .ruff_cache/
 .pytest_cache/
+.mypy_cache/
 .coverage
 htmlcov/
+
+# Local configuration, credentials, state, and user outputs
 *.sqlite
 *.sqlite3
 *.sqlite3-shm
@@ -16,10 +26,15 @@ htmlcov/
 .env
 .env.*
 !.env.example
+/data/
+/outputs/
+
+# Build and release artifacts
 /build/
 /dist/
 *.egg-info/
-/models/
+
+# Downloaded models and generated media
 *.gguf
 *.onnx
 *.safetensors
@@ -35,6 +50,8 @@ htmlcov/
 *.AppImage
 *.dmg
 *.exe
+
+# Editors and operating systems
 .DS_Store
 Thumbs.db
 .idea/

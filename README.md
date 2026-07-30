@@ -1,163 +1,431 @@
-# Local Accessibility Studio
+<p align="center">
+  <img src="static/icon.svg" width="88" height="88" alt="Local Accessibility Studio">
+</p>
 
-Private, local OCR, accessible-document preparation, and natural Italian or
-English speech for ordinary CPU computers. Documents are processed on the
-user's workstation; the application has no cloud mode, telemetry, account, or
-GPU requirement.
+<h1 align="center">Local Accessibility Studio (No GPU)</h1>
 
-The current MVP can:
+<p align="center">
+  <strong>Private OCR, accessible reading drafts, and natural speech on ordinary CPUs.</strong><br>
+  Confidential documents stay on the computer. No account, cloud inference,
+  telemetry, or GPU is required.
+</p>
 
-- recognize PDF and image pages with RapidOCR, PP-OCRv6 small, and ONNX Runtime;
-- show every page beside editable text blocks and OCR confidence;
-- let the user correct text and mark headings, paragraphs, lists, page numbers,
-  or content that must be excluded from reading;
-- regenerate clean reading text and semantic HTML after every review;
-- automatically queue a Kokoro audio draft after OCR, unless the user disables
-  that option;
-- create long-form Italian, American English, or British English WAV audio with
-  male/female Kokoro voices, adjustable speed, and streaming CPU synthesis;
-- keep durable results in the user's Documents folder while deleting private
-  working copies after success, failure, or interrupted restart.
+<p align="center">
+  <a href="#english">English</a> · <a href="#italiano">Italiano</a>
+</p>
 
-Piper is not a dependency and is not used.
+---
 
-## Important accessibility boundary
+<a id="english"></a>
 
-OCR, reading-order inference, and heading detection can be wrong. A generated
-file is a **review candidate**, not proof that a document is accessible. Low
-confidence is shown explicitly, all inferred roles remain editable, and the
-interface never silently calls an unreviewed result compliant.
+## English
 
-The first release exports semantic HTML and plain reading text. Tagged PDF,
-EPUB, and DOCX are deliberately deferred until they can be tested with real
-assistive technologies and users.
+Local Accessibility Studio was born in a personal homelab from a practical
+need: turn scanned or difficult documents into reviewable text and audio
+without sending confidential content to external servers.
 
-## Install and start
+It is intended for teachers, independent professionals, students, small
+offices, and anyone who needs a private OCR-to-reading workflow on low- to
+mid-range consumer hardware without a GPU.
 
-Supported release profiles are Linux x86-64, macOS Apple Silicon, and Windows
-x86-64 with Python 3.12 managed by the installer.
+### Current distribution
+
+Version **0.2.0** is currently distributed as source. Prebuilt `.exe`,
+`.AppImage`, and `.dmg` packages are not published yet; this README does not
+link to installers that have not been built and verified.
+
+| Platform | Current verification | Architecture |
+| --- | --- | --- |
+| Linux | Full OCR, review, export, and Kokoro pipeline | x86-64 |
+| Windows 10/11 | Installer/core CI job prepared; native run pending | x86-64 |
+| macOS 13+ | Installer/core CI job prepared; native run pending | Apple Silicon |
+
+The complete model pipeline is exercised automatically on Linux. Windows and
+macOS users should treat the current source release as an early test profile
+until full native engine testing is added for those platforms.
+
+### Install from source
+
+Download or clone the repository, open a terminal in its root, then run:
 
 ```bash
 ./install.sh
 ./start.sh
 ```
 
-On Windows:
+On Windows, use PowerShell:
 
 ```powershell
 .\install.ps1
 .\start.ps1
 ```
 
-On Linux the installer also adds **Local Accessibility Studio** to the desktop
+Linux installation also adds **Local Accessibility Studio** to the desktop
 application menu without requiring `sudo`.
 
-On modern x86 CPUs, the larger FP32 Kokoro model can be substantially faster
-than INT8 at the cost of a larger download and more memory:
+The first installation needs internet access to download pinned Python
+packages and verified model files. Normal document processing runs locally and
+does not require internet access.
+
+#### Compact and fast speech profiles
+
+The default installer downloads the compact Kokoro INT8 model. On many modern
+x86 CPUs, the larger FP32 model can synthesize speech substantially faster:
 
 ```bash
 ./install.sh --fast-tts
 ```
 
-Installation needs internet access to obtain pinned Python packages and the
-verified Kokoro files. Runtime binds only to numeric loopback and guarded Python
-processes deny non-loopback connections. The installer downloads:
+| Kokoro profile | Download size | Purpose |
+| --- | ---: | --- |
+| INT8 compact | 92,361,271 bytes | Smaller installation |
+| FP32 fast | 325,532,387 bytes | Faster synthesis on compatible CPUs |
+| Voice bundle | 28,214,398 bytes | Italian and English voices |
 
-- Kokoro v1.0 INT8 CPU model: 92,361,271 bytes;
-- optional Kokoro v1.0 FP32 fast CPU model: 325,532,387 bytes;
-- Kokoro v1.0 voice bundle: 28,214,398 bytes;
-- RapidOCR's wheel, which contains the PP-OCRv6 small ONNX models.
+All Kokoro files are checked against the SHA-256 values pinned in
+[`scripts/install_kokoro.py`](scripts/install_kokoro.py). RapidOCR's wheel
+contains the PP-OCRv6 small ONNX models. Models, environments, user documents,
+and generated audio are excluded from Git.
 
-The exact Kokoro SHA-256 values are pinned in
-`scripts/install_kokoro.py`. Model files and virtual environments are excluded
-from Git.
+### What it does
 
-## Workflow
+- Italian or English interface with a saved local preference.
+- OCR for PDF, PNG, JPEG, WebP, TIFF, and BMP files using RapidOCR,
+  PP-OCRv6 small, and ONNX Runtime on CPU.
+- Side-by-side page previews, editable OCR blocks, and confidence indicators.
+- Reviewable roles for headings, paragraphs, list items, page numbers, and
+  content excluded from reading.
+- Regenerated semantic HTML and clean reading text after every saved revision.
+- Automatic Kokoro audio draft after OCR, with an option to disable it.
+- Male and female voices for Italian, American English, and British English.
+- Adjustable speech speed and a fast FP32 CPU profile.
+- Individual or bulk deletion of completed history and its local result files.
+- Persistent local jobs with private working-copy cleanup after success,
+  failure, or interrupted restart.
 
-1. Upload a PDF, PNG, JPEG, WebP, TIFF, or BMP from the local interface.
-2. Wait for local OCR and, by default, the automatic Kokoro audio draft.
-3. Open **Review text and order**.
-4. Correct the title, language, block text, and semantic roles.
-5. Save corrections, then download accessible HTML/text or regenerate the audio.
-6. Review the final output with the intended screen reader and user.
+Piper is not installed or used.
 
-The automatic draft follows the selected document language:
+### Voices
 
-- Italian: male `im_nicola` or female `if_sara`;
-- American English: male `am_michael` or female `af_heart`;
-- British English: male `bm_george` or female `bf_emma`.
+| Language | Male | Female |
+| --- | --- | --- |
+| Italian | Nicola (`im_nicola`) | Sara (`if_sara`) |
+| English — United States | Michael (`am_michael`) | Heart (`af_heart`) |
+| English — United Kingdom | George (`bm_george`) | Emma (`bf_emma`) |
 
 Switching the interface to English selects American English for the next
-document by default; the speech language remains independently editable.
-Finished OCR and speech jobs can be removed individually or cleared together
-from history; deletion also removes their durable local result files.
+document by default. Document language, speech language, and voice remain
+editable during review. The selected locale is passed to Kokoro's phonemizer;
+the change is not only a translated label.
 
-The original file is never modified. Page previews and exported results are
-durable copies and may still contain confidential information.
+### Workflow
 
-## Verification
+1. Select the document/speech language and a male or female voice.
+2. Upload a supported PDF or image.
+3. Wait for local OCR and, by default, the automatic audio draft.
+4. Open **Review text and order**.
+5. Correct the title, text, language, reading order, and semantic roles.
+6. Save the revision, download HTML/text, or regenerate audio.
+7. Test the result with the intended reader, screen reader, and user.
+
+The original file is never modified. Page previews, reviewed text, semantic
+HTML, OCR reports, and WAV files are durable results and may still contain
+confidential information.
+
+### Accessibility boundary
+
+OCR, reading-order inference, heading detection, and speech synthesis can be
+wrong. Generated files are **review candidates**, not proof that a document
+conforms to WCAG, PDF/UA, the European Accessibility Act, or any other
+accessibility requirement.
+
+Low confidence is shown explicitly, all inferred roles remain editable, and
+the interface does not label an unreviewed result compliant. The current
+release exports semantic HTML and plain reading text. Tagged PDF, EPUB, and
+DOCX remain deferred until they can be tested with real assistive technologies
+and users.
+
+See [`DISCLAIMER.md`](DISCLAIMER.md) for the complete limitations.
+
+### Privacy and security model
+
+- The service binds only to numeric loopback `127.0.0.1`.
+- API requests require a random per-installation token.
+- State-changing requests enforce the exact local browser origin.
+- Python runtime processes reject non-loopback network connections.
+- Linux adds a native outbound-network guard when a C compiler is available.
+- The interface contains no telemetry, CDN assets, account, or remote inference.
+- Upload, edit, page, pixel, frame, artifact-path, and speech-size limits are
+  enforced.
+- Kokoro model and voice files must match approved SHA-256 values.
+- OCR and speech run in isolated Python environments.
+- User/OCR text is escaped into a fixed HTML template and is never interpreted
+  as markup.
+- Private working copies are removed after completion, failure, and interrupted
+  restart.
+
+Installation needs network access for third-party packages and models. The
+default browser is outside the application's network guard and may perform its
+own background traffic.
+
+Local processing does not by itself establish GDPR, accessibility, or other
+regulatory compliance. Review every output before using or sharing it.
+
+### Local data
+
+| Platform | Private application data | Durable results |
+| --- | --- | --- |
+| Linux | `~/.local/share/local-accessibility-studio` | `~/Documents/Local Accessibility Studio - Results` |
+| macOS | `~/Library/Application Support/Local Accessibility Studio` | `~/Documents/Local Accessibility Studio - Results` |
+| Windows | `%LOCALAPPDATA%\Local Accessibility Studio` | `%USERPROFILE%\Documents\Local Accessibility Studio - Results` |
+
+Deleting a history item also removes its result directory. It does not modify
+the original source document.
+
+### Repository control files
+
+`.gitignore` is intentionally tracked: it prevents virtual environments,
+models, tokens, databases, logs, native build products, user documents, page
+previews, and audio from entering Git. `.github/` contains only read-only CI
+and dependency-update configuration.
+
+The `.git` directory is repository metadata on the local computer. It is never
+tracked, included in GitHub source archives, or copied by the installer.
+
+### License
+
+Original project code and documentation are licensed under
+[GNU GPL version 3 only](LICENSE) (`GPL-3.0-only`). Distributed modified
+versions must preserve the GPL terms and corresponding-source obligations.
+
+Third-party packages, OCR models, Kokoro weights, and voice data retain their
+own licenses. See
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
+[`LICENSE-GUIDE.md`](LICENSE-GUIDE.md).
+
+This licensing summary is technical information, not legal advice. It assumes
+that the publisher owns or is authorized to license the original project code.
+
+### Development and verification
 
 ```bash
-python -m unittest discover -s tests -p "test_*.py"
-python tests/smoke_local.py
-python tests/smoke_local.py --full
-ruff check .
-ruff format --check .
-bandit -q -c pyproject.toml -r app runtime_guard scripts workers
+./scripts/check.sh
+.venv/bin/python tests/smoke_local.py
+.venv/bin/python tests/smoke_local.py --full
 ```
 
-The full smoke test performs OCR, verifies the automatic Kokoro draft, edits the
-recognized structure through the real authenticated API, regenerates exports,
-synthesizes a second reviewed audio file, and checks work-copy deletion.
+The full test performs OCR, automatic British English speech, document review,
+export regeneration, American English speech, and secure history cleanup
+through the real authenticated local API. Test fixtures contain synthetic text
+only.
 
-## Licence
-
-Original code and documentation are GNU GPL version 3 only. This choice is also
-compatible with the GPL speech-processing dependencies used by Kokoro's
-phonemization path. Models and third-party components retain their own terms;
-see `THIRD_PARTY_NOTICES.md`.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request. Report
+security problems as described in [`SECURITY.md`](SECURITY.md), never by
+attaching a confidential document to a public issue.
 
 ---
 
-# Local Accessibility Studio — Italiano
+<a id="italiano"></a>
 
-OCR privato in locale, preparazione di documenti accessibili e sintesi vocale
-naturale italiana o inglese per normali computer con CPU. Non esistono modalità
-cloud, telemetria, account o requisiti GPU.
+## Italiano
 
-L’MVP attuale:
+Local Accessibility Studio è nato nel mio homelab da una necessità concreta:
+trasformare documenti scansionati o difficili da leggere in testo revisionabile
+e audio senza inviare contenuti riservati a server esterni.
 
-- riconosce PDF e immagini con RapidOCR, PP-OCRv6 small e ONNX Runtime;
-- mostra ogni pagina accanto ai blocchi di testo modificabili e alla confidenza;
-- permette di correggere testo, titoli, paragrafi, elenchi, numeri di pagina ed
-  elementi da non leggere;
-- rigenera testo pulito e HTML semantico dopo ogni revisione;
-- accoda automaticamente una bozza audio Kokoro dopo l’OCR, salvo disattivazione;
-- crea audio WAV italiano, inglese americano o inglese britannico con voci
-  Kokoro maschili e femminili;
-- elimina le copie private di lavoro anche dopo errori o riavvii interrotti.
+È pensato per insegnanti, liberi professionisti, studenti, piccoli uffici e per
+chiunque abbia bisogno di un percorso privato da OCR a lettura su hardware
+consumer di fascia medio-bassa, senza GPU.
 
-Piper non viene installato né utilizzato.
+### Distribuzione attuale
 
-OCR, ordine di lettura e riconoscimento dei titoli possono sbagliare. Il
-risultato è una **bozza da revisionare**, non la prova che il documento sia
-accessibile. Per questo ogni ruolo rimane modificabile e le parole a bassa
-confidenza vengono evidenziate.
+La versione **0.2.0** viene attualmente distribuita come sorgente. I pacchetti
+`.exe`, `.AppImage` e `.dmg` non sono ancora pubblicati: questo README non
+promette installer che non sono stati costruiti e verificati.
 
-Installazione e avvio su Linux/macOS:
+| Sistema | Verifica attuale | Architettura |
+| --- | --- | --- |
+| Linux | Pipeline completa OCR, revisione, export e Kokoro | x86-64 |
+| Windows 10/11 | Job CI installer/core pronto; prova nativa da fare | x86-64 |
+| macOS 13+ | Job CI installer/core pronto; prova nativa da fare | Apple Silicon |
+
+La pipeline completa dei modelli viene provata automaticamente su Linux. Su
+Windows e macOS il profilo sorgente va considerato ancora preliminare finché
+non verranno aggiunti test completi dei motori sulle rispettive piattaforme.
+
+### Installazione dal sorgente
+
+Scarica o clona il repository, apri un terminale nella cartella principale ed
+esegui:
 
 ```bash
 ./install.sh
 ./start.sh
 ```
 
-Su Windows usa `.\install.ps1` e `.\start.ps1`. L’installazione scarica pacchetti
-versionati e i file Kokoro verificati; l’esecuzione dell’applicazione resta
-locale. Gli originali non vengono mai modificati, ma anteprime e risultati
-persistenti possono ancora contenere informazioni riservate.
+Su Windows usa PowerShell:
 
-Sui moderni processori x86 il profilo più grande può risultare sensibilmente
-più veloce: si installa con `./install.sh --fast-tts`. La bozza automatica può
-usare la voce maschile Nicola o quella femminile Sara. I lavori conclusi si
-possono cancellare singolarmente oppure tutti insieme dalla cronologia; vengono
-rimossi anche i relativi file locali.
+```powershell
+.\install.ps1
+.\start.ps1
+```
+
+Su Linux viene aggiunta anche **Local Accessibility Studio** al menu delle
+applicazioni, senza richiedere `sudo`.
+
+La prima installazione usa internet per scaricare pacchetti Python versionati e
+modelli verificati. La normale elaborazione dei documenti resta locale e non
+richiede la rete.
+
+#### Profili voce compatto e rapido
+
+L'installazione predefinita scarica Kokoro INT8. Su molti processori x86
+moderni, il modello FP32 più grande può generare la voce molto più rapidamente:
+
+```bash
+./install.sh --fast-tts
+```
+
+| Profilo Kokoro | Dimensione | Scopo |
+| --- | ---: | --- |
+| INT8 compatto | 92.361.271 byte | Installazione più piccola |
+| FP32 rapido | 325.532.387 byte | Sintesi più veloce sulle CPU compatibili |
+| Pacchetto voci | 28.214.398 byte | Voci italiane e inglesi |
+
+Tutti i file Kokoro vengono confrontati con gli SHA-256 fissati in
+[`scripts/install_kokoro.py`](scripts/install_kokoro.py). La wheel RapidOCR
+contiene i modelli ONNX PP-OCRv6 small. Modelli, ambienti, documenti e audio
+generati restano esclusi da Git.
+
+### Funzioni
+
+- Interfaccia italiana o inglese con preferenza locale.
+- OCR di PDF, PNG, JPEG, WebP, TIFF e BMP con RapidOCR, PP-OCRv6 small e ONNX
+  Runtime su CPU.
+- Anteprima pagina affiancata ai blocchi modificabili e alla confidenza OCR.
+- Ruoli revisionabili per titoli, paragrafi, elenchi, numeri di pagina ed
+  elementi esclusi dalla lettura.
+- Rigenerazione di HTML semantico e testo pulito dopo ogni salvataggio.
+- Bozza audio Kokoro automatica dopo l'OCR, disattivabile.
+- Voci maschili e femminili italiane, inglesi americane e britanniche.
+- Velocità regolabile e profilo FP32 rapido per CPU.
+- Cancellazione singola o completa della cronologia e dei relativi risultati.
+- Coda persistente con eliminazione delle copie di lavoro dopo successo,
+  errore o riavvio interrotto.
+
+Piper non viene installato né utilizzato.
+
+### Voci
+
+| Lingua | Maschile | Femminile |
+| --- | --- | --- |
+| Italiano | Nicola (`im_nicola`) | Sara (`if_sara`) |
+| English — Stati Uniti | Michael (`am_michael`) | Heart (`af_heart`) |
+| English — Regno Unito | George (`bm_george`) | Emma (`bf_emma`) |
+
+Passando l'interfaccia a English, il documento successivo usa per impostazione
+predefinita l'inglese americano. Lingua del documento, pronuncia e voce restano
+modificabili durante la revisione. Il codice passa la lingua selezionata al
+fonemizzatore di Kokoro: non cambia soltanto l'etichetta.
+
+### Flusso di lavoro
+
+1. Seleziona lingua e voce maschile o femminile.
+2. Carica un PDF o un'immagine supportata.
+3. Attendi OCR locale e, normalmente, la bozza audio automatica.
+4. Apri **Rivedi testo e ordine**.
+5. Correggi titolo, testo, lingua, ordine di lettura e ruoli semantici.
+6. Salva, scarica HTML/testo oppure rigenera l'audio.
+7. Prova il risultato con il lettore, lo screen reader e l'utente destinatario.
+
+L'originale non viene mai modificato. Anteprime, testo revisionato, HTML,
+rapporti OCR e WAV sono risultati persistenti e possono ancora contenere
+informazioni riservate.
+
+### Limite di accessibilità
+
+OCR, ordine di lettura, riconoscimento dei titoli e sintesi vocale possono
+sbagliare. I file generati sono **bozze da revisionare**, non la prova che un
+documento rispetti WCAG, PDF/UA, European Accessibility Act o altri requisiti.
+
+La confidenza bassa è mostrata, ogni ruolo rimane modificabile e l'interfaccia
+non definisce conforme un risultato non revisionato. La versione attuale
+esporta HTML semantico e testo semplice. PDF con tag, EPUB e DOCX restano in
+roadmap finché non potranno essere provati con tecnologie assistive e utenti
+reali.
+
+Consulta [`DISCLAIMER.md`](DISCLAIMER.md) per tutti i limiti.
+
+### Modello di privacy e sicurezza
+
+- Il servizio ascolta soltanto sul loopback numerico `127.0.0.1`.
+- Le API richiedono un token casuale dell'installazione.
+- Le richieste che modificano dati verificano l'origine esatta del browser.
+- I processi Python rifiutano connessioni non loopback.
+- Su Linux viene aggiunto un guard nativo quando è disponibile un compilatore C.
+- L'interfaccia non contiene telemetria, CDN, account o inferenza remota.
+- Sono applicati limiti a upload, modifiche, pagine, pixel, frame, percorsi degli
+  artefatti e dimensione del testo parlato.
+- Modelli e voci Kokoro devono corrispondere agli SHA-256 approvati.
+- OCR e sintesi usano ambienti Python separati.
+- Il testo dell'utente e dell'OCR viene inserito con escaping in un modello HTML
+  fisso e non è mai interpretato come markup.
+- Le copie di lavoro vengono eliminate dopo completamento, errore e riavvio
+  interrotto.
+
+La rete serve durante l'installazione. Il browser predefinito è esterno al
+guard dell'applicazione e può generare traffico proprio in background.
+
+L'elaborazione locale non dimostra da sola conformità GDPR, accessibilità o
+altri adempimenti. Controlla ogni risultato prima di usarlo o condividerlo.
+
+### Dati locali
+
+| Sistema | Dati applicativi privati | Risultati persistenti |
+| --- | --- | --- |
+| Linux | `~/.local/share/local-accessibility-studio` | `~/Documents/Local Accessibility Studio - Results` |
+| macOS | `~/Library/Application Support/Local Accessibility Studio` | `~/Documents/Local Accessibility Studio - Results` |
+| Windows | `%LOCALAPPDATA%\Local Accessibility Studio` | `%USERPROFILE%\Documents\Local Accessibility Studio - Results` |
+
+Cancellando un elemento dalla cronologia viene eliminata anche la sua cartella
+dei risultati. L'originale non viene modificato.
+
+### File di controllo del repository
+
+`.gitignore` è incluso intenzionalmente: impedisce di aggiungere ambienti,
+modelli, token, database, log, prodotti nativi, documenti, anteprime e audio.
+`.github/` contiene soltanto CI in sola lettura e configurazione degli
+aggiornamenti delle dipendenze.
+
+La directory `.git` contiene metadati locali del repository. Non è tracciata,
+non entra negli archivi sorgente di GitHub e non viene copiata
+dall'installazione.
+
+### Licenza
+
+Codice e documentazione originali sono distribuiti sotto
+[GNU GPL versione 3 soltanto](LICENSE) (`GPL-3.0-only`). Le versioni modificate
+distribuite devono rispettare la GPL e gli obblighi sul sorgente corrispondente.
+
+Pacchetti, modelli OCR, pesi Kokoro e voci conservano le licenze originali.
+Consulta [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) e
+[`LICENSE-GUIDE.md`](LICENSE-GUIDE.md).
+
+Questo riepilogo è informazione tecnica, non un parere legale. Presuppone che
+chi pubblica possieda o sia autorizzato a licenziare il codice originale.
+
+### Sviluppo e verifica
+
+```bash
+./scripts/check.sh
+.venv/bin/python tests/smoke_local.py
+.venv/bin/python tests/smoke_local.py --full
+```
+
+Il test completo esegue OCR, bozza automatica con voce britannica, revisione,
+rigenerazione degli export, voce americana e cancellazione sicura della
+cronologia attraverso le API locali autenticate. Usa soltanto testi sintetici.
+
+Leggi [`CONTRIBUTING.md`](CONTRIBUTING.md) prima di una pull request. Segnala i
+problemi di sicurezza come indicato in [`SECURITY.md`](SECURITY.md), senza
+allegare documenti riservati a una issue pubblica.

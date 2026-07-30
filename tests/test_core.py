@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import tempfile
 import unittest
 import uuid
@@ -94,6 +95,38 @@ class ProductTests(unittest.TestCase):
         self.assertNotIn("PYTHONHOME", environment)
         self.assertNotEqual(environment.get("LD_PRELOAD"), hostile["LD_PRELOAD"])
         self.assertTrue(environment["PYTHONPATH"].endswith("runtime_guard"))
+
+
+class PublicUiTests(unittest.TestCase):
+    def test_every_static_label_has_italian_and_english_copy(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        html = (root / "static" / "index.html").read_text(encoding="utf-8")
+        javascript = (root / "static" / "app.js").read_text(encoding="utf-8")
+        keys = set(re.findall(r'data-i18n="([^"]+)"', html))
+        self.assertTrue(keys)
+        for key in keys:
+            occurrences = re.findall(
+                rf"^    {re.escape(key)}:",
+                javascript,
+                flags=re.MULTILINE,
+            )
+            self.assertEqual(
+                len(occurrences),
+                2,
+                f"{key!r} must have one Italian and one English value",
+            )
+
+    def test_static_page_does_not_load_remote_assets(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        for name in ("index.html", "legal.html"):
+            html = (root / "static" / name).read_text(encoding="utf-8")
+            asset_urls = re.findall(r'(?:href|src)="([^"]+)"', html)
+            self.assertTrue(asset_urls)
+            for url in asset_urls:
+                self.assertFalse(
+                    url.startswith(("http://", "https://", "//")),
+                    f"remote asset is not allowed in {name}: {url}",
+                )
 
 
 class DocumentTests(unittest.TestCase):

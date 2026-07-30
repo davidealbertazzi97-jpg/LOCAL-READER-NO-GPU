@@ -17,19 +17,19 @@ The installer obtains dependencies from their upstream distribution channels.
 | python-multipart | 0.0.32 | Apache-2.0 |
 | RapidOCR | 3.9.2 | Apache-2.0; OCR model copyright remains with Baidu/PaddleOCR |
 | ONNX Runtime, OCR environment | 1.23.2 | MIT |
-| Pillow | 12.3.0 | HPND |
+| Pillow | 12.3.0 | MIT-CMU |
 | pypdfium2 | 5.12.1 | BSD-3-Clause / Apache-2.0 plus bundled PDFium notices |
 | Kokoro ONNX wrapper | 0.5.0 | MIT |
 | ONNX Runtime, speech environment | 1.27.0 | MIT |
 | python-soundfile | 0.14.0 | BSD-3-Clause |
 | uv installer tool | 0.11.16 | Apache-2.0 OR MIT |
 
-Notable installed transitive components include OpenCV (Apache-2.0), NumPy
-(BSD-3-Clause plus bundled notices), Shapely (BSD-3-Clause plus GEOS notices),
-`phonemizer-fork` (GPL-3.0-or-later), and eSpeak NG code/data loaded by
-`espeakng-loader` (GPL-3.0-or-later upstream). The GPL-3.0-only licence of this
-application is compatible with selecting GPL version 3 for GPL-3.0-or-later
-components.
+Notable components resolved by the prepared 0.2.0 environments include OpenCV
+5.0.0.93 (Apache-2.0), NumPy 2.5.1 (BSD-3-Clause plus bundled notices),
+Shapely 2.1.2 (BSD-3-Clause plus GEOS notices), `phonemizer-fork` 3.3.2
+(GPL-3.0-or-later), and eSpeak NG code/data loaded by `espeakng-loader` 0.2.4
+(GPL-3.0-or-later upstream). The GPL-3.0-only licence of this application is
+compatible with selecting GPL version 3 for GPL-3.0-or-later components.
 
 Before distributing a preassembled executable or environment, copy the exact
 licence files and corresponding-source obligations from every wheel and native
