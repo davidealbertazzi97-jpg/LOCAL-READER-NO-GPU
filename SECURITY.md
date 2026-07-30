@@ -1,27 +1,56 @@
 # Security policy
 
-## Scope
-
-Local Accessibility Studio is a single-user workstation application. It must
-not be exposed to a LAN or public network.
-
-The launcher binds to `127.0.0.1`, creates a private per-installation token,
-checks browser origin, and injects a Python network guard into the web, OCR, and
-speech processes. Linux installations with a compiler add an `LD_PRELOAD`
-guard. Upload size, page count, pixel count, edit size, artifact path, model
-hash, and accepted extensions are bounded.
-
-Source working copies are removed after completion, failure, or interrupted
-restart. Page previews, reviewed text, semantic HTML, and WAV files are intended
-durable results and can contain confidential information. They are stored in
-the user's results folder with private directory permissions where supported.
-
-OCR and structural inference are untrusted suggestions. They can omit text,
-misread words, or produce an incorrect reading order. Kokoro can mispronounce
-content. Human review is required before relying on any result.
-
 ## Reporting a vulnerability
 
-Do not attach real confidential documents, tokens, page previews, or audio to a
-public issue. Use private vulnerability reporting when enabled and provide a
-minimal synthetic reproduction.
+Do not open a public issue for a suspected vulnerability involving
+authentication, origin checks, file access, path traversal, model integrity,
+network isolation, cleanup, or confidential results.
+
+Use GitHub's **Private vulnerability reporting** feature when it is enabled for
+the repository. Include the affected version, minimal reproduction steps,
+impact, and any suggested mitigation.
+
+Never attach a real confidential document, token, page preview, OCR export,
+voice file, or application database. Use the smallest synthetic reproduction
+that demonstrates the problem.
+
+## Supported version
+
+Security fixes target the latest source on `main`. Version 0.2.0 is the current
+prepared source release. No prebuilt binary release is currently supported.
+
+## Scope and deployment boundary
+
+Local Accessibility Studio is a single-user workstation application. It is not
+designed to be exposed to a LAN, reverse proxy, shared server, container
+platform, or the public internet.
+
+The launcher:
+
+- binds the service to numeric loopback `127.0.0.1`;
+- creates a private random token per installation;
+- checks the exact browser origin on state-changing API requests;
+- injects a Python outbound-network guard into web, OCR, and speech processes;
+- adds a native `LD_PRELOAD` network guard on Linux when compilation is
+  available.
+
+Upload size, page count, pixel count, frame count, edit size, speech size,
+artifact paths, language/voice combinations, and model hashes are bounded or
+validated. User/OCR text is escaped into fixed HTML and is never executed as
+markup.
+
+Private working copies are removed after completion, failure, deletion, and an
+interrupted restart. Page previews, reviewed text, HTML, reports, and WAV files
+are intentional durable results and can contain confidential information.
+They are stored in the user's results directory with private permissions where
+the operating system supports them.
+
+## Known non-security limitations
+
+Incorrect OCR, reading order, semantic roles, or pronunciation are functional
+accuracy limitations, not by themselves security vulnerabilities. They still
+matter: users must review output before relying on or sharing it.
+
+The default browser runs outside the application's network guard and may
+perform its own background network requests. Local processing alone does not
+establish accessibility, GDPR, or other regulatory compliance.

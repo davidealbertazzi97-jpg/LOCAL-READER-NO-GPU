@@ -19,9 +19,11 @@ jobs:
       - name: Install quality tools
         run: >-
           python -m pip install --disable-pip-version-check
+          -r requirements-core.txt
           ruff==0.16.0 bandit==1.9.4
       - name: Static checks
         run: |
+          git diff --check
           ruff check .
           ruff format --check .
           bandit -q -c pyproject.toml -r app runtime_guard scripts workers
@@ -31,7 +33,17 @@ jobs:
             xargs -0 -n1 bash -n
           bash -n install.sh start.sh
           node --check static/app.js
-          test -z "$(git ls-files models .venv .venv-ocr .venv-tts)"
+          test -z "$(git ls-files models .venv .venv-ocr .venv-tts bin data outputs)"
+          private_marker='-----BEGIN '"(RSA |EC |OPENSSH )?PRIVATE KEY-----"
+          github_fine_grained='github'_'pat_[[:alnum:]_]{20,}'
+          github_classic='ghp'_'[[:alnum:]]{20,}'
+          aws_access_key='AKIA''[[:alnum:]]{16}'
+          google_api_key='AIza''[[:alnum:]_-]{20,}'
+          slack_token='xox''[baprs]-[[:alnum:]-]{10,}'
+          secret_pattern="${private_marker}|${github_fine_grained}|${github_classic}|${aws_access_key}|${google_api_key}|${slack_token}"
+          test -z "$(git grep -IlE -- "$secret_pattern" -- . || true)"
+          machine_path="/home/""davide"
+          test -z "$(git grep -IlF -- "$machine_path" -- . || true)"
 
   core-smoke:
     strategy:

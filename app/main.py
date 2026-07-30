@@ -163,6 +163,14 @@ def legal_notices():
     )
 
 
+@app.get("/legal/disclaimer")
+def legal_disclaimer():
+    return FileResponse(
+        PATHS.app / "DISCLAIMER.md",
+        filename="DISCLAIMER.md",
+    )
+
+
 @app.get("/api/product")
 def product() -> dict[str, str]:
     return PRODUCT.public_dict()
