@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import PATHS
+from ..speech_jobs import normalized_options
 from .base import EngineResult, LocalEngine
 
 MODEL_HASHES = {
@@ -15,7 +16,6 @@ MODEL_HASHES = {
     "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5",
 }
 VOICES_HASH = "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d"
-VOICES = {"im_nicola", "if_sara"}
 
 
 @lru_cache(maxsize=8)
@@ -50,10 +50,16 @@ def verified_kokoro() -> tuple[Path, Path]:
 
 class KokoroSpeechEngine(LocalEngine):
     engine_id = "kokoro-italian"
-    label_en = "Italian speech with Kokoro"
-    label_it = "Voce italiana con Kokoro"
-    description_en = "Create natural Italian speech locally with Kokoro on CPU."
-    description_it = "Crea una voce italiana naturale in locale con Kokoro su CPU."
+    label_en = "Italian and English speech with Kokoro"
+    label_it = "Voce italiana e inglese con Kokoro"
+    description_en = (
+        "Create natural Italian, American English, or British English speech "
+        "locally with Kokoro on CPU."
+    )
+    description_it = (
+        "Crea in locale una voce naturale italiana, inglese americana o inglese "
+        "britannica con Kokoro su CPU."
+    )
     accepted_extensions = frozenset({".txt"})
     user_upload = False
 
@@ -66,15 +72,11 @@ class KokoroSpeechEngine(LocalEngine):
         if not PATHS.tts_python.is_file():
             raise RuntimeError("the isolated Kokoro environment is not installed")
         model, voices = verified_kokoro()
-        voice = str(options.get("voice", "im_nicola"))
-        if voice not in VOICES:
-            raise ValueError("unsupported Kokoro voice")
-        try:
-            speed = float(options.get("speed", 1.0))
-        except (TypeError, ValueError) as exc:
-            raise ValueError("invalid speech speed") from exc
-        if not 0.75 <= speed <= 1.5:
-            raise ValueError("speech speed must be between 0.75 and 1.5")
+        voice, speed, language = normalized_options(
+            options.get("voice", "im_nicola"),
+            options.get("speed", 1.0),
+            options.get("language", "it"),
+        )
 
         output_dir.mkdir(parents=True, exist_ok=True)
         command = [
@@ -92,6 +94,8 @@ class KokoroSpeechEngine(LocalEngine):
             voice,
             "--speed",
             str(speed),
+            "--language",
+            language,
         ]
         completed = subprocess.run(
             command,

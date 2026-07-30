@@ -110,6 +110,7 @@ class JobRunner:
                         source_job=job_id,
                         voice=job["options"].get("voice", "im_nicola"),
                         speed=job["options"].get("speed", 1.0),
+                        language=job["options"].get("speech_language", "it"),
                     )
                     summary["audio"] = "Kokoro queued automatically"
                 except (OSError, RuntimeError, ValueError) as exc:

@@ -61,8 +61,8 @@ The installer downloads these unmodified release assets and verifies SHA-256:
 | `voices-v1.0.bin` | 28,214,398 bytes | `bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d` |
 
 The Kokoro ONNX project identifies its wrapper as MIT and the Kokoro model as
-Apache-2.0. The application exposes the Italian voices `im_nicola` and
-`if_sara` from the upstream bundle.
+Apache-2.0. The application exposes the upstream voices `im_nicola`, `if_sara`,
+`am_michael`, `af_heart`, `bm_george`, and `bf_emma`.
 
 Source: <https://github.com/thewh1teagle/kokoro-onnx>
 

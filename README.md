@@ -1,8 +1,9 @@
 # Local Accessibility Studio
 
-Private, local OCR, accessible-document preparation, and natural Italian speech
-for ordinary CPU computers. Documents are processed on the user's workstation;
-the application has no cloud mode, telemetry, account, or GPU requirement.
+Private, local OCR, accessible-document preparation, and natural Italian or
+English speech for ordinary CPU computers. Documents are processed on the
+user's workstation; the application has no cloud mode, telemetry, account, or
+GPU requirement.
 
 The current MVP can:
 
@@ -13,8 +14,8 @@ The current MVP can:
 - regenerate clean reading text and semantic HTML after every review;
 - automatically queue a Kokoro audio draft after OCR, unless the user disables
   that option;
-- create long-form Italian WAV audio with Kokoro ONNX using `im_nicola` or
-  `if_sara`, adjustable speed, and streaming CPU synthesis;
+- create long-form Italian, American English, or British English WAV audio with
+  male/female Kokoro voices, adjustable speed, and streaming CPU synthesis;
 - keep durable results in the user's Documents folder while deleting private
   working copies after success, failure, or interrupted restart.
 
@@ -80,7 +81,14 @@ from Git.
 5. Save corrections, then download accessible HTML/text or regenerate the audio.
 6. Review the final output with the intended screen reader and user.
 
-The automatic draft can use the male `im_nicola` or female `if_sara` voice.
+The automatic draft follows the selected document language:
+
+- Italian: male `im_nicola` or female `if_sara`;
+- American English: male `am_michael` or female `af_heart`;
+- British English: male `bm_george` or female `bf_emma`.
+
+Switching the interface to English selects American English for the next
+document by default; the speech language remains independently editable.
 Finished OCR and speech jobs can be removed individually or cleared together
 from history; deletion also removes their durable local result files.
 
@@ -114,8 +122,8 @@ see `THIRD_PARTY_NOTICES.md`.
 # Local Accessibility Studio — Italiano
 
 OCR privato in locale, preparazione di documenti accessibili e sintesi vocale
-italiana naturale per normali computer con CPU. Non esistono modalità cloud,
-telemetria, account o requisiti GPU.
+naturale italiana o inglese per normali computer con CPU. Non esistono modalità
+cloud, telemetria, account o requisiti GPU.
 
 L’MVP attuale:
 
@@ -125,7 +133,8 @@ L’MVP attuale:
   elementi da non leggere;
 - rigenera testo pulito e HTML semantico dopo ogni revisione;
 - accoda automaticamente una bozza audio Kokoro dopo l’OCR, salvo disattivazione;
-- crea audio WAV italiano con Kokoro e le voci `im_nicola` e `if_sara`;
+- crea audio WAV italiano, inglese americano o inglese britannico con voci
+  Kokoro maschili e femminili;
 - elimina le copie private di lavoro anche dopo errori o riavvii interrotti.
 
 Piper non viene installato né utilizzato.

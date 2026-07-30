@@ -5,7 +5,8 @@ Implemented in the current MVP:
 - local PDF/image OCR with confidence;
 - editable reading order and semantic roles;
 - accessible HTML and clean reading text;
-- Italian Kokoro speech with two voices and adjustable speed;
+- Italian, American English, and British English Kokoro speech with male/female
+  voices and adjustable speed;
 - authenticated local UI, persistent jobs, and work-copy cleanup.
 
 Next validation work:

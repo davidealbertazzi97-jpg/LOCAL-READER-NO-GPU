@@ -22,6 +22,7 @@ BLOCK_ID = re.compile(r"^p[1-9][0-9]{0,3}-b[1-9][0-9]{0,4}$")
 MAX_PAGES = 500
 MAX_BLOCKS = 20_000
 MAX_TEXT = 10_000_000
+SPEECH_LANGUAGES = {"it", "en-us", "en-gb"}
 
 
 def _clean_text(value: Any, *, maximum: int) -> str:
@@ -41,6 +42,14 @@ def validate_document(value: Any) -> dict[str, Any]:
     language = value.get("language", "it")
     if language not in {"it", "en"}:
         raise ValueError("language must be it or en")
+    default_speech_language = "it" if language == "it" else "en-us"
+    speech_language = value.get("speech_language", default_speech_language)
+    if speech_language not in SPEECH_LANGUAGES:
+        raise ValueError("invalid speech language")
+    if language == "it" and speech_language != "it":
+        raise ValueError("Italian documents require an Italian speech language")
+    if language == "en" and speech_language not in {"en-us", "en-gb"}:
+        raise ValueError("English documents require an English speech language")
     revision = value.get("revision", 1)
     if not isinstance(revision, int) or not 1 <= revision <= 1_000_000:
         raise ValueError("invalid revision")
@@ -119,6 +128,7 @@ def validate_document(value: Any) -> dict[str, Any]:
         "revision": revision,
         "title": title,
         "language": language,
+        "speech_language": speech_language,
         "pages": pages,
     }
 

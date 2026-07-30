@@ -9,8 +9,16 @@ const COPY = {
     file: "Documento locale",
     autoSpeech: "Crea anche una bozza audio Kokoro dopo l’OCR",
     autoVoice: "Voce della bozza automatica",
-    voiceMale: "Maschile — Nicola",
-    voiceFemale: "Femminile — Sara",
+    speechLanguage: "Lingua della voce",
+    languageItalian: "Italiano",
+    languageEnglishUs: "English — Stati Uniti",
+    languageEnglishUk: "English — Regno Unito",
+    voiceItalianMale: "Maschile — Nicola",
+    voiceItalianFemale: "Femminile — Sara",
+    voiceAmericanMale: "Maschile — Michael",
+    voiceAmericanFemale: "Femminile — Heart",
+    voiceBritishMale: "Maschile — George",
+    voiceBritishFemale: "Femminile — Emma",
     autoSpeechHelp: "Puoi correggere il testo e rigenerare l’audio con un’altra voce in seguito.",
     start: "Avvia OCR locale",
     jobs: "Lavori locali",
@@ -36,7 +44,7 @@ const COPY = {
     saving: "Salvataggio…",
     downloadHtml: "Scarica HTML accessibile",
     downloadText: "Scarica testo per lettura",
-    speechTitle: "Sintesi vocale italiana",
+    speechTitle: "Sintesi vocale",
     voice: "Voce",
     speed: "Velocità",
     createSpeech: "Crea audio con Kokoro",
@@ -69,8 +77,16 @@ const COPY = {
     file: "Local document",
     autoSpeech: "Also create a Kokoro audio draft after OCR",
     autoVoice: "Automatic draft voice",
-    voiceMale: "Male — Nicola",
-    voiceFemale: "Female — Sara",
+    speechLanguage: "Speech language",
+    languageItalian: "Italian",
+    languageEnglishUs: "English — United States",
+    languageEnglishUk: "English — United Kingdom",
+    voiceItalianMale: "Male — Nicola",
+    voiceItalianFemale: "Female — Sara",
+    voiceAmericanMale: "Male — Michael",
+    voiceAmericanFemale: "Female — Heart",
+    voiceBritishMale: "Male — George",
+    voiceBritishFemale: "Female — Emma",
     autoSpeechHelp: "You can correct the text and regenerate audio with another voice later.",
     start: "Start local OCR",
     jobs: "Local jobs",
@@ -96,7 +112,7 @@ const COPY = {
     saving: "Saving…",
     downloadHtml: "Download accessible HTML",
     downloadText: "Download reading text",
-    speechTitle: "Italian speech synthesis",
+    speechTitle: "Speech synthesis",
     voice: "Voice",
     speed: "Speed",
     createSpeech: "Create audio with Kokoro",
@@ -121,12 +137,28 @@ const COPY = {
   },
 };
 
+const VOICE_PROFILES = {
+  it: [
+    ["im_nicola", "voiceItalianMale"],
+    ["if_sara", "voiceItalianFemale"],
+  ],
+  "en-us": [
+    ["am_michael", "voiceAmericanMale"],
+    ["af_heart", "voiceAmericanFemale"],
+  ],
+  "en-gb": [
+    ["bm_george", "voiceBritishMale"],
+    ["bf_emma", "voiceBritishFemale"],
+  ],
+};
+
 let language = localStorage.getItem("accessibility-language") || "it";
 let product = null;
 let engines = [];
 let editingJob = null;
 let documentValue = null;
 let pollTimer = null;
+let speechReady = false;
 
 function t(key) {
   return COPY[language]?.[key] ?? COPY.en[key] ?? key;
@@ -146,6 +178,24 @@ function artifactUrl(jobId, artifact) {
   return `/api/jobs/${encodeURIComponent(jobId)}/files/${encoded}`;
 }
 
+function fillVoiceSelect(select, speechLanguage, preferred = select.value) {
+  const profile = VOICE_PROFILES[speechLanguage] || VOICE_PROFILES.it;
+  select.replaceChildren(...profile.map(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = t(label);
+    return option;
+  }));
+  if (profile.some(([value]) => value === preferred)) select.value = preferred;
+}
+
+function syncAutomaticSpeechControls() {
+  const enabled =
+    speechReady && document.querySelector("#auto-speech").checked;
+  document.querySelector("#auto-speech-language").disabled = false;
+  document.querySelector("#auto-voice").disabled = !enabled;
+}
+
 function renderLanguage() {
   document.documentElement.lang = language;
   document.querySelector("#language-select").value = language;
@@ -155,12 +205,21 @@ function renderLanguage() {
   if (product) {
     document.querySelector("#product-description").textContent = product[`description_${language}`];
   }
+  fillVoiceSelect(
+    document.querySelector("#auto-voice"),
+    document.querySelector("#auto-speech-language").value,
+  );
+  fillVoiceSelect(
+    document.querySelector("#voice"),
+    document.querySelector("#speech-language").value,
+  );
   if (documentValue) renderDocument();
   void renderJobs();
 }
 
 async function renderStatus() {
   const status = await api("/api/status");
+  speechReady = status.speech.ready;
   for (const name of ["ocr", "speech"]) {
     const ready = status[name].ready;
     document.querySelector(`#${name}-dot`).classList.toggle("ready", ready);
@@ -170,8 +229,7 @@ async function renderStatus() {
   const automaticSpeech = document.querySelector("#auto-speech");
   automaticSpeech.disabled = !status.speech.ready;
   if (!status.speech.ready) automaticSpeech.checked = false;
-  document.querySelector("#auto-voice").disabled =
-    !status.speech.ready || !automaticSpeech.checked;
+  syncAutomaticSpeechControls();
   document.querySelector("#create-speech").disabled = !status.speech.ready;
 }
 
@@ -313,6 +371,10 @@ function renderDocument() {
   if (!documentValue || !editingJob) return;
   document.querySelector("#document-title").value = documentValue.title;
   document.querySelector("#document-language").value = documentValue.language;
+  const speechLanguage = document.querySelector("#speech-language");
+  speechLanguage.value =
+    documentValue.speech_language || (documentValue.language === "en" ? "en-us" : "it");
+  fillVoiceSelect(document.querySelector("#voice"), speechLanguage.value);
   document.querySelector("#download-html").href = artifactUrl(editingJob.id, "accessible.html");
   document.querySelector("#download-text").href = artifactUrl(editingJob.id, "reading.txt");
   const pages = document.querySelector("#pages");
@@ -351,6 +413,8 @@ async function saveDocument() {
   if (!editingJob || !documentValue) throw new Error("No document");
   documentValue.title = document.querySelector("#document-title").value;
   documentValue.language = document.querySelector("#document-language").value;
+  documentValue.speech_language =
+    document.querySelector("#speech-language").value;
   const status = document.querySelector("#save-status");
   status.textContent = t("saving");
   documentValue = await api(`/api/jobs/${encodeURIComponent(editingJob.id)}/document`, {
@@ -367,6 +431,8 @@ async function initialize() {
   document.title = product.name;
   document.querySelector("#product-name").textContent = product.name;
   if (!localStorage.getItem("accessibility-language")) language = product.default_language;
+  document.querySelector("#auto-speech-language").value =
+    language === "en" ? "en-us" : "it";
   renderLanguage();
   await Promise.all([renderStatus(), renderJobs()]);
 }
@@ -374,12 +440,16 @@ async function initialize() {
 document.querySelector("#language-select").addEventListener("change", (event) => {
   language = event.target.value;
   localStorage.setItem("accessibility-language", language);
+  document.querySelector("#auto-speech-language").value =
+    language === "en" ? "en-us" : "it";
   renderLanguage();
 });
 document.querySelector("#refresh").addEventListener("click", () => void renderJobs());
 document.querySelector("#auto-speech").addEventListener("change", (event) => {
-  document.querySelector("#auto-voice").disabled =
-    event.currentTarget.disabled || !event.currentTarget.checked;
+  syncAutomaticSpeechControls();
+});
+document.querySelector("#auto-speech-language").addEventListener("change", (event) => {
+  fillVoiceSelect(document.querySelector("#auto-voice"), event.currentTarget.value);
 });
 document.querySelector("#clear-history").addEventListener("click", async (event) => {
   if (!window.confirm(t("confirmClearHistory"))) return;
@@ -411,19 +481,28 @@ document.querySelector("#job-form").addEventListener("submit", async (event) => 
   try {
     const automaticSpeech = document.querySelector("#auto-speech");
     const createAutomaticSpeech = automaticSpeech.checked;
+    const speechLanguage = document.querySelector("#auto-speech-language").value;
+    const automaticVoice = document.querySelector("#auto-voice").value;
     const data = new FormData(form);
     data.set("engine", engine.id);
     data.set("options", JSON.stringify({
       auto_speech: createAutomaticSpeech,
-      voice: document.querySelector("#auto-voice").value,
+      document_language: speechLanguage === "it" ? "it" : "en",
+      speech_language: speechLanguage,
+      voice: automaticVoice,
       speed: 1.0,
     }));
     await api("/api/jobs", {method: "POST", body: data});
     status.textContent = t(createAutomaticSpeech ? "accepted" : "acceptedOcr");
     form.reset();
+    document.querySelector("#auto-speech-language").value = speechLanguage;
+    fillVoiceSelect(
+      document.querySelector("#auto-voice"),
+      speechLanguage,
+      automaticVoice,
+    );
     if (automaticSpeech.disabled) automaticSpeech.checked = false;
-    document.querySelector("#auto-voice").disabled =
-      automaticSpeech.disabled || !automaticSpeech.checked;
+    syncAutomaticSpeechControls();
     await renderJobs();
   } catch (error) {
     status.textContent = `${t("failed")} ${error.message}`;
@@ -450,6 +529,16 @@ document.querySelector("#save-document").addEventListener("click", async (event)
 document.querySelector("#speed").addEventListener("input", (event) => {
   document.querySelector("#speed-value").textContent = `${Number(event.target.value).toFixed(2)}×`;
 });
+document.querySelector("#document-language").addEventListener("change", (event) => {
+  const speechLanguage = document.querySelector("#speech-language");
+  speechLanguage.value = event.currentTarget.value === "en" ? "en-us" : "it";
+  fillVoiceSelect(document.querySelector("#voice"), speechLanguage.value);
+});
+document.querySelector("#speech-language").addEventListener("change", (event) => {
+  document.querySelector("#document-language").value =
+    event.currentTarget.value === "it" ? "it" : "en";
+  fillVoiceSelect(document.querySelector("#voice"), event.currentTarget.value);
+});
 document.querySelector("#create-speech").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   button.disabled = true;
@@ -462,6 +551,7 @@ document.querySelector("#create-speech").addEventListener("click", async (event)
       body: JSON.stringify({
         voice: document.querySelector("#voice").value,
         speed: Number(document.querySelector("#speed").value),
+        language: document.querySelector("#speech-language").value,
       }),
     });
     status.textContent = t("speechQueued");

@@ -183,7 +183,9 @@ def main() -> int:
                     sample,
                     {
                         "auto_speech": True,
-                        "voice": "if_sara",
+                        "document_language": "en",
+                        "speech_language": "en-gb",
+                        "voice": "bf_emma",
                         "speed": 1.0,
                     },
                 )
@@ -206,7 +208,8 @@ def main() -> int:
                 )
                 automatic = wait_for_job(base, automatic["id"], timeout=300)
                 assert automatic["status"] == "completed", automatic
-                assert automatic["summary"]["voice"] == "if_sara"
+                assert automatic["summary"]["voice"] == "bf_emma"
+                assert automatic["summary"]["language"] == "en-gb"
                 automatic_audio = root / "outputs" / automatic["id"] / "speech.wav"
                 assert automatic_audio.stat().st_size > 10_000
 
@@ -215,6 +218,8 @@ def main() -> int:
                     token=True,
                 )
                 assert status == 200 and document["pages"][0]["blocks"]
+                assert document["language"] == "en"
+                assert document["speech_language"] == "en-gb"
                 document["title"] = "Documento corretto"
                 document["pages"][0]["blocks"][1]["text"] = "Testo revisionato."
                 status, document = request_json(
@@ -233,12 +238,20 @@ def main() -> int:
                 status, queued_speech = request_json(
                     f"{base}/api/jobs/{ocr_job['id']}/speech",
                     token=True,
-                    data=json.dumps({"voice": "im_nicola", "speed": 1.0}).encode(),
+                    data=json.dumps(
+                        {
+                            "voice": "am_michael",
+                            "speed": 1.0,
+                            "language": "en-us",
+                        }
+                    ).encode(),
                     content_type="application/json",
                 )
                 assert status == 202, (status, queued_speech)
                 speech_job = wait_for_job(base, queued_speech["id"], timeout=300)
                 assert speech_job["status"] == "completed", speech_job
+                assert speech_job["summary"]["voice"] == "am_michael"
+                assert speech_job["summary"]["language"] == "en-us"
                 audio = root / "outputs" / speech_job["id"] / "speech.wav"
                 assert audio.stat().st_size > 10_000
                 status, deleted = request_json(

@@ -23,7 +23,12 @@ from .security import (
     request_is_loopback,
     token_matches,
 )
-from .speech_jobs import normalized_options, queue_speech_job
+from .speech_jobs import (
+    DEFAULT_VOICES,
+    VOICE_LANGUAGES,
+    normalized_options,
+    queue_speech_job,
+)
 from .store import STORE
 from .utils import remove_output_tree, remove_work_tree, resolve_artifact, safe_name
 
@@ -193,7 +198,9 @@ def status() -> dict[str, Any]:
         "speech": {
             "ready": tts_ready and model_ready,
             "engine": speech_engine,
-            "voices": ["im_nicola", "if_sara"],
+            "voices": {
+                language: sorted(voices) for language, voices in VOICE_LANGUAGES.items()
+            },
             "piper": False,
         },
     }
@@ -262,21 +269,46 @@ async def create_job(
         auto_speech = parsed_options.get("auto_speech", False)
         if not isinstance(auto_speech, bool):
             raise HTTPException(400, "auto_speech must be true or false")
+        document_language = parsed_options.get("document_language", "it")
+        speech_language = parsed_options.get(
+            "speech_language",
+            "it" if document_language == "it" else "en-us",
+        )
+        if document_language not in {"it", "en"}:
+            raise HTTPException(400, "document_language must be it or en")
+        if (
+            document_language == "it"
+            and speech_language != "it"
+            or document_language == "en"
+            and speech_language not in {"en-us", "en-gb"}
+        ):
+            raise HTTPException(400, "speech language does not match the document")
+        requested_voice = parsed_options.get(
+            "voice",
+            DEFAULT_VOICES[str(speech_language)],
+        )
+        requested_speed = parsed_options.get("speed", 1.0)
+        parsed_options = {
+            "auto_speech": auto_speech,
+            "document_language": document_language,
+            "speech_language": speech_language,
+        }
         if auto_speech:
             try:
-                voice, speed = normalized_options(
-                    parsed_options.get("voice", "im_nicola"),
-                    parsed_options.get("speed", 1.0),
+                voice, speed, speech_language = normalized_options(
+                    requested_voice,
+                    requested_speed,
+                    speech_language,
                 )
             except ValueError as exc:
                 raise HTTPException(400, str(exc)) from exc
-            parsed_options = {
-                "auto_speech": True,
-                "voice": voice,
-                "speed": speed,
-            }
-        else:
-            parsed_options = {"auto_speech": False}
+            parsed_options.update(
+                {
+                    "voice": voice,
+                    "speed": speed,
+                    "speech_language": speech_language,
+                }
+            )
 
     input_name = safe_name(file.filename or "document")
     if not selected.accepts(Path(input_name)):
@@ -359,9 +391,13 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
     if not isinstance(options, dict):
         raise HTTPException(400, "Speech options must be an object")
     try:
-        voice, speed = normalized_options(
-            options.get("voice", "im_nicola"),
+        voice, speed, language = normalized_options(
+            options.get(
+                "voice",
+                DEFAULT_VOICES.get(str(options.get("language", "it")), "im_nicola"),
+            ),
             options.get("speed", 1.0),
+            options.get("language", "it"),
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
@@ -384,6 +420,7 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
                 source_job=job_id,
                 voice=voice,
                 speed=speed,
+                language=language,
             )
         return public_job(child)
     except (OSError, RuntimeError, ValueError) as exc:
