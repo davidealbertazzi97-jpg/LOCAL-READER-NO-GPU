@@ -57,7 +57,7 @@ button:disabled { opacity: .55; cursor: wait; }
 audio { width: min(100%, 560px); margin-top: 10px; }
 .document-settings { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
 .editor-actions { justify-content: flex-start; margin: 16px 0 8px; }
-.speech-controls { margin: 22px 0; border: 1px solid #b7c8c1; border-radius: 12px; padding: 16px; display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 12px; }
+.speech-controls { margin: 22px 0; border: 1px solid #b7c8c1; border-radius: 12px; padding: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; align-items: end; gap: 12px; }
 .speech-controls legend { font-weight: 760; padding-inline: 6px; }
 .pages { display: grid; gap: 24px; }
 .page-editor { border-top: 2px solid #bfd3cb; padding-top: 18px; }

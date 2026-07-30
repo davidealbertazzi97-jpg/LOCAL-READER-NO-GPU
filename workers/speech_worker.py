@@ -58,8 +58,24 @@ def main() -> int:
     parser.add_argument("--output", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--voices", required=True)
-    parser.add_argument("--voice", required=True, choices=("im_nicola", "if_sara"))
+    parser.add_argument(
+        "--voice",
+        required=True,
+        choices=(
+            "im_nicola",
+            "if_sara",
+            "am_michael",
+            "af_heart",
+            "bm_george",
+            "bf_emma",
+        ),
+    )
     parser.add_argument("--speed", required=True, type=float)
+    parser.add_argument(
+        "--language",
+        required=True,
+        choices=("it", "en-us", "en-gb"),
+    )
     args = parser.parse_args()
     source = Path(args.input)
     output = Path(args.output)
@@ -92,7 +108,7 @@ def main() -> int:
                 chunk,
                 voice=args.voice,
                 speed=args.speed,
-                lang="it",
+                lang=args.language,
             )
             if generated_rate != sample_rate:
                 raise RuntimeError("Kokoro returned an unexpected sample rate")
@@ -106,7 +122,7 @@ def main() -> int:
             "INT8 CPU" if "int8" in Path(args.model).name.casefold() else "full"
         ),
         "voice": args.voice,
-        "language": "it",
+        "language": args.language,
         "speed": args.speed,
         "sample_rate": sample_rate,
         "chunks": chunk_count,

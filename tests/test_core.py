@@ -74,6 +74,7 @@ class ProductTests(unittest.TestCase):
     def test_product_and_engine_registry(self) -> None:
         product = load_product()
         self.assertEqual(product.slug, "local-accessibility-studio")
+        self.assertEqual(product.version, "0.2.0")
         self.assertEqual(TOKEN_COOKIE, "local_accessibility_studio_token")
         self.assertEqual(
             set(ENGINES),
@@ -125,6 +126,12 @@ class DocumentTests(unittest.TestCase):
         value["pages"][0]["blocks"][0]["bbox"][2] = math.nan
         with self.assertRaises(ValueError):
             validate_document(value)
+
+    def test_english_document_defaults_to_american_speech(self) -> None:
+        value = example_document()
+        value["language"] = "en"
+        document = validate_document(value)
+        self.assertEqual(document["speech_language"], "en-us")
 
         value = example_document()
         value["pages"][0]["blocks"][0]["confidence"] = math.inf
@@ -211,6 +218,7 @@ class SpeechQueueTests(unittest.TestCase):
             try:
                 self.assertEqual(child["status"], "queued")
                 self.assertEqual(runner.queued, [child["id"]])
+                self.assertEqual(child["options"]["language"], "it")
                 self.assertEqual(
                     (work_dir / "reading.txt").read_text(encoding="utf-8"),
                     "Testo italiano revisionato.",
@@ -223,6 +231,10 @@ class SpeechQueueTests(unittest.TestCase):
             normalized_options("im_nicola", math.nan)
         with self.assertRaises(ValueError):
             normalized_options("im_nicola", True)
+        with self.assertRaises(ValueError):
+            normalized_options("im_nicola", 1.0, "en-us")
+        voice, speed, language = normalized_options("bf_emma", 1.0, "en-gb")
+        self.assertEqual((voice, speed, language), ("bf_emma", 1.0, "en-gb"))
 
 
 if __name__ == "__main__":

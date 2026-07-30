@@ -8,7 +8,16 @@ from .config import PATHS
 from .store import JobStore
 from .utils import remove_work_tree
 
-VOICES = {"im_nicola", "if_sara"}
+VOICE_LANGUAGES = {
+    "it": {"im_nicola", "if_sara"},
+    "en-us": {"am_michael", "af_heart"},
+    "en-gb": {"bm_george", "bf_emma"},
+}
+DEFAULT_VOICES = {
+    "it": "im_nicola",
+    "en-us": "am_michael",
+    "en-gb": "bm_george",
+}
 MAX_SPEECH_SOURCE_BYTES = 8 * 1024 * 1024
 COPY_CHUNK = 1024 * 1024
 
@@ -24,10 +33,17 @@ class SpeechQueue(Protocol):
     def enqueue(self, job_id: str) -> None: ...
 
 
-def normalized_options(voice: Any, speed: Any) -> tuple[str, float]:
+def normalized_options(
+    voice: Any,
+    speed: Any,
+    language: Any = "it",
+) -> tuple[str, float, str]:
+    selected_language = str(language)
+    if selected_language not in VOICE_LANGUAGES:
+        raise ValueError("unsupported speech language")
     selected_voice = str(voice)
-    if selected_voice not in VOICES:
-        raise ValueError("unsupported Italian voice")
+    if selected_voice not in VOICE_LANGUAGES[selected_language]:
+        raise ValueError("voice does not match the selected language")
     if isinstance(speed, bool):
         raise ValueError("invalid speech speed")
     try:
@@ -36,7 +52,7 @@ def normalized_options(voice: Any, speed: Any) -> tuple[str, float]:
         raise ValueError("invalid speech speed") from exc
     if not math.isfinite(selected_speed) or not 0.75 <= selected_speed <= 1.5:
         raise ValueError("speech speed must be between 0.75 and 1.5")
-    return selected_voice, selected_speed
+    return selected_voice, selected_speed, selected_language
 
 
 def queue_speech_job(
@@ -47,8 +63,13 @@ def queue_speech_job(
     source_job: str,
     voice: Any = "im_nicola",
     speed: Any = 1.0,
+    language: Any = "it",
 ) -> dict[str, Any]:
-    selected_voice, selected_speed = normalized_options(voice, speed)
+    selected_voice, selected_speed, selected_language = normalized_options(
+        voice,
+        speed,
+        language,
+    )
     if not source.is_file():
         raise FileNotFoundError("reviewed reading text is missing")
     if source.stat().st_size > MAX_SPEECH_SOURCE_BYTES:
@@ -60,6 +81,7 @@ def queue_speech_job(
         {
             "voice": selected_voice,
             "speed": selected_speed,
+            "language": selected_language,
             "source_job": source_job,
         },
     )

@@ -58,10 +58,18 @@
             <span data-i18n="autoSpeech">Crea anche una bozza audio Kokoro dopo l’OCR</span>
           </label>
           <label>
+            <span data-i18n="speechLanguage">Lingua della voce</span>
+            <select id="auto-speech-language">
+              <option value="it" data-i18n="languageItalian">Italiano</option>
+              <option value="en-us" data-i18n="languageEnglishUs">English — Stati Uniti</option>
+              <option value="en-gb" data-i18n="languageEnglishUk">English — Regno Unito</option>
+            </select>
+          </label>
+          <label>
             <span data-i18n="autoVoice">Voce della bozza automatica</span>
             <select id="auto-voice">
-              <option value="im_nicola" data-i18n="voiceMale">Maschile — Nicola</option>
-              <option value="if_sara" data-i18n="voiceFemale">Femminile — Sara</option>
+              <option value="im_nicola">Maschile — Nicola</option>
+              <option value="if_sara">Femminile — Sara</option>
             </select>
           </label>
           <p class="muted compact" data-i18n="autoSpeechHelp">Puoi correggere il testo e rigenerare l’audio con un’altra voce in seguito.</p>
@@ -109,12 +117,20 @@
         <p id="save-status" role="status" aria-live="polite"></p>
 
         <fieldset class="speech-controls">
-          <legend data-i18n="speechTitle">Sintesi vocale italiana</legend>
+          <legend data-i18n="speechTitle">Sintesi vocale</legend>
+          <label>
+            <span data-i18n="speechLanguage">Lingua della voce</span>
+            <select id="speech-language">
+              <option value="it" data-i18n="languageItalian">Italiano</option>
+              <option value="en-us" data-i18n="languageEnglishUs">English — Stati Uniti</option>
+              <option value="en-gb" data-i18n="languageEnglishUk">English — Regno Unito</option>
+            </select>
+          </label>
           <label>
             <span data-i18n="voice">Voce</span>
             <select id="voice">
-              <option value="im_nicola" data-i18n="voiceMale">Maschile — Nicola</option>
-              <option value="if_sara" data-i18n="voiceFemale">Femminile — Sara</option>
+              <option value="im_nicola">Maschile — Nicola</option>
+              <option value="if_sara">Femminile — Sara</option>
             </select>
           </label>
           <label>

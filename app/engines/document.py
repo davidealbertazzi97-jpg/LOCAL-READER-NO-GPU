@@ -31,7 +31,6 @@ class AccessibleDocumentEngine(LocalEngine):
         output_dir: Path,
         options: dict[str, Any],
     ) -> EngineResult:
-        del options
         if not PATHS.ocr_python.is_file():
             raise RuntimeError("the isolated OCR environment is not installed")
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -58,6 +57,10 @@ class AccessibleDocumentEngine(LocalEngine):
         if not document_path.is_file() or not report_path.is_file():
             raise RuntimeError("OCR worker did not produce its declared output")
         raw_document = json.loads(document_path.read_text(encoding="utf-8"))
+        document_language = str(options.get("document_language", "it"))
+        speech_language = str(options.get("speech_language", "it"))
+        raw_document["language"] = document_language
+        raw_document["speech_language"] = speech_language
         document = write_exports(output_dir, raw_document)
         report = json.loads(report_path.read_text(encoding="utf-8"))
         artifacts = [
