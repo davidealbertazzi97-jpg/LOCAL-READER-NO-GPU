@@ -19,6 +19,8 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent.parent
 TOKEN = "accessibility-smoke-" + "x" * 48
+sys.path.insert(0, str(APP_DIR))
+from scripts.start import stop_process  # noqa: E402
 
 
 def free_port() -> int:
@@ -121,6 +123,13 @@ def main() -> int:
             }
         )
         environment.pop("LD_PRELOAD", None)
+        process_group: dict[str, object]
+        if os.name == "nt":
+            process_group = {
+                "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP,
+            }
+        else:
+            process_group = {"start_new_session": True}
         process = subprocess.Popen(
             [
                 sys.executable,
@@ -138,6 +147,7 @@ def main() -> int:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            **process_group,
         )
         base = f"http://127.0.0.1:{port}"
         try:
@@ -296,12 +306,7 @@ def main() -> int:
             else:
                 print("Local server core smoke test passed.")
         finally:
-            process.terminate()
-            try:
-                process.wait(timeout=8)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=3)
+            stop_process(process)
     return 0
 
 
