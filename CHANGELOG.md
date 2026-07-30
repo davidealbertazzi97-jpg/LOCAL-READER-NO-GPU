@@ -2,6 +2,11 @@
 
 All notable changes to Local Accessibility Studio are documented here.
 
+## Unreleased
+
+- Presented the source repository as Local Reader, with an inclusive-education
+  focus and a bilingual plug-and-play prompt for terminal-capable AI agents.
+
 ## 0.2.0 - 2026-07-30
 
 - Automatic Kokoro audio draft after OCR.
