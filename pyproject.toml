@@ -6,7 +6,7 @@ license = "GPL-3.0-only"
 dependencies = [
   "fastapi==0.140.13",
   "python-multipart==0.0.32",
-  "uvicorn==0.51.0",
+  "uvicorn==0.52.0",
 ]
 
 [tool.ruff]
