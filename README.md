@@ -2,12 +2,12 @@
   <img src="static/icon.svg" width="88" height="88" alt="Local Accessibility Studio">
 </p>
 
-<h1 align="center">Local Accessibility Studio (No GPU)</h1>
+<h1 align="center">LOCAL READER (NO GPU)</h1>
 
 <p align="center">
-  <strong>Private OCR, accessible reading drafts, and natural speech on ordinary CPUs.</strong><br>
-  Confidential documents stay on the computer. No account, cloud inference,
-  telemetry, or GPU is required.
+  <strong>Inclusive reading with high-quality local AI speech on ordinary CPUs.</strong><br>
+  Documents and generated voice stay on the device. No account, cloud
+  inference, telemetry, or GPU is required.
 </p>
 
 <p align="center">
@@ -20,13 +20,17 @@
 
 ## English
 
-Local Accessibility Studio was born in a personal homelab from a practical
-need: turn scanned or difficult documents into reviewable text and audio
-without sending confidential content to external servers.
+**Local Reader** is the source repository for the application installed as
+**Local Accessibility Studio**. It was born as an inclusive-education project:
+give teachers, students, support educators, families, and professionals a
+simple way to turn scanned or difficult documents into reviewable text and
+high-quality AI speech directly on their own device.
 
-It is intended for teachers, independent professionals, students, small
-offices, and anyone who needs a private OCR-to-reading workflow on low- to
-mid-range consumer hardware without a GPU.
+The entire OCR-to-reading workflow runs locally, so classroom material,
+assessment documents, accommodations, and other confidential content do not
+need to reach an external server. It is designed for low- to mid-range
+consumer hardware without a GPU and remains useful outside education wherever
+private, accessible reading is needed.
 
 ### Current distribution
 
@@ -66,6 +70,22 @@ application menu without requiring `sudo`.
 The first installation needs internet access to download pinned Python
 packages and verified model files. Normal document processing runs locally and
 does not require internet access.
+
+### Plug-and-play setup with an AI agent
+
+If an AI coding agent can use a terminal on the computer, copy the ready-made
+prompt from [`AI-AGENT-INSTALL-PROMPT.md`](AI-AGENT-INSTALL-PROMPT.md). It
+instructs the agent to:
+
+- verify the operating system and supported architecture;
+- download this repository without sending any user document elsewhere;
+- run the official installer with the most suitable CPU speech profile;
+- start the application and verify its local health endpoint;
+- explain where private data and durable results are stored;
+- stop and report clearly instead of bypassing security controls.
+
+No document is required for setup. A real confidential file must never be
+uploaded to an AI agent, issue, chat, or external diagnostic service.
 
 #### Compact and fast speech profiles
 
@@ -229,13 +249,18 @@ attaching a confidential document to a public issue.
 
 ## Italiano
 
-Local Accessibility Studio è nato nel mio homelab da una necessità concreta:
-trasformare documenti scansionati o difficili da leggere in testo revisionabile
-e audio senza inviare contenuti riservati a server esterni.
+**Local Reader** è il repository sorgente dell'applicazione installata con il
+nome **Local Accessibility Studio**. Nasce come progetto per la didattica
+inclusiva: offrire a insegnanti, studenti, educatori di sostegno, famiglie e
+professionisti un modo semplice per trasformare documenti scansionati o
+difficili in testo revisionabile e sintesi vocale IA di alta qualità
+direttamente sul proprio dispositivo.
 
-È pensato per insegnanti, liberi professionisti, studenti, piccoli uffici e per
-chiunque abbia bisogno di un percorso privato da OCR a lettura su hardware
-consumer di fascia medio-bassa, senza GPU.
+L'intero percorso da OCR a lettura resta locale: materiale didattico, verifiche,
+documenti relativi agli adattamenti e altri contenuti riservati non devono
+raggiungere server esterni. È pensato per hardware consumer di fascia
+medio-bassa senza GPU e rimane utile anche fuori dalla scuola quando serve una
+lettura accessibile e privata.
 
 ### Distribuzione attuale
 
@@ -276,6 +301,24 @@ applicazioni, senza richiedere `sudo`.
 La prima installazione usa internet per scaricare pacchetti Python versionati e
 modelli verificati. La normale elaborazione dei documenti resta locale e non
 richiede la rete.
+
+### Installazione plug-and-play con un agente IA
+
+Se un agente IA per lo sviluppo può usare il terminale del computer, copia il
+prompt pronto da
+[`AI-AGENT-INSTALL-PROMPT.md`](AI-AGENT-INSTALL-PROMPT.md). Il prompt chiede
+all'agente di:
+
+- verificare sistema operativo e architettura supportata;
+- scaricare questo repository senza inviare altrove documenti dell'utente;
+- eseguire l'installer ufficiale con il profilo voce CPU più adatto;
+- avviare l'applicazione e controllare il suo endpoint locale;
+- spiegare dove restano dati privati e risultati persistenti;
+- fermarsi e descrivere chiaramente l'errore senza aggirare le protezioni.
+
+Per l'installazione non serve alcun documento. Un file realmente riservato non
+deve mai essere caricato in un agente IA, una issue, una chat o un servizio
+esterno di diagnostica.
 
 #### Profili voce compatto e rapido
 
