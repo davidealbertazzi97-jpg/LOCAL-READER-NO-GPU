@@ -173,10 +173,16 @@ def status() -> dict[str, Any]:
     ocr_ready = PATHS.ocr_python.is_file()
     tts_ready = PATHS.tts_python.is_file()
     model_ready = False
+    speech_engine = "Kokoro ONNX / CPU"
     if tts_ready:
         try:
-            verified_kokoro()
+            model, _ = verified_kokoro()
             model_ready = True
+            speech_engine = (
+                "Kokoro ONNX INT8 compact / CPU"
+                if "int8" in model.name.casefold()
+                else "Kokoro ONNX FP32 fast / CPU"
+            )
         except RuntimeError:
             model_ready = False
     return {
@@ -186,7 +192,7 @@ def status() -> dict[str, Any]:
         },
         "speech": {
             "ready": tts_ready and model_ready,
-            "engine": "Kokoro ONNX INT8 / CPU",
+            "engine": speech_engine,
             "voices": ["im_nicola", "if_sara"],
             "piper": False,
         },
@@ -196,6 +202,17 @@ def status() -> dict[str, Any]:
 @app.get("/api/jobs")
 def list_jobs() -> list[dict[str, Any]]:
     return [public_job(job) for job in STORE.list()]
+
+
+@app.delete("/api/jobs")
+def delete_finished_jobs() -> dict[str, int]:
+    deleted = 0
+    with DOCUMENT_LOCK:
+        for job_id in STORE.finished_ids():
+            remove_output_tree(PATHS.outputs / job_id)
+            if STORE.delete_finished(job_id):
+                deleted += 1
+    return {"deleted": deleted}
 
 
 @app.get("/api/jobs/{job_id}")

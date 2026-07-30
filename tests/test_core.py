@@ -162,6 +162,10 @@ class StoreTests(unittest.TestCase):
                 {"upload", "running"},
             )
             self.assertEqual(store.get("upload")["status"], "failed")
+            self.assertEqual(
+                set(store.finished_ids()),
+                {"upload", "running"},
+            )
             self.assertTrue(store.delete_finished("upload"))
             self.assertIsNone(store.get("upload"))
 

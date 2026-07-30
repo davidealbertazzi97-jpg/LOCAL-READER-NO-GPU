@@ -163,6 +163,17 @@ class JobStore:
             ).fetchall()
         return [str(row["id"]) for row in rows]
 
+    def finished_ids(self) -> list[str]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT id FROM jobs
+                WHERE status IN ('completed', 'failed')
+                ORDER BY created_at
+                """
+            ).fetchall()
+        return [str(row["id"]) for row in rows]
+
     def delete_finished(self, job_id: str) -> bool:
         with self._connect() as connection:
             cursor = connection.execute(

@@ -64,6 +64,11 @@ def parser() -> argparse.ArgumentParser:
         help="do not download the verified Kokoro model and voices",
     )
     root.add_argument(
+        "--fast-tts",
+        action="store_true",
+        help="install the larger Kokoro FP32 model for faster synthesis on many CPUs",
+    )
+    root.add_argument(
         "--skip-desktop",
         action="store_true",
         help="do not install the Linux desktop launcher",
@@ -91,8 +96,22 @@ def main() -> int:
                 if args.core_only
                 else [
                     "rapidocr-ppocrv6-small",
-                    "kokoro-onnx-cpu",
-                    *([] if args.skip_models else ["kokoro-int8-model"]),
+                    (
+                        "kokoro-fp32-fast-cpu"
+                        if args.fast_tts
+                        else "kokoro-int8-compact-cpu"
+                    ),
+                    *(
+                        []
+                        if args.skip_models
+                        else [
+                            (
+                                "kokoro-fp32-model"
+                                if args.fast_tts
+                                else "kokoro-int8-model"
+                            )
+                        ]
+                    ),
                 ]
             ),
             "runtime-network-guard",
@@ -142,7 +161,13 @@ def main() -> int:
             ]
         )
         if not args.skip_models:
-            run([str(core_python), str(APP_DIR / "scripts" / "install_kokoro.py")])
+            command = [
+                str(core_python),
+                str(APP_DIR / "scripts" / "install_kokoro.py"),
+            ]
+            if args.fast_tts:
+                command.append("--fast")
+            run(command)
 
     if system == "Linux" and shutil.which("cc"):
         run(["bash", str(APP_DIR / "scripts" / "install-netguard.sh")])

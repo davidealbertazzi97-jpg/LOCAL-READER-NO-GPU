@@ -57,7 +57,14 @@
             <input id="auto-speech" type="checkbox" checked>
             <span data-i18n="autoSpeech">Crea anche una bozza audio Kokoro dopo l’OCR</span>
           </label>
-          <p class="muted compact" data-i18n="autoSpeechHelp">Usa la voce Nicola. Puoi correggere il testo e rigenerare l’audio in seguito.</p>
+          <label>
+            <span data-i18n="autoVoice">Voce della bozza automatica</span>
+            <select id="auto-voice">
+              <option value="im_nicola" data-i18n="voiceMale">Maschile — Nicola</option>
+              <option value="if_sara" data-i18n="voiceFemale">Femminile — Sara</option>
+            </select>
+          </label>
+          <p class="muted compact" data-i18n="autoSpeechHelp">Puoi correggere il testo e rigenerare l’audio con un’altra voce in seguito.</p>
           <button type="submit" data-i18n="start">Avvia OCR locale</button>
           <p id="form-status" role="status" aria-live="polite"></p>
         </form>
@@ -66,8 +73,12 @@
       <section class="panel" aria-labelledby="jobs-title">
         <div class="section-heading">
           <h2 id="jobs-title" data-i18n="jobs">Lavori locali</h2>
-          <button id="refresh" type="button" class="secondary" data-i18n="refresh">Aggiorna</button>
+          <div class="section-actions">
+            <button id="refresh" type="button" class="secondary" data-i18n="refresh">Aggiorna</button>
+            <button id="clear-history" type="button" class="secondary danger" data-i18n="clearHistory">Cancella cronologia conclusa</button>
+          </div>
         </div>
+        <p id="history-status" role="status" aria-live="polite"></p>
         <div id="jobs" class="jobs" aria-live="polite"></div>
       </section>
 
@@ -102,8 +113,8 @@
           <label>
             <span data-i18n="voice">Voce</span>
             <select id="voice">
-              <option value="im_nicola">Nicola</option>
-              <option value="if_sara">Sara</option>
+              <option value="im_nicola" data-i18n="voiceMale">Maschile — Nicola</option>
+              <option value="if_sara" data-i18n="voiceFemale">Femminile — Sara</option>
             </select>
           </label>
           <label>

@@ -57,6 +57,7 @@ The installer downloads these unmodified release assets and verifies SHA-256:
 | Asset | Size | SHA-256 |
 | --- | ---: | --- |
 | `kokoro-v1.0.int8.onnx` | 92,361,271 bytes | `6e742170d309016e5891a994e1ce1559c702a2ccd0075e67ef7157974f6406cb` |
+| `kokoro-v1.0.onnx` (optional fast profile) | 325,532,387 bytes | `7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5` |
 | `voices-v1.0.bin` | 28,214,398 bytes | `bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d` |
 
 The Kokoro ONNX project identifies its wrapper as MIT and the Kokoro model as
