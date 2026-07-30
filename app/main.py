@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import shutil
 import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -24,6 +23,7 @@ from .security import (
     request_is_loopback,
     token_matches,
 )
+from .speech_jobs import normalized_options, queue_speech_job
 from .store import STORE
 from .utils import remove_output_tree, remove_work_tree, resolve_artifact, safe_name
 
@@ -241,6 +241,25 @@ async def create_job(
         raise HTTPException(400, "Options must be valid JSON") from exc
     if not isinstance(parsed_options, dict):
         raise HTTPException(400, "Options must be a JSON object")
+    if engine == "accessible-document":
+        auto_speech = parsed_options.get("auto_speech", False)
+        if not isinstance(auto_speech, bool):
+            raise HTTPException(400, "auto_speech must be true or false")
+        if auto_speech:
+            try:
+                voice, speed = normalized_options(
+                    parsed_options.get("voice", "im_nicola"),
+                    parsed_options.get("speed", 1.0),
+                )
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
+            parsed_options = {
+                "auto_speech": True,
+                "voice": voice,
+                "speed": speed,
+            }
+        else:
+            parsed_options = {"auto_speech": False}
 
     input_name = safe_name(file.filename or "document")
     if not selected.accepts(Path(input_name)):
@@ -322,12 +341,13 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
         raise HTTPException(400, "Speech options must be valid JSON") from exc
     if not isinstance(options, dict):
         raise HTTPException(400, "Speech options must be an object")
-    voice = options.get("voice", "im_nicola")
-    speed = options.get("speed", 1.0)
-    if voice not in {"im_nicola", "if_sara"}:
-        raise HTTPException(400, "Unsupported Italian voice")
-    if not isinstance(speed, (int, float)) or not 0.75 <= float(speed) <= 1.5:
-        raise HTTPException(400, "Speech speed must be between 0.75 and 1.5")
+    try:
+        voice, speed = normalized_options(
+            options.get("voice", "im_nicola"),
+            options.get("speed", 1.0),
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     if not PATHS.tts_python.is_file():
         raise HTTPException(503, "The local Kokoro environment is not installed")
     try:
@@ -338,33 +358,19 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
     if parent["engine"] != "accessible-document":
         raise HTTPException(404, "Accessible document not found")
 
-    child = RUNNER.submit(
-        "kokoro-italian",
-        "reading.txt",
-        {"voice": voice, "speed": float(speed), "source_job": job_id},
-    )
-    child_id = str(child["id"])
-    work_dir = PATHS.work / child_id
     try:
         with DOCUMENT_LOCK:
-            work_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
-            with (
-                source.open("rb") as input_handle,
-                (work_dir / "reading.txt").open("xb") as output_handle,
-            ):
-                shutil.copyfileobj(input_handle, output_handle, length=CHUNK_SIZE)
-        child = STORE.mark_queued(child_id)
-        RUNNER.enqueue(child_id)
+            child = queue_speech_job(
+                RUNNER,
+                STORE,
+                source,
+                source_job=job_id,
+                voice=voice,
+                speed=speed,
+            )
         return public_job(child)
-    except Exception:
-        remove_work_tree(work_dir)
-        STORE.update(
-            child_id,
-            status="failed",
-            message="Speech preparation failed",
-            error="The reviewed text could not be copied into the private job.",
-        )
-        raise
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise HTTPException(500, "Speech could not be queued locally") from exc
 
 
 @app.get("/api/jobs/{job_id}/files/{artifact:path}")

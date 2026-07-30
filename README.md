@@ -11,6 +11,8 @@ The current MVP can:
 - let the user correct text and mark headings, paragraphs, lists, page numbers,
   or content that must be excluded from reading;
 - regenerate clean reading text and semantic HTML after every review;
+- automatically queue a Kokoro audio draft after OCR, unless the user disables
+  that option;
 - create long-form Italian WAV audio with Kokoro ONNX using `im_nicola` or
   `if_sara`, adjustable speed, and streaming CPU synthesis;
 - keep durable results in the user's Documents folder while deleting private
@@ -64,10 +66,10 @@ from Git.
 ## Workflow
 
 1. Upload a PDF, PNG, JPEG, WebP, TIFF, or BMP from the local interface.
-2. Wait for local OCR.
+2. Wait for local OCR and, by default, the automatic Kokoro audio draft.
 3. Open **Review text and order**.
 4. Correct the title, language, block text, and semantic roles.
-5. Save corrections, then download accessible HTML/text or create Italian audio.
+5. Save corrections, then download accessible HTML/text or regenerate the audio.
 6. Review the final output with the intended screen reader and user.
 
 The original file is never modified. Page previews and exported results are
@@ -84,9 +86,9 @@ ruff format --check .
 bandit -q -c pyproject.toml -r app runtime_guard scripts workers
 ```
 
-The full smoke test performs OCR, edits the recognized structure through the
-real authenticated API, regenerates exports, synthesizes Kokoro audio, and
-checks work-copy deletion.
+The full smoke test performs OCR, verifies the automatic Kokoro draft, edits the
+recognized structure through the real authenticated API, regenerates exports,
+synthesizes a second reviewed audio file, and checks work-copy deletion.
 
 ## Licence
 
@@ -110,6 +112,7 @@ L’MVP attuale:
 - permette di correggere testo, titoli, paragrafi, elenchi, numeri di pagina ed
   elementi da non leggere;
 - rigenera testo pulito e HTML semantico dopo ogni revisione;
+- accoda automaticamente una bozza audio Kokoro dopo l’OCR, salvo disattivazione;
 - crea audio WAV italiano con Kokoro e le voci `im_nicola` e `if_sara`;
 - elimina le copie private di lavoro anche dopo errori o riavvii interrotti.
 

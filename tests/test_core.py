@@ -5,6 +5,7 @@ import math
 import os
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 from unittest import mock
 
@@ -15,6 +16,7 @@ os.environ["LOCAL_ACCESSIBILITY_STUDIO_OUTPUTS"] = str(
     Path(_TEST_ROOT.name) / "outputs"
 )
 
+from app.config import PATHS  # noqa: E402
 from app.documents import (  # noqa: E402
     accessible_html,
     reading_text,
@@ -24,8 +26,9 @@ from app.documents import (  # noqa: E402
 from app.engines import ENGINES  # noqa: E402
 from app.product import load_product  # noqa: E402
 from app.security import TOKEN_COOKIE  # noqa: E402
+from app.speech_jobs import normalized_options, queue_speech_job  # noqa: E402
 from app.store import JobStore  # noqa: E402
-from app.utils import resolve_artifact, safe_name  # noqa: E402
+from app.utils import remove_work_tree, resolve_artifact, safe_name  # noqa: E402
 from scripts.start import guarded_environment  # noqa: E402
 
 
@@ -161,6 +164,61 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(store.get("upload")["status"], "failed")
             self.assertTrue(store.delete_finished("upload"))
             self.assertIsNone(store.get("upload"))
+
+
+class SpeechQueueTests(unittest.TestCase):
+    def test_reviewed_text_is_copied_and_queued_privately(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "reading.txt"
+            source.write_text("Testo italiano revisionato.", encoding="utf-8")
+            store = JobStore(root / "jobs.sqlite3")
+
+            class Runner:
+                def __init__(self) -> None:
+                    self.queued: list[str] = []
+
+                def submit(
+                    self,
+                    engine: str,
+                    input_name: str,
+                    options: dict,
+                ) -> dict:
+                    return store.create(
+                        uuid.uuid4().hex,
+                        engine,
+                        input_name,
+                        options,
+                    )
+
+                def enqueue(self, job_id: str) -> None:
+                    self.queued.append(job_id)
+
+            runner = Runner()
+            child = queue_speech_job(
+                runner,
+                store,
+                source,
+                source_job="parent",
+                voice="im_nicola",
+                speed=1.0,
+            )
+            work_dir = PATHS.work / child["id"]
+            try:
+                self.assertEqual(child["status"], "queued")
+                self.assertEqual(runner.queued, [child["id"]])
+                self.assertEqual(
+                    (work_dir / "reading.txt").read_text(encoding="utf-8"),
+                    "Testo italiano revisionato.",
+                )
+            finally:
+                remove_work_tree(work_dir)
+
+    def test_invalid_speech_numbers_are_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            normalized_options("im_nicola", math.nan)
+        with self.assertRaises(ValueError):
+            normalized_options("im_nicola", True)
 
 
 if __name__ == "__main__":
