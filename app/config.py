@@ -48,6 +48,10 @@ class Paths:
     outputs: Path
     state: Path
     database: Path
+    ocr_python: Path
+    tts_python: Path
+    kokoro_model: Path
+    kokoro_voices: Path
 
     @classmethod
     def build(cls) -> Paths:
@@ -58,6 +62,9 @@ class Paths:
         outputs = Path(
             os.environ.get(f"{prefix}_OUTPUTS", default_outputs)
         ).expanduser()
+        executable = "python.exe" if os.name == "nt" else "python"
+        scripts_dir = "Scripts" if os.name == "nt" else "bin"
+        models = APP_ROOT / "models" / "kokoro"
         paths = cls(
             app=APP_ROOT,
             data=data,
@@ -65,6 +72,20 @@ class Paths:
             outputs=outputs,
             state=state,
             database=data / "jobs.sqlite3",
+            ocr_python=APP_ROOT / ".venv-ocr" / scripts_dir / executable,
+            tts_python=APP_ROOT / ".venv-tts" / scripts_dir / executable,
+            kokoro_model=Path(
+                os.environ.get(
+                    f"{prefix}_KOKORO_MODEL",
+                    models / "kokoro-v1.0.int8.onnx",
+                )
+            ).expanduser(),
+            kokoro_voices=Path(
+                os.environ.get(
+                    f"{prefix}_KOKORO_VOICES",
+                    models / "voices-v1.0.bin",
+                )
+            ).expanduser(),
         )
         for directory in (paths.data, paths.work, paths.outputs, paths.state):
             _private_directory(directory)

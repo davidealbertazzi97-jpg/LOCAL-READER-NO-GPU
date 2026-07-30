@@ -9,7 +9,7 @@ from typing import Any
 from .config import PATHS
 from .engines import ENGINES
 from .store import STORE
-from .utils import remove_work_tree
+from .utils import remove_output_tree, remove_work_tree
 
 LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ class JobRunner:
             return
         for interrupted_id in STORE.interrupt_incomplete():
             remove_work_tree(PATHS.work / interrupted_id)
+            remove_output_tree(PATHS.outputs / interrupted_id)
         self._thread = threading.Thread(
             target=self._run,
             name="local-ai-job-runner",
@@ -81,6 +82,7 @@ class JobRunner:
                 error="The requested engine is no longer registered.",
             )
             remove_work_tree(work_dir)
+            remove_output_tree(output_dir)
             return
 
         STORE.update(job_id, status="running", message="Processing locally")
@@ -115,6 +117,7 @@ class JobRunner:
                 message="Processing failed",
                 error=error,
             )
+            remove_output_tree(output_dir)
         finally:
             remove_work_tree(work_dir)
 

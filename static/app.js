@@ -1,44 +1,117 @@
 const COPY = {
   it: {
+    skip: "Vai al contenuto",
     language: "Lingua",
-    privacyTitle: "Solo sul tuo computer",
-    privacyBody: "Il servizio Python ascolta soltanto su 127.0.0.1 e rifiuta le proprie connessioni esterne.",
-    newJob: "Nuova elaborazione",
-    engine: "Motore",
+    privacyTitle: "Documenti e voce restano locali",
+    privacyBody: "OCR e sintesi vocale funzionano sul computer. I risultati vanno comunque controllati prima dell’uso.",
+    newJob: "Riconosci un documento",
+    newJobHelp: "Carica un PDF o un’immagine. Verranno create copie revisionabili; l’originale non viene modificato.",
     file: "Documento locale",
-    start: "Elabora in locale",
-    jobs: "Elaborazioni",
+    start: "Avvia OCR locale",
+    jobs: "Lavori locali",
     refresh: "Aggiorna",
-    empty: "Nessuna elaborazione.",
-    sending: "Copia locale in preparazione…",
-    accepted: "Elaborazione accodata.",
+    empty: "Nessun lavoro.",
+    sending: "Preparazione della copia locale…",
+    accepted: "OCR inserito in coda.",
     failed: "Operazione non riuscita.",
+    ready: "Pronto e offline",
+    unavailable: "Non installato",
+    review: "Rivedi testo e ordine",
+    reviewTitle: "Revisione accessibile",
+    reviewHelp: "Controlla testo, ordine e ruolo di ogni blocco. La confidenza bassa richiede particolare attenzione.",
+    close: "Chiudi",
+    documentTitle: "Titolo del documento",
+    documentLanguage: "Lingua del documento",
+    save: "Salva correzioni",
+    saved: "Correzioni salvate.",
+    saving: "Salvataggio…",
+    downloadHtml: "Scarica HTML accessibile",
+    downloadText: "Scarica testo per lettura",
+    speechTitle: "Sintesi vocale italiana",
+    voice: "Voce",
+    speed: "Velocità",
+    createSpeech: "Crea audio con Kokoro",
+    speechQueued: "Audio Kokoro inserito in coda.",
+    page: "Pagina",
+    confidence: "Confidenza",
+    low: "bassa",
     download: "Scarica",
+    delete: "Elimina risultati",
+    confirmDelete: "Eliminare definitivamente questo lavoro e tutti i risultati locali?",
+    play: "Ascolta l’audio generato",
+    roles: {
+      heading1: "Titolo principale",
+      heading2: "Titolo di sezione",
+      heading3: "Sottotitolo",
+      paragraph: "Paragrafo",
+      list_item: "Elemento elenco",
+      page_number: "Numero di pagina (non letto)",
+      exclude: "Escludi dalla lettura",
+    },
+    statuses: {uploading: "caricamento", queued: "in coda", running: "in elaborazione", completed: "completato", failed: "non riuscito"},
   },
   en: {
+    skip: "Skip to content",
     language: "Language",
-    privacyTitle: "On your computer only",
-    privacyBody: "The Python service listens only on 127.0.0.1 and rejects its own external connections.",
-    newJob: "New job",
-    engine: "Engine",
+    privacyTitle: "Documents and speech stay local",
+    privacyBody: "OCR and speech synthesis run on this computer. Results still require human review before use.",
+    newJob: "Recognize a document",
+    newJobHelp: "Upload a PDF or image. The app creates reviewable copies and never changes the original.",
     file: "Local document",
-    start: "Process locally",
-    jobs: "Jobs",
+    start: "Start local OCR",
+    jobs: "Local jobs",
     refresh: "Refresh",
     empty: "No jobs yet.",
     sending: "Preparing the local working copy…",
-    accepted: "Job queued.",
+    accepted: "OCR job queued.",
     failed: "The operation failed.",
+    ready: "Ready and offline",
+    unavailable: "Not installed",
+    review: "Review text and order",
+    reviewTitle: "Accessibility review",
+    reviewHelp: "Check every block’s text, order, and role. Low confidence needs particular attention.",
+    close: "Close",
+    documentTitle: "Document title",
+    documentLanguage: "Document language",
+    save: "Save corrections",
+    saved: "Corrections saved.",
+    saving: "Saving…",
+    downloadHtml: "Download accessible HTML",
+    downloadText: "Download reading text",
+    speechTitle: "Italian speech synthesis",
+    voice: "Voice",
+    speed: "Speed",
+    createSpeech: "Create audio with Kokoro",
+    speechQueued: "Kokoro audio job queued.",
+    page: "Page",
+    confidence: "Confidence",
+    low: "low",
     download: "Download",
+    delete: "Delete results",
+    confirmDelete: "Permanently delete this job and all local results?",
+    play: "Play generated audio",
+    roles: {
+      heading1: "Main heading",
+      heading2: "Section heading",
+      heading3: "Subheading",
+      paragraph: "Paragraph",
+      list_item: "List item",
+      page_number: "Page number (not read)",
+      exclude: "Exclude from reading",
+    },
+    statuses: {uploading: "uploading", queued: "queued", running: "processing", completed: "completed", failed: "failed"},
   },
 };
 
-let language = localStorage.getItem("local-ai-language") || document.documentElement.lang || "it";
-let engines = [];
+let language = localStorage.getItem("accessibility-language") || "it";
 let product = null;
+let engines = [];
+let editingJob = null;
+let documentValue = null;
+let pollTimer = null;
 
 function t(key) {
-  return COPY[language]?.[key] || COPY.en[key] || key;
+  return COPY[language]?.[key] ?? COPY.en[key] ?? key;
 }
 
 async function api(path, options = {}) {
@@ -50,107 +123,293 @@ async function api(path, options = {}) {
   return response.json();
 }
 
+function artifactUrl(jobId, artifact) {
+  const encoded = artifact.split("/").map(encodeURIComponent).join("/");
+  return `/api/jobs/${encodeURIComponent(jobId)}/files/${encoded}`;
+}
+
 function renderLanguage() {
   document.documentElement.lang = language;
+  document.querySelector("#language-select").value = language;
   document.querySelectorAll("[data-i18n]").forEach((node) => {
     node.textContent = t(node.dataset.i18n);
   });
-  document.querySelector("#language-select").value = language;
-  for (const option of document.querySelector("#engine").options) {
-    const engine = engines.find((item) => item.id === option.value);
-    option.textContent = engine?.[`label_${language}`] || option.value;
-  }
   if (product) {
     document.querySelector("#product-description").textContent = product[`description_${language}`];
   }
-  renderEngineDescription();
+  if (documentValue) renderDocument();
   void renderJobs();
 }
 
-function renderEngineDescription() {
-  const id = document.querySelector("#engine").value;
-  const engine = engines.find((item) => item.id === id);
-  document.querySelector("#engine-description").textContent = engine?.[`description_${language}`] || "";
+async function renderStatus() {
+  const status = await api("/api/status");
+  for (const name of ["ocr", "speech"]) {
+    const ready = status[name].ready;
+    document.querySelector(`#${name}-dot`).classList.toggle("ready", ready);
+    document.querySelector(`#${name}-status`).textContent = t(ready ? "ready" : "unavailable");
+  }
+  document.querySelector("#job-form button[type=submit]").disabled = !status.ocr.ready;
+  document.querySelector("#create-speech").disabled = !status.speech.ready;
+}
+
+function addArtifactLinks(container, job) {
+  const visible = (job.artifacts || []).filter((name) =>
+    !name.startsWith("pages/") && name !== "document.json" && name !== "speech.wav"
+  );
+  for (const artifact of visible) {
+    const link = document.createElement("a");
+    link.href = artifactUrl(job.id, artifact);
+    link.textContent = `${t("download")}: ${artifact}`;
+    container.append(link);
+  }
+}
+
+function jobCard(job) {
+  const card = document.createElement("article");
+  card.className = "job";
+  const head = document.createElement("div");
+  head.className = "job-head";
+  const title = document.createElement("strong");
+  title.textContent = job.input_name;
+  const badge = document.createElement("span");
+  badge.className = "badge";
+  badge.textContent = COPY[language].statuses[job.status] || job.status;
+  head.append(title, badge);
+  card.append(head);
+
+  const message = document.createElement("p");
+  message.className = job.status === "failed" ? "error" : "muted";
+  message.textContent = job.error || job.message;
+  card.append(message);
+  if (job.summary && Object.keys(job.summary).length) {
+    const summary = document.createElement("div");
+    summary.className = "summary";
+    for (const [key, value] of Object.entries(job.summary)) {
+      const item = document.createElement("span");
+      item.textContent = `${key}: ${value}`;
+      summary.append(item);
+    }
+    card.append(summary);
+  }
+  const actions = document.createElement("div");
+  actions.className = "job-actions";
+  if (job.status === "completed" && job.engine === "accessible-document") {
+    const review = document.createElement("button");
+    review.type = "button";
+    review.textContent = t("review");
+    review.addEventListener("click", () => void openDocument(job));
+    actions.append(review);
+  }
+  if (job.status === "completed" && job.engine === "kokoro-italian") {
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.preload = "metadata";
+    audio.src = artifactUrl(job.id, "speech.wav");
+    audio.setAttribute("aria-label", t("play"));
+    card.append(audio);
+    const download = document.createElement("a");
+    download.href = artifactUrl(job.id, "speech.wav");
+    download.download = "speech.wav";
+    download.className = "button-link secondary";
+    download.textContent = `${t("download")}: speech.wav`;
+    actions.append(download);
+  }
+  addArtifactLinks(actions, job);
+  if (["completed", "failed"].includes(job.status)) {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "secondary";
+    remove.textContent = t("delete");
+    remove.addEventListener("click", async () => {
+      if (!window.confirm(t("confirmDelete"))) return;
+      try {
+        await api(`/api/jobs/${encodeURIComponent(job.id)}`, {method: "DELETE"});
+        if (editingJob?.id === job.id) {
+          document.querySelector("#editor").hidden = true;
+          editingJob = null;
+          documentValue = null;
+        }
+        await renderJobs();
+      } catch (error) {
+        window.alert(`${t("failed")} ${error.message}`);
+      }
+    });
+    actions.append(remove);
+  }
+  if (actions.childNodes.length) card.append(actions);
+  return card;
 }
 
 async function renderJobs() {
   const container = document.querySelector("#jobs");
   try {
     const jobs = await api("/api/jobs");
-    if (!jobs.length) {
-      container.textContent = t("empty");
-      return;
-    }
-    container.replaceChildren(...jobs.map((job) => {
-      const item = document.createElement("article");
-      item.className = "job";
-      const heading = document.createElement("div");
-      heading.className = "job-head";
-      const title = document.createElement("strong");
-      title.textContent = job.input_name;
-      const badge = document.createElement("span");
-      badge.className = "badge";
-      badge.textContent = job.status;
-      heading.append(title, badge);
-      const message = document.createElement("p");
-      message.className = job.status === "failed" ? "error" : "muted";
-      message.textContent = job.error || job.message;
-      item.append(heading, message);
-      for (const artifact of job.artifacts || []) {
-        const link = document.createElement("a");
-        link.href = `/api/jobs/${encodeURIComponent(job.id)}/files/${artifact.split("/").map(encodeURIComponent).join("/")}`;
-        link.textContent = `${t("download")}: ${artifact}`;
-        const row = document.createElement("div");
-        row.append(link);
-        item.append(row);
-      }
-      return item;
-    }));
+    container.replaceChildren(...(jobs.length ? jobs.map(jobCard) : [document.createTextNode(t("empty"))]));
+    const active = jobs.some((job) => ["uploading", "queued", "running"].includes(job.status));
+    clearTimeout(pollTimer);
+    if (active) pollTimer = setTimeout(() => void renderJobs(), 1500);
   } catch (error) {
     container.textContent = `${t("failed")} ${error.message}`;
   }
+}
+
+function roleOptions(selected) {
+  return Object.keys(COPY[language].roles).map((role) => {
+    const option = document.createElement("option");
+    option.value = role;
+    option.textContent = COPY[language].roles[role];
+    option.selected = role === selected;
+    return option;
+  });
+}
+
+function blockEditor(block) {
+  const item = document.createElement("div");
+  item.className = "block-editor";
+  const meta = document.createElement("div");
+  meta.className = "block-meta";
+  const select = document.createElement("select");
+  select.setAttribute("aria-label", t("reviewTitle"));
+  select.replaceChildren(...roleOptions(block.role));
+  select.addEventListener("change", () => { block.role = select.value; });
+  const confidence = document.createElement("span");
+  confidence.className = `confidence ${block.confidence < 0.82 ? "low-confidence" : ""}`;
+  confidence.textContent = `${t("confidence")}: ${Math.round(block.confidence * 100)}%${block.confidence < 0.82 ? ` (${t("low")})` : ""}`;
+  meta.append(select, confidence);
+  const textarea = document.createElement("textarea");
+  textarea.value = block.text;
+  textarea.setAttribute("aria-label", `${t("page")} ${block.id}`);
+  textarea.addEventListener("input", () => { block.text = textarea.value; });
+  item.append(meta, textarea);
+  return item;
+}
+
+function renderDocument() {
+  if (!documentValue || !editingJob) return;
+  document.querySelector("#document-title").value = documentValue.title;
+  document.querySelector("#document-language").value = documentValue.language;
+  document.querySelector("#download-html").href = artifactUrl(editingJob.id, "accessible.html");
+  document.querySelector("#download-text").href = artifactUrl(editingJob.id, "reading.txt");
+  const pages = document.querySelector("#pages");
+  pages.replaceChildren(...documentValue.pages.map((page) => {
+    const section = document.createElement("article");
+    section.className = "page-editor";
+    const heading = document.createElement("h3");
+    heading.textContent = `${t("page")} ${page.number}`;
+    const layout = document.createElement("div");
+    layout.className = "page-layout";
+    const image = document.createElement("img");
+    image.className = "page-preview";
+    image.loading = "lazy";
+    image.src = artifactUrl(editingJob.id, page.preview);
+    image.alt = `${t("page")} ${page.number}`;
+    const blocks = document.createElement("div");
+    blocks.className = "blocks";
+    blocks.replaceChildren(...page.blocks.map(blockEditor));
+    layout.append(image, blocks);
+    section.append(heading, layout);
+    return section;
+  }));
+}
+
+async function openDocument(job) {
+  editingJob = job;
+  documentValue = await api(`/api/jobs/${encodeURIComponent(job.id)}/document`);
+  renderDocument();
+  const editor = document.querySelector("#editor");
+  editor.hidden = false;
+  editor.scrollIntoView({behavior: "smooth", block: "start"});
+  document.querySelector("#document-title").focus();
+}
+
+async function saveDocument() {
+  if (!editingJob || !documentValue) throw new Error("No document");
+  documentValue.title = document.querySelector("#document-title").value;
+  documentValue.language = document.querySelector("#document-language").value;
+  const status = document.querySelector("#save-status");
+  status.textContent = t("saving");
+  documentValue = await api(`/api/jobs/${encodeURIComponent(editingJob.id)}/document`, {
+    method: "PUT",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(documentValue),
+  });
+  status.textContent = t("saved");
+  return documentValue;
 }
 
 async function initialize() {
   [product, engines] = await Promise.all([api("/api/product"), api("/api/engines")]);
   document.title = product.name;
   document.querySelector("#product-name").textContent = product.name;
-  if (!localStorage.getItem("local-ai-language")) language = product.default_language;
-  const select = document.querySelector("#engine");
-  select.replaceChildren(...engines.map((engine) => {
-    const option = document.createElement("option");
-    option.value = engine.id;
-    option.textContent = engine[`label_${language}`];
-    return option;
-  }));
+  if (!localStorage.getItem("accessibility-language")) language = product.default_language;
   renderLanguage();
+  await Promise.all([renderStatus(), renderJobs()]);
 }
 
 document.querySelector("#language-select").addEventListener("change", (event) => {
   language = event.target.value;
-  localStorage.setItem("local-ai-language", language);
+  localStorage.setItem("accessibility-language", language);
   renderLanguage();
 });
-document.querySelector("#engine").addEventListener("change", renderEngineDescription);
 document.querySelector("#refresh").addEventListener("click", () => void renderJobs());
 document.querySelector("#job-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = event.currentTarget.querySelector("button[type=submit]");
   const status = document.querySelector("#form-status");
+  const engine = engines.find((item) => item.user_upload);
   button.disabled = true;
   status.textContent = t("sending");
   try {
     const data = new FormData(event.currentTarget);
+    data.set("engine", engine.id);
     data.set("options", "{}");
     await api("/api/jobs", {method: "POST", body: data});
     status.textContent = t("accepted");
     event.currentTarget.reset();
-    renderEngineDescription();
     await renderJobs();
   } catch (error) {
     status.textContent = `${t("failed")} ${error.message}`;
   } finally {
     button.disabled = false;
+  }
+});
+document.querySelector("#close-editor").addEventListener("click", () => {
+  document.querySelector("#editor").hidden = true;
+  editingJob = null;
+  documentValue = null;
+});
+document.querySelector("#save-document").addEventListener("click", async (event) => {
+  event.currentTarget.disabled = true;
+  try {
+    await saveDocument();
+  } catch (error) {
+    document.querySelector("#save-status").textContent = `${t("failed")} ${error.message}`;
+  } finally {
+    event.currentTarget.disabled = false;
+  }
+});
+document.querySelector("#speed").addEventListener("input", (event) => {
+  document.querySelector("#speed-value").textContent = `${Number(event.target.value).toFixed(2)}×`;
+});
+document.querySelector("#create-speech").addEventListener("click", async (event) => {
+  event.currentTarget.disabled = true;
+  const status = document.querySelector("#save-status");
+  try {
+    await saveDocument();
+    await api(`/api/jobs/${encodeURIComponent(editingJob.id)}/speech`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        voice: document.querySelector("#voice").value,
+        speed: Number(document.querySelector("#speed").value),
+      }),
+    });
+    status.textContent = t("speechQueued");
+    await renderJobs();
+  } catch (error) {
+    status.textContent = `${t("failed")} ${error.message}`;
+  } finally {
+    event.currentTarget.disabled = false;
   }
 });
 

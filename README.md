@@ -1,123 +1,133 @@
-# Local AI App Starter
+# Local Accessibility Studio
 
-A small, security-minded foundation for local-only AI desktop utilities that
-run on ordinary CPU hardware. It is a **starter**, not a finished product and
-not a copy of AI Privacy Studio.
+Private, local OCR, accessible-document preparation, and natural Italian speech
+for ordinary CPU computers. Documents are processed on the user's workstation;
+the application has no cloud mode, telemetry, account, or GPU requirement.
 
-The reusable core provides:
+The current MVP can:
 
-- a FastAPI service bound to numeric loopback (`127.0.0.1`) only;
-- a per-installation secret token and strict browser-origin checks;
-- a Python runtime guard and an optional Linux-native guard that deny external
-  connections from guarded processes;
-- bounded uploads, private working directories, and automatic work-copy cleanup;
-- a persistent SQLite job queue and a narrow plug-in contract for local engines;
-- a dependency-free, bilingual Italian/English interface;
-- pinned installers for Linux x86-64, macOS Apple Silicon, and Windows x86-64.
+- recognize PDF and image pages with RapidOCR, PP-OCRv6 small, and ONNX Runtime;
+- show every page beside editable text blocks and OCR confidence;
+- let the user correct text and mark headings, paragraphs, lists, page numbers,
+  or content that must be excluded from reading;
+- regenerate clean reading text and semantic HTML after every review;
+- create long-form Italian WAV audio with Kokoro ONNX using `im_nicola` or
+  `if_sara`, adjustable speed, and streaming CPU synthesis;
+- keep durable results in the user's Documents folder while deleting private
+  working copies after success, failure, or interrupted restart.
 
-It intentionally contains no OCR stack, language model, cloud SDK, telemetry,
-document corpus, AI Privacy Studio branding, or generated binary.
+Piper is not a dependency and is not used.
 
-## Start a new product
+## Important accessibility boundary
 
-Copy this directory outside any existing repository, then set its identity:
+OCR, reading-order inference, and heading detection can be wrong. A generated
+file is a **review candidate**, not proof that a document is accessible. Low
+confidence is shown explicitly, all inferred roles remain editable, and the
+interface never silently calls an unreviewed result compliant.
 
-```bash
-python3 scripts/configure.py \
-  --name "My Local App" \
-  --slug "my-local-app" \
-  --description-en "A precise English description." \
-  --description-it "Una descrizione precisa in italiano."
-```
+The first release exports semantic HTML and plain reading text. Tagged PDF,
+EPUB, and DOCX are deliberately deferred until they can be tested with real
+assistive technologies and users.
 
-Replace the example engine in `app/engines/`, register the replacement in
-`app/engines/__init__.py`, and add only the dependencies and model notices that
-the new product really needs. The [engine contract](docs/ENGINE-CONTRACT.md)
-defines the trust boundary.
+## Install and start
 
-Install and start:
+Supported release profiles are Linux x86-64, macOS Apple Silicon, and Windows
+x86-64 with Python 3.12 managed by the installer.
 
 ```bash
 ./install.sh
 ./start.sh
 ```
 
-On Windows use `.\install.ps1` and `.\start.ps1`. Installation needs internet
-access to obtain pinned tools and packages. Application runtime is local-only.
+On Windows:
+
+```powershell
+.\install.ps1
+.\start.ps1
+```
+
+On Linux the installer also adds **Local Accessibility Studio** to the desktop
+application menu without requiring `sudo`.
+
+Installation needs internet access to obtain pinned Python packages and the
+verified Kokoro files. Runtime binds only to numeric loopback and guarded Python
+processes deny non-loopback connections. The installer downloads:
+
+- Kokoro v1.0 INT8 CPU model: 92,361,271 bytes;
+- Kokoro v1.0 voice bundle: 28,214,398 bytes;
+- RapidOCR's wheel, which contains the PP-OCRv6 small ONNX models.
+
+The exact Kokoro SHA-256 values are pinned in
+`scripts/install_kokoro.py`. Model files and virtual environments are excluded
+from Git.
+
+## Workflow
+
+1. Upload a PDF, PNG, JPEG, WebP, TIFF, or BMP from the local interface.
+2. Wait for local OCR.
+3. Open **Review text and order**.
+4. Correct the title, language, block text, and semantic roles.
+5. Save corrections, then download accessible HTML/text or create Italian audio.
+6. Review the final output with the intended screen reader and user.
+
+The original file is never modified. Page previews and exported results are
+durable copies and may still contain confidential information.
 
 ## Verification
-
-After installing development tools:
 
 ```bash
 python -m unittest discover -s tests -p "test_*.py"
 python tests/smoke_local.py
+python tests/smoke_local.py --full
 ruff check .
 ruff format --check .
-bandit -q -c pyproject.toml -r app runtime_guard scripts
+bandit -q -c pyproject.toml -r app runtime_guard scripts workers
 ```
 
-This starter reduces accidental network and file exposure; it does not prove
-that a future engine is correct, anonymous, legally compliant, or safe for every
-threat model. Audit each model, binary, license, parser, and output format added
-to a derived product.
+The full smoke test performs OCR, edits the recognized structure through the
+real authenticated API, regenerates exports, synthesizes Kokoro audio, and
+checks work-copy deletion.
 
 ## Licence
 
-Original code and documentation are licensed under GNU GPL version 3 only.
-Dependencies keep their own licences. See `THIRD_PARTY_NOTICES.md`.
+Original code and documentation are GNU GPL version 3 only. This choice is also
+compatible with the GPL speech-processing dependencies used by Kokoro's
+phonemization path. Models and third-party components retain their own terms;
+see `THIRD_PARTY_NOTICES.md`.
 
 ---
 
-# Local AI App Starter — Italiano
+# Local Accessibility Studio — Italiano
 
-Una base piccola e orientata alla sicurezza per applicazioni desktop con IA che
-funzionano soltanto in locale, anche su normali computer senza GPU. È uno
-**starter**, non un prodotto finito e non una copia di AI Privacy Studio.
+OCR privato in locale, preparazione di documenti accessibili e sintesi vocale
+italiana naturale per normali computer con CPU. Non esistono modalità cloud,
+telemetria, account o requisiti GPU.
 
-Il nucleo riutilizzabile offre:
+L’MVP attuale:
 
-- servizio FastAPI limitato al loopback numerico (`127.0.0.1`);
-- token segreto diverso per ogni installazione e controllo dell’origine browser;
-- blocco delle connessioni esterne in Python e, su Linux, anche a livello nativo;
-- caricamenti con limite, cartelle di lavoro private e cancellazione automatica;
-- coda persistente SQLite e contratto ristretto per i motori locali;
-- interfaccia senza dipendenze esterne in italiano e inglese;
-- installer versionati per Linux x86-64, macOS Apple Silicon e Windows x86-64.
+- riconosce PDF e immagini con RapidOCR, PP-OCRv6 small e ONNX Runtime;
+- mostra ogni pagina accanto ai blocchi di testo modificabili e alla confidenza;
+- permette di correggere testo, titoli, paragrafi, elenchi, numeri di pagina ed
+  elementi da non leggere;
+- rigenera testo pulito e HTML semantico dopo ogni revisione;
+- crea audio WAV italiano con Kokoro e le voci `im_nicola` e `if_sara`;
+- elimina le copie private di lavoro anche dopo errori o riavvii interrotti.
 
-Non contiene volutamente OCR, modelli linguistici, SDK cloud, telemetria,
-documenti, marchio di AI Privacy Studio o file binari generati.
+Piper non viene installato né utilizzato.
 
-## Creare un nuovo prodotto
+OCR, ordine di lettura e riconoscimento dei titoli possono sbagliare. Il
+risultato è una **bozza da revisionare**, non la prova che il documento sia
+accessibile. Per questo ogni ruolo rimane modificabile e le parole a bassa
+confidenza vengono evidenziate.
 
-Copia questa cartella fuori da repository esistenti, poi assegna la nuova
-identità:
-
-```bash
-python3 scripts/configure.py \
-  --name "La mia app locale" \
-  --slug "la-mia-app-locale" \
-  --description-en "A precise English description." \
-  --description-it "Una descrizione precisa in italiano."
-```
-
-Sostituisci il motore di esempio in `app/engines/`, registralo in
-`app/engines/__init__.py` e aggiungi esclusivamente dipendenze, modelli e
-licenze realmente necessari. Il [contratto dei motori](docs/ENGINE-CONTRACT.md)
-definisce il confine di fiducia.
-
-Per installare e avviare:
+Installazione e avvio su Linux/macOS:
 
 ```bash
 ./install.sh
 ./start.sh
 ```
 
-Su Windows usa `.\install.ps1` e `.\start.ps1`. L’installazione richiede
-internet per scaricare strumenti e pacchetti versionati. L’esecuzione
-dell’applicazione è soltanto locale.
-
-Questa base riduce il rischio di esposizioni accidentali, ma non dimostra che un
-nuovo motore sia corretto, anonimo, conforme alla legge o adatto a ogni modello
-di minaccia. Ogni modello, binario, licenza, parser e formato aggiunto deve
-essere verificato nel prodotto derivato.
+Su Windows usa `.\install.ps1` e `.\start.ps1`. L’installazione scarica pacchetti
+versionati e i file Kokoro verificati; l’esecuzione dell’applicazione resta
+locale. Gli originali non vengono mai modificati, ma anteprime e risultati
+persistenti possono ancora contenere informazioni riservate.
