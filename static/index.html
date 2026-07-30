@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Local AI App Starter</title>
+    <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/assets/app.css">
+    <script src="/assets/app.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img src="/assets/icon.svg" width="42" height="42" alt="">
+        <div>
+          <h1 id="product-name">Local AI App Starter</h1>
+          <p id="product-description"></p>
+        </div>
+      </div>
+      <label class="language">
+        <span data-i18n="language">Lingua</span>
+        <select id="language-select" aria-label="Lingua">
+          <option value="it">Italiano</option>
+          <option value="en">English</option>
+        </select>
+      </label>
+    </header>
+
+    <main>
+      <section class="privacy-note" aria-labelledby="privacy-title">
+        <strong id="privacy-title" data-i18n="privacyTitle">Solo sul tuo computer</strong>
+        <span data-i18n="privacyBody">Il servizio Python ascolta soltanto su 127.0.0.1 e rifiuta le proprie connessioni esterne.</span>
+      </section>
+
+      <section class="panel" aria-labelledby="new-job-title">
+        <h2 id="new-job-title" data-i18n="newJob">Nuova elaborazione</h2>
+        <form id="job-form">
+          <label>
+            <span data-i18n="engine">Motore</span>
+            <select id="engine" name="engine" required></select>
+          </label>
+          <p id="engine-description" class="muted"></p>
+          <label>
+            <span data-i18n="file">Documento locale</span>
+            <input id="file" name="file" type="file" required>
+          </label>
+          <button type="submit" data-i18n="start">Elabora in locale</button>
+          <p id="form-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="jobs-title">
+        <div class="section-heading">
+          <h2 id="jobs-title" data-i18n="jobs">Elaborazioni</h2>
+          <button id="refresh" type="button" class="secondary" data-i18n="refresh">Aggiorna</button>
+        </div>
+        <div id="jobs" class="jobs"></div>
+      </section>
+    </main>
+  </body>
+</html>
