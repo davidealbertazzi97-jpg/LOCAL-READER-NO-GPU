@@ -47,6 +47,13 @@ def remove_work_tree(path: Path) -> None:
         shutil.rmtree(resolved, ignore_errors=True)
 
 
+def remove_output_tree(path: Path) -> None:
+    resolved = path.resolve()
+    outputs = PATHS.outputs.resolve()
+    if resolved != outputs and outputs in resolved.parents:
+        shutil.rmtree(resolved, ignore_errors=True)
+
+
 def resolve_artifact(root: Path, relative_name: str) -> Path:
     relative = Path(relative_name)
     if relative.is_absolute() or ".." in relative.parts:

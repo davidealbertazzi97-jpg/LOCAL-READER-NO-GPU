@@ -19,6 +19,7 @@ class LocalEngine(ABC):
     description_en: str
     description_it: str
     accepted_extensions: frozenset[str]
+    user_upload: bool = True
 
     def public_dict(self) -> dict[str, Any]:
         return {
@@ -28,6 +29,7 @@ class LocalEngine(ABC):
             "description_en": self.description_en,
             "description_it": self.description_it,
             "accepted_extensions": sorted(self.accepted_extensions),
+            "user_upload": self.user_upload,
         }
 
     def accepts(self, path: Path) -> bool:

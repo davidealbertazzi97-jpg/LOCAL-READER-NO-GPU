@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Exercise the real loopback server, token boundary, queue, and cleanup."""
+"""Exercise the real local server; optionally run OCR, review, and Kokoro."""
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import socket
@@ -17,7 +18,7 @@ import uuid
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent.parent
-TOKEN = "smoke-test-" + "x" * 48
+TOKEN = "accessibility-smoke-" + "x" * 48
 
 
 def free_port() -> int:
@@ -32,6 +33,7 @@ def request_json(
     token: bool = False,
     data: bytes | None = None,
     content_type: str | None = None,
+    method: str | None = None,
 ) -> tuple[int, object]:
     headers = {}
     if token:
@@ -45,51 +47,72 @@ def request_json(
         url,
         data=data,
         headers=headers,
-        method="POST" if data is not None else "GET",
+        method=method or ("POST" if data is not None else "GET"),
     )
     try:
-        with urllib.request.urlopen(request, timeout=3) as response:
+        with urllib.request.urlopen(request, timeout=5) as response:
             return response.status, json.load(response)
     except urllib.error.HTTPError as exc:
         return exc.code, json.load(exc)
 
 
-def multipart() -> tuple[bytes, str]:
-    boundary = "----local-ai-" + uuid.uuid4().hex
+def multipart(path: Path) -> tuple[bytes, str]:
+    boundary = "----accessibility-" + uuid.uuid4().hex
+    content_type = "application/pdf" if path.suffix == ".pdf" else "image/png"
     parts = [
         (
             f"--{boundary}\r\n"
             'Content-Disposition: form-data; name="engine"\r\n\r\n'
-            "text-statistics\r\n"
+            "accessible-document\r\n"
         ).encode(),
         (
             f"--{boundary}\r\n"
             'Content-Disposition: form-data; name="options"\r\n\r\n'
-            '{"language":"it"}\r\n'
+            "{}\r\n"
         ).encode(),
         (
             f"--{boundary}\r\n"
-            'Content-Disposition: form-data; name="file"; filename="sample.txt"\r\n'
-            "Content-Type: text/plain\r\n\r\n"
-            "uno due tre\r\n"
-        ).encode(),
+            f'Content-Disposition: form-data; name="file"; filename="{path.name}"\r\n'
+            f"Content-Type: {content_type}\r\n\r\n"
+        ).encode()
+        + path.read_bytes()
+        + b"\r\n",
         f"--{boundary}--\r\n".encode(),
     ]
     return b"".join(parts), f"multipart/form-data; boundary={boundary}"
 
 
+def wait_for_job(base: str, job_id: str, timeout: float = 180.0) -> dict:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        status, value = request_json(f"{base}/api/jobs/{job_id}", token=True)
+        assert status == 200
+        job = dict(value)
+        if job["status"] in {"completed", "failed"}:
+            return job
+        time.sleep(0.2)
+    raise RuntimeError("job timeout")
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser()
+    root.add_argument("--full", action="store_true")
+    return root
+
+
 def main() -> int:
+    args = parser().parse_args()
     port = free_port()
-    with tempfile.TemporaryDirectory(prefix="local-ai-starter-smoke-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="local-accessibility-smoke-") as temporary:
         root = Path(temporary)
         environment = os.environ.copy()
         environment.update(
             {
                 "LOCAL_AI_APP_TOKEN": TOKEN,
                 "LOCAL_AI_APP_PORT": str(port),
-                "LOCAL_AI_APP_STARTER_DATA": str(root / "data"),
-                "LOCAL_AI_APP_STARTER_STATE": str(root / "state"),
-                "LOCAL_AI_APP_STARTER_OUTPUTS": str(root / "outputs"),
+                "LOCAL_ACCESSIBILITY_STUDIO_DATA": str(root / "data"),
+                "LOCAL_ACCESSIBILITY_STUDIO_STATE": str(root / "state"),
+                "LOCAL_ACCESSIBILITY_STUDIO_OUTPUTS": str(root / "outputs"),
                 "PYTHONPATH": str(APP_DIR / "runtime_guard"),
                 "HF_HUB_OFFLINE": "1",
                 "TRANSFORMERS_OFFLINE": "1",
@@ -116,7 +139,7 @@ def main() -> int:
         )
         base = f"http://127.0.0.1:{port}"
         try:
-            for _ in range(100):
+            for _ in range(160):
                 if process.poll() is not None:
                     raise RuntimeError(process.stdout.read() if process.stdout else "")
                 try:
@@ -131,31 +154,84 @@ def main() -> int:
             status, _ = request_json(f"{base}/api/product")
             assert status == 401
             status, product = request_json(f"{base}/api/product", token=True)
-            assert status == 200 and product["slug"] == "local-ai-app-starter"
+            assert status == 200
+            assert product["slug"] == "local-accessibility-studio"
+            status, engines = request_json(f"{base}/api/engines", token=True)
+            assert status == 200 and len(engines) == 2
 
-            body, content_type = multipart()
-            status, job = request_json(
-                f"{base}/api/jobs",
-                token=True,
-                data=body,
-                content_type=content_type,
-            )
-            assert status == 202, (status, job)
-            job_id = job["id"]
-            for _ in range(100):
-                status, job = request_json(
-                    f"{base}/api/jobs/{job_id}",
+            if args.full:
+                sample = root / "sample.pdf"
+                subprocess.run(
+                    [
+                        str(APP_DIR / ".venv-ocr" / "bin" / "python"),
+                        str(APP_DIR / "tests" / "create_sample.py"),
+                        str(sample),
+                    ],
+                    check=True,
+                    cwd=APP_DIR,
+                )
+                body, content_type = multipart(sample)
+                status, queued = request_json(
+                    f"{base}/api/jobs",
+                    token=True,
+                    data=body,
+                    content_type=content_type,
+                )
+                assert status == 202, (status, queued)
+                ocr_job = wait_for_job(base, queued["id"])
+                assert ocr_job["status"] == "completed", ocr_job
+                assert not (root / "data" / "work" / ocr_job["id"]).exists()
+
+                status, document = request_json(
+                    f"{base}/api/jobs/{ocr_job['id']}/document",
                     token=True,
                 )
-                assert status == 200
-                if job["status"] in {"completed", "failed"}:
-                    break
-                time.sleep(0.05)
-            assert job["status"] == "completed", job
-            assert "options" not in job
-            assert not (root / "data" / "work" / job_id).exists()
-            assert (root / "outputs" / job_id / "report.json").is_file()
-            print("Local server smoke test passed.")
+                assert status == 200 and document["pages"][0]["blocks"]
+                document["title"] = "Documento corretto"
+                document["pages"][0]["blocks"][1]["text"] = "Testo revisionato."
+                status, document = request_json(
+                    f"{base}/api/jobs/{ocr_job['id']}/document",
+                    token=True,
+                    data=json.dumps(document).encode(),
+                    content_type="application/json",
+                    method="PUT",
+                )
+                assert status == 200 and document["revision"] == 2
+                stored_text = (
+                    root / "outputs" / ocr_job["id"] / "reading.txt"
+                ).read_text(encoding="utf-8")
+                assert "Testo revisionato." in stored_text
+
+                status, queued_speech = request_json(
+                    f"{base}/api/jobs/{ocr_job['id']}/speech",
+                    token=True,
+                    data=json.dumps({"voice": "im_nicola", "speed": 1.0}).encode(),
+                    content_type="application/json",
+                )
+                assert status == 202, (status, queued_speech)
+                speech_job = wait_for_job(base, queued_speech["id"], timeout=300)
+                assert speech_job["status"] == "completed", speech_job
+                audio = root / "outputs" / speech_job["id"] / "speech.wav"
+                assert audio.stat().st_size > 10_000
+                status, deleted = request_json(
+                    f"{base}/api/jobs/{speech_job['id']}",
+                    token=True,
+                    data=b"",
+                    method="DELETE",
+                )
+                assert status == 200 and deleted["deleted"]
+                assert not (root / "outputs" / speech_job["id"]).exists()
+                status, deleted = request_json(
+                    f"{base}/api/jobs/{ocr_job['id']}",
+                    token=True,
+                    data=b"",
+                    method="DELETE",
+                )
+                assert status == 200 and deleted["deleted"]
+                assert not (root / "outputs" / ocr_job["id"]).exists()
+                print("Full OCR, review, and Kokoro smoke test passed.")
+            else:
+                print("Local server core smoke test passed.")
         finally:
             process.terminate()
             try:

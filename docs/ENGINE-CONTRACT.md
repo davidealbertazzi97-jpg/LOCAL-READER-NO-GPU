@@ -24,5 +24,7 @@ An engine must:
 8. expose uncertainty and source evidence when producing inferred facts;
 9. remain interruptible and avoid unbounded CPU, RAM, disk, or archive expansion.
 
-The example engine performs plain text normalization and counts. It exists only
-to demonstrate the contract and should be removed from a real product.
+The document engine accepts user uploads and delegates to the isolated OCR
+worker. The speech engine accepts only server-created copies of reviewed
+`reading.txt` artifacts; direct speech-engine uploads are rejected at the HTTP
+boundary.

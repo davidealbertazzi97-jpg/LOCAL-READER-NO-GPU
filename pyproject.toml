@@ -1,5 +1,5 @@
 [project]
-name = "local-ai-app-starter"
+name = "local-accessibility-studio"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 license = "GPL-3.0-only"
@@ -12,7 +12,7 @@ dependencies = [
 [tool.ruff]
 target-version = "py312"
 line-length = 88
-extend-exclude = [".venv", ".tools", "bin"]
+extend-exclude = [".venv", ".venv-*", ".tools", "bin"]
 
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "SIM", "UP"]

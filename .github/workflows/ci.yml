@@ -24,13 +24,14 @@ jobs:
         run: |
           ruff check .
           ruff format --check .
-          bandit -q -c pyproject.toml -r app runtime_guard scripts
-          python -m compileall -q app runtime_guard scripts tests
+          bandit -q -c pyproject.toml -r app runtime_guard scripts workers
+          python -m compileall -q app runtime_guard scripts tests workers
           python -m unittest discover -s tests -p "test_*.py"
           find scripts -type f -name '*.sh' -print0 |
             xargs -0 -n1 bash -n
           bash -n install.sh start.sh
           node --check static/app.js
+          test -z "$(git ls-files models .venv .venv-ocr .venv-tts)"
 
   core-smoke:
     strategy:
@@ -55,8 +56,8 @@ jobs:
       - name: Install and run smoke test
         shell: bash
         run: |
-          python scripts/bootstrap.py --dry-run
-          python scripts/bootstrap.py
+          python scripts/bootstrap.py --core-only --skip-desktop --dry-run
+          python scripts/bootstrap.py --core-only --skip-desktop
           "${{ matrix.venv-python }}" tests/smoke_local.py
       - name: Parse PowerShell launchers
         if: runner.os == 'Windows'
@@ -69,3 +70,19 @@ jobs:
             ) | Out-Null
             if ($errors.Count) { throw ($errors | Out-String) }
           }
+
+  full-local-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.16"
+      - name: Install OCR and Kokoro, then exercise the complete workflow
+        shell: bash
+        run: |
+          python scripts/bootstrap.py --skip-desktop
+          .venv/bin/python tests/smoke_local.py --full

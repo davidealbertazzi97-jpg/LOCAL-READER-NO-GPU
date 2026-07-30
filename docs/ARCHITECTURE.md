@@ -3,32 +3,39 @@
 ```text
 browser on 127.0.0.1
         |
-        | token + same-origin request
+        | token + exact origin
         v
  FastAPI boundary ──> SQLite job metadata
         |
-        | bounded private work copy
+        | private bounded work copy
         v
- one local worker ──> registered engine ──> durable result artifacts
+ serialized job runner
         |
-        └── work copy removed after success or failure
+        +── isolated OCR Python ──> reviewed document.json
+        |                           + accessible.html
+        |                           + reading.txt
+        |                           + page previews
+        |
+        └── isolated Kokoro Python ──> speech.wav
+
+work copy removed ────────────────> durable results remain
 ```
 
-The launcher is the security root. It creates a private token, chooses an
-available loopback port, removes inherited Python injection paths, enables the
-runtime network guard, and starts a fixed Uvicorn command without a shell.
+The web core, OCR stack, and speech stack use separate virtual environments.
+This keeps the web boundary small and releases model memory when a worker exits.
+The launcher supplies the network guard to every Python child.
 
-The HTTP boundary accepts only loopback clients. API calls require the token;
-state-changing browser calls must also come from the exact loopback origin.
-Uploaded names are reduced to a safe basename and accepted only when a
-registered engine declares their extension.
+RapidOCR uses the PP-OCRv6 small ONNX detection and recognition models on CPU.
+PDF pages are rendered with PDFium; image dimensions, pixel count, frame count,
+and PDF page count are bounded. Each OCR block carries text, a bounding box,
+confidence, and an inferred semantic role.
 
-Jobs are serialized deliberately. This gives predictable CPU and memory use on
-consumer hardware. SQLite retains status and small non-sensitive summaries.
-Source documents live only in the private work directory and are removed in a
-`finally` path. Result files are durable and visible to the user.
+`document.json` is the editable source of truth. The server validates every
+revision and regenerates HTML and reading text by escaping text into a fixed
+template; user text is never interpreted as HTML. A revision number prevents a
+stale browser tab from silently overwriting a newer edit.
 
-The Python network guard is cross-platform. The small `LD_PRELOAD` guard adds a
-second layer on Linux and also covers many native libraries. Neither can defend
-against malicious code deliberately disabling the guard, so engines remain
-trusted code and must be reviewed.
+Speech is created only from a saved `reading.txt` artifact. The server makes a
+private child-job copy, verifies Kokoro model and voice hashes, and starts a
+separate worker. The worker synthesizes bounded chunks and streams PCM samples
+to WAV, avoiding a full-document audio array in memory.

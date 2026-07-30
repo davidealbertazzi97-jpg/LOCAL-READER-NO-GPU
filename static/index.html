@@ -4,59 +4,115 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <title>Local AI App Starter</title>
+    <title>Local Accessibility Studio</title>
     <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/assets/app.css">
     <script src="/assets/app.js" defer></script>
   </head>
   <body>
+    <a class="skip-link" href="#main" data-i18n="skip">Vai al contenuto</a>
     <header>
       <div class="brand">
-        <img src="/assets/icon.svg" width="42" height="42" alt="">
+        <img src="/assets/icon.svg" width="48" height="48" alt="">
         <div>
-          <h1 id="product-name">Local AI App Starter</h1>
+          <h1 id="product-name">Local Accessibility Studio</h1>
           <p id="product-description"></p>
         </div>
       </div>
       <label class="language">
         <span data-i18n="language">Lingua</span>
-        <select id="language-select" aria-label="Lingua">
+        <select id="language-select">
           <option value="it">Italiano</option>
           <option value="en">English</option>
         </select>
       </label>
     </header>
 
-    <main>
+    <main id="main">
       <section class="privacy-note" aria-labelledby="privacy-title">
-        <strong id="privacy-title" data-i18n="privacyTitle">Solo sul tuo computer</strong>
-        <span data-i18n="privacyBody">Il servizio Python ascolta soltanto su 127.0.0.1 e rifiuta le proprie connessioni esterne.</span>
+        <strong id="privacy-title" data-i18n="privacyTitle">Documenti e voce restano locali</strong>
+        <span data-i18n="privacyBody">OCR e sintesi vocale funzionano sul computer. I risultati vanno comunque controllati prima dell’uso.</span>
+      </section>
+
+      <section class="status-grid" aria-label="Stato dei motori">
+        <div class="status-card">
+          <span class="status-dot" id="ocr-dot"></span>
+          <div><strong>RapidOCR</strong><span id="ocr-status"></span></div>
+        </div>
+        <div class="status-card">
+          <span class="status-dot" id="speech-dot"></span>
+          <div><strong>Kokoro italiano</strong><span id="speech-status"></span></div>
+        </div>
       </section>
 
       <section class="panel" aria-labelledby="new-job-title">
-        <h2 id="new-job-title" data-i18n="newJob">Nuova elaborazione</h2>
+        <h2 id="new-job-title" data-i18n="newJob">Riconosci un documento</h2>
+        <p data-i18n="newJobHelp">Carica un PDF o un’immagine. Verranno create copie revisionabili; l’originale non viene modificato.</p>
         <form id="job-form">
           <label>
-            <span data-i18n="engine">Motore</span>
-            <select id="engine" name="engine" required></select>
-          </label>
-          <p id="engine-description" class="muted"></p>
-          <label>
             <span data-i18n="file">Documento locale</span>
-            <input id="file" name="file" type="file" required>
+            <input id="file" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp" required>
           </label>
-          <button type="submit" data-i18n="start">Elabora in locale</button>
+          <button type="submit" data-i18n="start">Avvia OCR locale</button>
           <p id="form-status" role="status" aria-live="polite"></p>
         </form>
       </section>
 
       <section class="panel" aria-labelledby="jobs-title">
         <div class="section-heading">
-          <h2 id="jobs-title" data-i18n="jobs">Elaborazioni</h2>
+          <h2 id="jobs-title" data-i18n="jobs">Lavori locali</h2>
           <button id="refresh" type="button" class="secondary" data-i18n="refresh">Aggiorna</button>
         </div>
-        <div id="jobs" class="jobs"></div>
+        <div id="jobs" class="jobs" aria-live="polite"></div>
+      </section>
+
+      <section id="editor" class="panel editor" aria-labelledby="editor-title" hidden>
+        <div class="section-heading">
+          <h2 id="editor-title" data-i18n="reviewTitle">Revisione accessibile</h2>
+          <button id="close-editor" type="button" class="secondary" data-i18n="close">Chiudi</button>
+        </div>
+        <p data-i18n="reviewHelp">Controlla testo, ordine e ruolo di ogni blocco. La confidenza bassa richiede particolare attenzione.</p>
+        <div class="document-settings">
+          <label>
+            <span data-i18n="documentTitle">Titolo del documento</span>
+            <input id="document-title" maxlength="200">
+          </label>
+          <label>
+            <span data-i18n="documentLanguage">Lingua del documento</span>
+            <select id="document-language">
+              <option value="it">Italiano</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+        </div>
+        <div class="editor-actions">
+          <button id="save-document" type="button" data-i18n="save">Salva correzioni</button>
+          <a id="download-html" class="button-link secondary" data-i18n="downloadHtml">Scarica HTML accessibile</a>
+          <a id="download-text" class="button-link secondary" data-i18n="downloadText">Scarica testo per lettura</a>
+        </div>
+        <p id="save-status" role="status" aria-live="polite"></p>
+
+        <fieldset class="speech-controls">
+          <legend data-i18n="speechTitle">Sintesi vocale italiana</legend>
+          <label>
+            <span data-i18n="voice">Voce</span>
+            <select id="voice">
+              <option value="im_nicola">Nicola</option>
+              <option value="if_sara">Sara</option>
+            </select>
+          </label>
+          <label>
+            <span data-i18n="speed">Velocità</span>
+            <input id="speed" type="range" min="0.75" max="1.5" step="0.05" value="1">
+            <output id="speed-value">1.00×</output>
+          </label>
+          <button id="create-speech" type="button" data-i18n="createSpeech">Crea audio con Kokoro</button>
+        </fieldset>
+        <div id="pages" class="pages"></div>
       </section>
     </main>
+    <footer>
+      <a href="/legal">GPLv3 · Legal notices / Note legali · No warranty</a>
+    </footer>
   </body>
 </html>
