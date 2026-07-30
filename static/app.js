@@ -354,18 +354,19 @@ document.querySelector("#language-select").addEventListener("change", (event) =>
 document.querySelector("#refresh").addEventListener("click", () => void renderJobs());
 document.querySelector("#job-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  const button = event.currentTarget.querySelector("button[type=submit]");
+  const form = event.currentTarget;
+  const button = form.querySelector("button[type=submit]");
   const status = document.querySelector("#form-status");
   const engine = engines.find((item) => item.user_upload);
   button.disabled = true;
   status.textContent = t("sending");
   try {
-    const data = new FormData(event.currentTarget);
+    const data = new FormData(form);
     data.set("engine", engine.id);
     data.set("options", "{}");
     await api("/api/jobs", {method: "POST", body: data});
     status.textContent = t("accepted");
-    event.currentTarget.reset();
+    form.reset();
     await renderJobs();
   } catch (error) {
     status.textContent = `${t("failed")} ${error.message}`;
@@ -379,20 +380,22 @@ document.querySelector("#close-editor").addEventListener("click", () => {
   documentValue = null;
 });
 document.querySelector("#save-document").addEventListener("click", async (event) => {
-  event.currentTarget.disabled = true;
+  const button = event.currentTarget;
+  button.disabled = true;
   try {
     await saveDocument();
   } catch (error) {
     document.querySelector("#save-status").textContent = `${t("failed")} ${error.message}`;
   } finally {
-    event.currentTarget.disabled = false;
+    button.disabled = false;
   }
 });
 document.querySelector("#speed").addEventListener("input", (event) => {
   document.querySelector("#speed-value").textContent = `${Number(event.target.value).toFixed(2)}×`;
 });
 document.querySelector("#create-speech").addEventListener("click", async (event) => {
-  event.currentTarget.disabled = true;
+  const button = event.currentTarget;
+  button.disabled = true;
   const status = document.querySelector("#save-status");
   try {
     await saveDocument();
@@ -409,7 +412,7 @@ document.querySelector("#create-speech").addEventListener("click", async (event)
   } catch (error) {
     status.textContent = `${t("failed")} ${error.message}`;
   } finally {
-    event.currentTarget.disabled = false;
+    button.disabled = false;
   }
 });
 
