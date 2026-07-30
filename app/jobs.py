@@ -8,6 +8,7 @@ from typing import Any
 
 from .config import PATHS
 from .engines import ENGINES
+from .processes import allow_worker_processes, stop_worker_processes
 from .speech_jobs import queue_speech_job
 from .store import STORE
 from .utils import remove_output_tree, remove_work_tree
@@ -19,10 +20,14 @@ class JobRunner:
     def __init__(self) -> None:
         self._queue: queue.Queue[str | None] = queue.Queue()
         self._thread: threading.Thread | None = None
+        self._stopping = threading.Event()
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
+        self._queue = queue.Queue()
+        self._stopping.clear()
+        allow_worker_processes()
         for interrupted_id in STORE.interrupt_incomplete():
             remove_work_tree(PATHS.work / interrupted_id)
             remove_output_tree(PATHS.outputs / interrupted_id)
@@ -38,9 +43,12 @@ class JobRunner:
     def stop(self) -> None:
         if not self._thread:
             return
+        self._stopping.set()
+        stop_worker_processes()
         self._queue.put(None)
-        self._thread.join(timeout=10)
-        self._thread = None
+        self._thread.join(timeout=15)
+        if not self._thread.is_alive():
+            self._thread = None
 
     def submit(
         self,
@@ -58,10 +66,10 @@ class JobRunner:
         self._queue.put(job_id)
 
     def _run(self) -> None:
-        while True:
+        while not self._stopping.is_set():
             job_id = self._queue.get()
             try:
-                if job_id is None:
+                if job_id is None or self._stopping.is_set():
                     return
                 self._process(job_id)
             finally:

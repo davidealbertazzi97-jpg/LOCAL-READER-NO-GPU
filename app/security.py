@@ -38,12 +38,22 @@ def request_is_authorized(request: Request) -> bool:
 
 
 def origin_is_allowed(request: Request) -> bool:
-    origin = request.headers.get("origin")
-    if not origin:
-        return True
+    origins = request.headers.getlist("origin")
+    if len(origins) != 1:
+        return False
+    origin = origins[0]
     parsed = urlsplit(origin)
-    return (
+    try:
+        port = parsed.port
+    except ValueError:
+        return False
+    return bool(
         parsed.scheme == "http"
         and parsed.hostname == "127.0.0.1"
-        and parsed.port == PORT
+        and port == PORT
+        and parsed.username is None
+        and parsed.password is None
+        and parsed.path == ""
+        and parsed.query == ""
+        and parsed.fragment == ""
     )

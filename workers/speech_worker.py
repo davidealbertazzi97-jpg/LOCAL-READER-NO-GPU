@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 from collections.abc import Iterator
@@ -11,8 +12,10 @@ from pathlib import Path
 os.environ.setdefault("OMP_NUM_THREADS", str(max(1, min(4, os.cpu_count() or 2))))
 os.environ.setdefault("OMP_WAIT_POLICY", "PASSIVE")
 
-MAX_CHARACTERS = 2_000_000
+MAX_CHARACTERS = 250_000
 MAX_CHUNK = 1_200
+MAX_CHUNK_SECONDS = 10 * 60
+MAX_AUDIO_SECONDS = 4 * 60 * 60
 
 
 def chunks(text: str) -> Iterator[str]:
@@ -77,6 +80,8 @@ def main() -> int:
         choices=("it", "en-us", "en-gb"),
     )
     args = parser.parse_args()
+    if not math.isfinite(args.speed) or not 0.75 <= args.speed <= 1.5:
+        raise ValueError("speech speed must be between 0.75 and 1.5")
     source = Path(args.input)
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
@@ -112,6 +117,17 @@ def main() -> int:
             )
             if generated_rate != sample_rate:
                 raise RuntimeError("Kokoro returned an unexpected sample rate")
+            samples = np.asarray(samples)
+            if (
+                samples.ndim != 1
+                or not np.issubdtype(samples.dtype, np.floating)
+                or not np.all(np.isfinite(samples))
+                or len(samples) > sample_rate * MAX_CHUNK_SECONDS
+            ):
+                raise RuntimeError("Kokoro returned invalid audio samples")
+            projected_samples = sample_count + len(samples) + len(pause)
+            if projected_samples > sample_rate * MAX_AUDIO_SECONDS:
+                raise RuntimeError("generated audio exceeds the supported duration")
             audio.write(samples)
             audio.write(pause)
             sample_count += len(samples) + len(pause)

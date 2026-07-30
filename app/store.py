@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
 from datetime import UTC, datetime
@@ -58,6 +59,8 @@ class JobStore:
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS jobs_created ON jobs(created_at DESC)"
             )
+        if os.name != "nt":
+            self.database.chmod(0o600)
 
     def create(
         self,

@@ -9,7 +9,9 @@ from typing import Annotated, Any
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware import Middleware
 
+from .body_limit import RequestBodyLimitMiddleware
 from .config import MAX_UPLOAD_BYTES, PATHS
 from .documents import load_document, validate_document, write_exports
 from .engines import ENGINES
@@ -36,6 +38,7 @@ STATIC = PATHS.app / "static"
 CHUNK_SIZE = 1024 * 1024
 MAX_DOCUMENT_EDIT_BYTES = 12 * 1024 * 1024
 DOCUMENT_LOCK = threading.Lock()
+MAX_UPLOAD_REQUEST_BYTES = MAX_UPLOAD_BYTES + 256 * 1024
 
 
 async def limited_body(request: Request, maximum: int, label: str) -> bytes:
@@ -89,6 +92,13 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
     lifespan=lifespan,
+    middleware=[
+        Middleware(
+            RequestBodyLimitMiddleware,
+            path="/api/jobs",
+            maximum=MAX_UPLOAD_REQUEST_BYTES,
+        )
+    ],
 )
 app.mount("/assets", StaticFiles(directory=STATIC), name="assets")
 
@@ -109,16 +119,26 @@ async def local_security(request: Request, call_next):
     response.headers["Cache-Control"] = "no-store"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self'; "
         "connect-src 'self'; "
         "font-src 'self'; "
         "img-src 'self' data:; "
         "media-src 'self'; "
+        "worker-src 'none'; "
+        "manifest-src 'none'; "
         "object-src 'none'; "
         "base-uri 'none'; "
         "frame-ancestors 'none'; "
         "form-action 'self'"
     )
     response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+    )
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     return response
@@ -431,7 +451,9 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
                 language=language,
             )
         return public_job(child)
-    except (OSError, RuntimeError, ValueError) as exc:
+    except ValueError as exc:
+        raise HTTPException(413, "Reviewed text exceeds the speech limit") from exc
+    except (OSError, RuntimeError) as exc:
         raise HTTPException(500, "Speech could not be queued locally") from exc
 
 

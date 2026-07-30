@@ -97,6 +97,7 @@ def input_pages(source: Path) -> Iterator[tuple[int, Any]]:
 
 
 def create_engine() -> Any:
+    import rapidocr
     from rapidocr import (
         EngineType,
         LangDet,
@@ -106,8 +107,13 @@ def create_engine() -> Any:
         RapidOCR,
     )
 
+    model_root = Path(rapidocr.__file__).resolve().parent / "models"
     return RapidOCR(
         params={
+            # The latest OmegaConf release that ships entirely as wheels does
+            # not accept pathlib values. Supplying the verified wheel's model
+            # directory as a string also prevents RapidOCR from assigning one.
+            "Global.model_root_dir": str(model_root),
             "Det.engine_type": EngineType.ONNXRUNTIME,
             # PP-OCRv6 small is one unified multilingual model. RapidOCR's
             # current resolver exposes that asset through the CH enum value.

@@ -6,6 +6,16 @@ All notable changes to Local Accessibility Studio are documented here.
 
 - Presented the source repository as Local Reader, with an inclusive-education
   focus and a bilingual plug-and-play prompt for terminal-capable AI agents.
+- Enforced browser origin checks on every state-changing API request and added
+  a pre-parser upload request limit.
+- Added controlled OCR/Kokoro process termination, stricter private file
+  permissions, bounded audio generation, and hardened runtime environments.
+- Locked all installation dependencies with SHA-256 hashes and disabled source
+  distribution builds in the public installer.
+- Kept RapidOCR compatible with the wheel-only OmegaConf profile by supplying
+  its packaged model path explicitly.
+- Hardened CI permissions, checkout credentials, expression handling, and
+  concurrency.
 
 ## 0.2.0 - 2026-07-30
 

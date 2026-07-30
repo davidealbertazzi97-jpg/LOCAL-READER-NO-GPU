@@ -5,7 +5,7 @@ browser on 127.0.0.1
         |
         | token + exact origin
         v
- FastAPI boundary ──> SQLite job metadata
+ bounded FastAPI boundary ──> SQLite job metadata
         |
         | private bounded work copy
         v
@@ -23,7 +23,10 @@ work copy removed ────────────────> durable resu
 
 The web core, OCR stack, and speech stack use separate virtual environments.
 This keeps the web boundary small and releases model memory when a worker exits.
-The launcher supplies the network guard to every Python child.
+Their complete dependency sets are locked with distribution hashes and install
+from wheels only. The launcher supplies the network guard to every Python child.
+Upload bodies are bounded before multipart parsing, and active worker processes
+are tracked and terminated during orderly shutdown.
 
 RapidOCR uses the PP-OCRv6 small ONNX detection and recognition models on CPU.
 PDF pages are rendered with PDFium; image dimensions, pixel count, frame count,

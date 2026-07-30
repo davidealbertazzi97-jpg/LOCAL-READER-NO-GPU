@@ -4,7 +4,12 @@ import json
 import math
 import os
 import re
+import stat
+import subprocess
+import sys
 import tempfile
+import threading
+import time
 import unittest
 import uuid
 from pathlib import Path
@@ -17,7 +22,10 @@ os.environ["LOCAL_ACCESSIBILITY_STUDIO_OUTPUTS"] = str(
     Path(_TEST_ROOT.name) / "outputs"
 )
 
-from app.config import PATHS  # noqa: E402
+from starlette.requests import Request  # noqa: E402
+
+from app.body_limit import RequestBodyLimitMiddleware  # noqa: E402
+from app.config import PATHS, PORT, _private_directory  # noqa: E402
 from app.documents import (  # noqa: E402
     accessible_html,
     reading_text,
@@ -25,8 +33,13 @@ from app.documents import (  # noqa: E402
     write_exports,
 )
 from app.engines import ENGINES  # noqa: E402
+from app.processes import (  # noqa: E402
+    allow_worker_processes,
+    run_worker,
+    stop_worker_processes,
+)
 from app.product import load_product  # noqa: E402
-from app.security import TOKEN_COOKIE  # noqa: E402
+from app.security import TOKEN_COOKIE, origin_is_allowed  # noqa: E402
 from app.speech_jobs import normalized_options, queue_speech_job  # noqa: E402
 from app.store import JobStore  # noqa: E402
 from app.utils import remove_work_tree, resolve_artifact, safe_name  # noqa: E402
@@ -86,15 +99,205 @@ class ProductTests(unittest.TestCase):
 
     def test_launcher_removes_inherited_injection_paths(self) -> None:
         hostile = {
+            "GCONV_PATH": "/tmp/not-a-real-gconv",
+            "LD_AUDIT": "/tmp/not-a-real-audit-library.so",
             "LD_PRELOAD": "/tmp/not-a-real-library.so",
+            "OPENSSL_CONF": "/tmp/not-a-real-openssl-config",
             "PYTHONHOME": "/tmp/not-a-python-home",
             "PYTHONPATH": "/tmp/not-a-python-path",
         }
         with mock.patch.dict(os.environ, hostile, clear=False):
             environment = guarded_environment("x" * 48, 54321)
         self.assertNotIn("PYTHONHOME", environment)
+        self.assertNotIn("GCONV_PATH", environment)
+        self.assertNotIn("LD_AUDIT", environment)
+        self.assertNotIn("OPENSSL_CONF", environment)
         self.assertNotEqual(environment.get("LD_PRELOAD"), hostile["LD_PRELOAD"])
+        self.assertEqual(environment["PYTHONNOUSERSITE"], "1")
         self.assertTrue(environment["PYTHONPATH"].endswith("runtime_guard"))
+
+    def test_dependency_locks_contain_every_direct_pin(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        profiles = {
+            "requirements-core.lock": ("requirements-core.txt",),
+            "requirements-dev.lock": (
+                "requirements-core.txt",
+                "requirements-dev.txt",
+            ),
+            "requirements-ocr.lock": ("requirements-ocr.txt",),
+            "requirements-tts.lock": ("requirements-tts.txt",),
+        }
+        for lock_name, inputs in profiles.items():
+            locked = (root / lock_name).read_text(encoding="utf-8").casefold()
+            for input_name in inputs:
+                direct_requirements = (root / input_name).read_text(encoding="utf-8")
+                for line in direct_requirements.splitlines():
+                    match = re.match(
+                        r"([a-z0-9_.-]+)==([^;\s]+)",
+                        line.casefold(),
+                    )
+                    if match:
+                        direct_pin = f"{match.group(1)}=={match.group(2)}"
+                        self.assertRegex(
+                            locked,
+                            rf"(?m)^{re.escape(direct_pin)}(?:\s|\\)",
+                            f"{direct_pin} is missing from {lock_name}",
+                        )
+
+    @unittest.skipIf(os.name == "nt", "POSIX permission bits are not portable")
+    def test_existing_private_directory_permissions_are_repaired(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "private"
+            directory.mkdir(mode=0o755)
+            directory.chmod(0o755)
+            _private_directory(directory)
+            self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
+
+
+class OriginTests(unittest.TestCase):
+    @staticmethod
+    def request(origin: str | None) -> Request:
+        headers = []
+        if origin is not None:
+            headers.append((b"origin", origin.encode()))
+        return Request(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": "/api/jobs",
+                "headers": headers,
+                "client": ("127.0.0.1", 12345),
+                "scheme": "http",
+                "server": ("127.0.0.1", PORT),
+            }
+        )
+
+    def test_only_exact_numeric_loopback_origin_is_allowed(self) -> None:
+        self.assertTrue(origin_is_allowed(self.request(f"http://127.0.0.1:{PORT}")))
+        for origin in (
+            None,
+            "null",
+            f"http://localhost:{PORT}",
+            f"http://127.0.0.1:{PORT}/extra",
+            "http://127.0.0.1:not-a-port",
+            f"http://user@127.0.0.1:{PORT}",
+        ):
+            with self.subTest(origin=origin):
+                self.assertFalse(origin_is_allowed(self.request(origin)))
+        duplicate = self.request(f"http://127.0.0.1:{PORT}")
+        duplicate.scope["headers"].append(
+            (b"origin", f"http://127.0.0.1:{PORT}".encode())
+        )
+        self.assertFalse(origin_is_allowed(duplicate))
+
+
+class RequestBodyLimitTests(unittest.IsolatedAsyncioTestCase):
+    @staticmethod
+    async def consuming_app(scope, receive, send) -> None:
+        del scope
+        while True:
+            message = await receive()
+            if not message.get("more_body", False):
+                break
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    @staticmethod
+    def scope(headers: list[tuple[bytes, bytes]] | None = None) -> dict:
+        return {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/jobs",
+            "headers": headers or [],
+        }
+
+    async def invoke(
+        self,
+        messages: list[dict],
+        *,
+        headers: list[tuple[bytes, bytes]] | None = None,
+    ) -> list[dict]:
+        queued = iter(messages)
+        sent: list[dict] = []
+
+        async def receive() -> dict:
+            return next(queued)
+
+        async def send(message: dict) -> None:
+            sent.append(message)
+
+        middleware = RequestBodyLimitMiddleware(
+            self.consuming_app,
+            path="/api/jobs",
+            maximum=4,
+        )
+        await middleware(self.scope(headers), receive, send)
+        return sent
+
+    async def test_chunked_body_is_stopped_before_parser(self) -> None:
+        sent = await self.invoke(
+            [
+                {"type": "http.request", "body": b"abc", "more_body": True},
+                {"type": "http.request", "body": b"de", "more_body": False},
+            ]
+        )
+        self.assertEqual(sent[0]["status"], 413)
+
+    async def test_declared_oversize_and_ambiguous_lengths_are_rejected(self) -> None:
+        oversize = await self.invoke(
+            [],
+            headers=[(b"content-length", b"5")],
+        )
+        self.assertEqual(oversize[0]["status"], 413)
+        ambiguous = await self.invoke(
+            [],
+            headers=[
+                (b"content-length", b"1"),
+                (b"content-length", b"1"),
+            ],
+        )
+        self.assertEqual(ambiguous[0]["status"], 400)
+
+
+class WorkerProcessTests(unittest.TestCase):
+    def test_active_worker_is_terminated_during_shutdown(self) -> None:
+        allow_worker_processes()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ready = root / "ready"
+            result: list[subprocess.CompletedProcess[str] | Exception] = []
+
+            def target() -> None:
+                try:
+                    result.append(
+                        run_worker(
+                            [
+                                sys.executable,
+                                "-c",
+                                (
+                                    "from pathlib import Path; import time; "
+                                    f"Path({str(ready)!r}).write_text('ready'); "
+                                    "time.sleep(60)"
+                                ),
+                            ],
+                            cwd=root,
+                            timeout=60,
+                        )
+                    )
+                except Exception as exc:
+                    result.append(exc)
+
+            thread = threading.Thread(target=target)
+            thread.start()
+            deadline = time.monotonic() + 5
+            while not ready.exists() and time.monotonic() < deadline:
+                time.sleep(0.02)
+            self.assertTrue(ready.exists())
+            stop_worker_processes(timeout=2)
+            thread.join(timeout=5)
+            allow_worker_processes()
+            self.assertFalse(thread.is_alive())
+            self.assertTrue(result)
 
 
 class PublicUiTests(unittest.TestCase):

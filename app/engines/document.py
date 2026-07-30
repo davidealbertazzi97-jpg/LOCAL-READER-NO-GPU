@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 from typing import Any
 
 from ..config import PATHS
 from ..documents import write_exports
+from ..processes import run_worker
 from .base import EngineResult, LocalEngine
 
 
@@ -42,12 +42,9 @@ class AccessibleDocumentEngine(LocalEngine):
             "--output",
             str(output_dir),
         ]
-        completed = subprocess.run(
+        completed = run_worker(
             command,
             cwd=PATHS.app,
-            check=False,
-            capture_output=True,
-            text=True,
             timeout=2 * 60 * 60,
         )
         if completed.returncode:
