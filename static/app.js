@@ -8,10 +8,16 @@ const COPY = {
     newJobHelp: "Carica un PDF o un’immagine. Verranno create copie revisionabili; l’originale non viene modificato.",
     file: "Documento locale",
     autoSpeech: "Crea anche una bozza audio Kokoro dopo l’OCR",
-    autoSpeechHelp: "Usa la voce Nicola. Puoi correggere il testo e rigenerare l’audio in seguito.",
+    autoVoice: "Voce della bozza automatica",
+    voiceMale: "Maschile — Nicola",
+    voiceFemale: "Femminile — Sara",
+    autoSpeechHelp: "Puoi correggere il testo e rigenerare l’audio con un’altra voce in seguito.",
     start: "Avvia OCR locale",
     jobs: "Lavori locali",
     refresh: "Aggiorna",
+    clearHistory: "Cancella cronologia conclusa",
+    confirmClearHistory: "Cancellare dalla cronologia tutti i lavori conclusi e i relativi file locali?",
+    historyCleared: "Elementi cancellati: {count}.",
     empty: "Nessun lavoro.",
     sending: "Preparazione della copia locale…",
     accepted: "OCR inserito in coda. L’audio Kokoro partirà automaticamente.",
@@ -39,8 +45,8 @@ const COPY = {
     confidence: "Confidenza",
     low: "bassa",
     download: "Scarica",
-    delete: "Elimina risultati",
-    confirmDelete: "Eliminare definitivamente questo lavoro e tutti i risultati locali?",
+    delete: "Cancella dalla cronologia",
+    confirmDelete: "Cancellare questo lavoro dalla cronologia e rimuovere tutti i relativi file locali?",
     play: "Ascolta l’audio generato",
     roles: {
       heading1: "Titolo principale",
@@ -62,10 +68,16 @@ const COPY = {
     newJobHelp: "Upload a PDF or image. The app creates reviewable copies and never changes the original.",
     file: "Local document",
     autoSpeech: "Also create a Kokoro audio draft after OCR",
-    autoSpeechHelp: "Uses the Nicola voice. You can correct the text and regenerate audio later.",
+    autoVoice: "Automatic draft voice",
+    voiceMale: "Male — Nicola",
+    voiceFemale: "Female — Sara",
+    autoSpeechHelp: "You can correct the text and regenerate audio with another voice later.",
     start: "Start local OCR",
     jobs: "Local jobs",
     refresh: "Refresh",
+    clearHistory: "Clear finished history",
+    confirmClearHistory: "Clear every finished job from history and remove its local files?",
+    historyCleared: "Items cleared: {count}.",
     empty: "No jobs yet.",
     sending: "Preparing the local working copy…",
     accepted: "OCR queued. Kokoro audio will start automatically.",
@@ -93,8 +105,8 @@ const COPY = {
     confidence: "Confidence",
     low: "low",
     download: "Download",
-    delete: "Delete results",
-    confirmDelete: "Permanently delete this job and all local results?",
+    delete: "Remove from history",
+    confirmDelete: "Remove this job from history and delete all its local files?",
     play: "Play generated audio",
     roles: {
       heading1: "Main heading",
@@ -158,6 +170,8 @@ async function renderStatus() {
   const automaticSpeech = document.querySelector("#auto-speech");
   automaticSpeech.disabled = !status.speech.ready;
   if (!status.speech.ready) automaticSpeech.checked = false;
+  document.querySelector("#auto-voice").disabled =
+    !status.speech.ready || !automaticSpeech.checked;
   document.querySelector("#create-speech").disabled = !status.speech.ready;
 }
 
@@ -255,6 +269,8 @@ async function renderJobs() {
     const jobs = await api("/api/jobs");
     container.replaceChildren(...(jobs.length ? jobs.map(jobCard) : [document.createTextNode(t("empty"))]));
     const active = jobs.some((job) => ["uploading", "queued", "running"].includes(job.status));
+    document.querySelector("#clear-history").disabled =
+      !jobs.some((job) => ["completed", "failed"].includes(job.status));
     clearTimeout(pollTimer);
     if (active) pollTimer = setTimeout(() => void renderJobs(), 1500);
   } catch (error) {
@@ -361,6 +377,29 @@ document.querySelector("#language-select").addEventListener("change", (event) =>
   renderLanguage();
 });
 document.querySelector("#refresh").addEventListener("click", () => void renderJobs());
+document.querySelector("#auto-speech").addEventListener("change", (event) => {
+  document.querySelector("#auto-voice").disabled =
+    event.currentTarget.disabled || !event.currentTarget.checked;
+});
+document.querySelector("#clear-history").addEventListener("click", async (event) => {
+  if (!window.confirm(t("confirmClearHistory"))) return;
+  const button = event.currentTarget;
+  const status = document.querySelector("#history-status");
+  button.disabled = true;
+  try {
+    const result = await api("/api/jobs", {method: "DELETE"});
+    if (editingJob) {
+      document.querySelector("#editor").hidden = true;
+      editingJob = null;
+      documentValue = null;
+    }
+    status.textContent = t("historyCleared").replace("{count}", result.deleted);
+    await renderJobs();
+  } catch (error) {
+    status.textContent = `${t("failed")} ${error.message}`;
+    button.disabled = false;
+  }
+});
 document.querySelector("#job-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
@@ -376,13 +415,15 @@ document.querySelector("#job-form").addEventListener("submit", async (event) => 
     data.set("engine", engine.id);
     data.set("options", JSON.stringify({
       auto_speech: createAutomaticSpeech,
-      voice: "im_nicola",
+      voice: document.querySelector("#auto-voice").value,
       speed: 1.0,
     }));
     await api("/api/jobs", {method: "POST", body: data});
     status.textContent = t(createAutomaticSpeech ? "accepted" : "acceptedOcr");
     form.reset();
     if (automaticSpeech.disabled) automaticSpeech.checked = false;
+    document.querySelector("#auto-voice").disabled =
+      automaticSpeech.disabled || !automaticSpeech.checked;
     await renderJobs();
   } catch (error) {
     status.textContent = `${t("failed")} ${error.message}`;

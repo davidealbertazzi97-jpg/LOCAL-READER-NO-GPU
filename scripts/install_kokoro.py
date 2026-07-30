@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import os
 import urllib.parse
@@ -11,17 +12,20 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent.parent
 TARGET = APP_DIR / "models" / "kokoro"
-ASSETS = (
-    (
-        "kokoro-v1.0.int8.onnx",
-        92_361_271,
-        "6e742170d309016e5891a994e1ce1559c702a2ccd0075e67ef7157974f6406cb",
-    ),
-    (
-        "voices-v1.0.bin",
-        28_214_398,
-        "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d",
-    ),
+COMPACT_MODEL = (
+    "kokoro-v1.0.int8.onnx",
+    92_361_271,
+    "6e742170d309016e5891a994e1ce1559c702a2ccd0075e67ef7157974f6406cb",
+)
+FAST_MODEL = (
+    "kokoro-v1.0.onnx",
+    325_532_387,
+    "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5",
+)
+VOICES = (
+    "voices-v1.0.bin",
+    28_214_398,
+    "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d",
 )
 BASE_URL = (
     "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
@@ -88,8 +92,15 @@ def download(name: str, expected_size: int, expected_hash: str) -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Install a verified Kokoro CPU model.")
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="install the larger FP32 model, often faster on modern x86 CPUs",
+    )
+    args = parser.parse_args()
     TARGET.mkdir(parents=True, exist_ok=True)
-    for asset in ASSETS:
+    for asset in ((FAST_MODEL if args.fast else COMPACT_MODEL), VOICES):
         download(*asset)
     return 0
 

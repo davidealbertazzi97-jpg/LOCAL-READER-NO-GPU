@@ -159,6 +159,14 @@ def main() -> int:
             assert product["slug"] == "local-accessibility-studio"
             status, engines = request_json(f"{base}/api/engines", token=True)
             assert status == 200 and len(engines) == 2
+            if not args.full:
+                status, cleared = request_json(
+                    f"{base}/api/jobs",
+                    token=True,
+                    data=b"",
+                    method="DELETE",
+                )
+                assert status == 200 and cleared["deleted"] == 0
 
             if args.full:
                 sample = root / "sample.pdf"
@@ -175,7 +183,7 @@ def main() -> int:
                     sample,
                     {
                         "auto_speech": True,
-                        "voice": "im_nicola",
+                        "voice": "if_sara",
                         "speed": 1.0,
                     },
                 )
@@ -198,6 +206,7 @@ def main() -> int:
                 )
                 automatic = wait_for_job(base, automatic["id"], timeout=300)
                 assert automatic["status"] == "completed", automatic
+                assert automatic["summary"]["voice"] == "if_sara"
                 automatic_audio = root / "outputs" / automatic["id"] / "speech.wav"
                 assert automatic_audio.stat().st_size > 10_000
 
@@ -240,22 +249,17 @@ def main() -> int:
                 )
                 assert status == 200 and deleted["deleted"]
                 assert not (root / "outputs" / automatic["id"]).exists()
-                status, deleted = request_json(
-                    f"{base}/api/jobs/{speech_job['id']}",
+                status, cleared = request_json(
+                    f"{base}/api/jobs",
                     token=True,
                     data=b"",
                     method="DELETE",
                 )
-                assert status == 200 and deleted["deleted"]
+                assert status == 200 and cleared["deleted"] == 2
                 assert not (root / "outputs" / speech_job["id"]).exists()
-                status, deleted = request_json(
-                    f"{base}/api/jobs/{ocr_job['id']}",
-                    token=True,
-                    data=b"",
-                    method="DELETE",
-                )
-                assert status == 200 and deleted["deleted"]
                 assert not (root / "outputs" / ocr_job["id"]).exists()
+                status, jobs = request_json(f"{base}/api/jobs", token=True)
+                assert status == 200 and jobs == []
                 print("Full OCR, review, and Kokoro smoke test passed.")
             else:
                 print("Local server core smoke test passed.")

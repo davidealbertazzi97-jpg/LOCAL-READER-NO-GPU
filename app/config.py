@@ -65,6 +65,9 @@ class Paths:
         executable = "python.exe" if os.name == "nt" else "python"
         scripts_dir = "Scripts" if os.name == "nt" else "bin"
         models = APP_ROOT / "models" / "kokoro"
+        fast_model = models / "kokoro-v1.0.onnx"
+        compact_model = models / "kokoro-v1.0.int8.onnx"
+        default_model = fast_model if fast_model.is_file() else compact_model
         paths = cls(
             app=APP_ROOT,
             data=data,
@@ -77,7 +80,7 @@ class Paths:
             kokoro_model=Path(
                 os.environ.get(
                     f"{prefix}_KOKORO_MODEL",
-                    models / "kokoro-v1.0.int8.onnx",
+                    default_model,
                 )
             ).expanduser(),
             kokoro_voices=Path(

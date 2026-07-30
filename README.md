@@ -51,11 +51,19 @@ On Windows:
 On Linux the installer also adds **Local Accessibility Studio** to the desktop
 application menu without requiring `sudo`.
 
+On modern x86 CPUs, the larger FP32 Kokoro model can be substantially faster
+than INT8 at the cost of a larger download and more memory:
+
+```bash
+./install.sh --fast-tts
+```
+
 Installation needs internet access to obtain pinned Python packages and the
 verified Kokoro files. Runtime binds only to numeric loopback and guarded Python
 processes deny non-loopback connections. The installer downloads:
 
 - Kokoro v1.0 INT8 CPU model: 92,361,271 bytes;
+- optional Kokoro v1.0 FP32 fast CPU model: 325,532,387 bytes;
 - Kokoro v1.0 voice bundle: 28,214,398 bytes;
 - RapidOCR's wheel, which contains the PP-OCRv6 small ONNX models.
 
@@ -71,6 +79,10 @@ from Git.
 4. Correct the title, language, block text, and semantic roles.
 5. Save corrections, then download accessible HTML/text or regenerate the audio.
 6. Review the final output with the intended screen reader and user.
+
+The automatic draft can use the male `im_nicola` or female `if_sara` voice.
+Finished OCR and speech jobs can be removed individually or cleared together
+from history; deletion also removes their durable local result files.
 
 The original file is never modified. Page previews and exported results are
 durable copies and may still contain confidential information.
@@ -134,3 +146,9 @@ Su Windows usa `.\install.ps1` e `.\start.ps1`. L’installazione scarica pacche
 versionati e i file Kokoro verificati; l’esecuzione dell’applicazione resta
 locale. Gli originali non vengono mai modificati, ma anteprime e risultati
 persistenti possono ancora contenere informazioni riservate.
+
+Sui moderni processori x86 il profilo più grande può risultare sensibilmente
+più veloce: si installa con `./install.sh --fast-tts`. La bozza automatica può
+usare la voce maschile Nicola o quella femminile Sara. I lavori conclusi si
+possono cancellare singolarmente oppure tutti insieme dalla cronologia; vengono
+rimossi anche i relativi file locali.

@@ -45,8 +45,9 @@ button, .button-link { border: 0; border-radius: 9px; padding: 11px 16px; font-w
 button:hover, .button-link:hover { background: #105950; }
 button:disabled { opacity: .55; cursor: wait; }
 .secondary, button.secondary, .button-link.secondary { background: #e7efec; color: #23423f; }
+.danger { border: 1px solid #b75b54; }
 :focus-visible { outline: 3px solid #e29b1f; outline-offset: 3px; }
-.section-heading, .job-head, .editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.section-heading, .section-actions, .job-head, .editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .jobs { display: grid; gap: 10px; }
 .job { border: 1px solid #dce4e0; border-radius: 10px; padding: 14px; }
 .badge { font-size: .8rem; padding: 4px 9px; border-radius: 999px; background: #e9efed; }
