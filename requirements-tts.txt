@@ -1,4 +1,4 @@
-kokoro-onnx==0.5.0
+kokoro-onnx==0.6.1
 onnxruntime==1.23.2; sys_platform == "darwin"
 onnxruntime==1.27.0; sys_platform != "darwin"
 soundfile==0.14.0
