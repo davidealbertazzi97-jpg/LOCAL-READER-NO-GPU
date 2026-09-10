@@ -3,13 +3,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 import tempfile
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 from ..config import PATHS
-from ..processes import run_worker
+from ..processes import OfflineModeEnabled, run_worker
 from ..provider_config import load_settings, speech_runtime_config
 from ..speech_jobs import resolved_options
 from .base import EngineResult, LocalEngine
@@ -86,6 +87,77 @@ class EdgeSpeechEngine(LocalEngine):
     accepted_extensions = frozenset({".txt"})
     user_upload = False
 
+    @staticmethod
+    def _kokoro_command(
+        source: Path,
+        output_dir: Path,
+        *,
+        voice: str,
+        speed: float,
+        language: str,
+    ) -> tuple[list[str], dict[str, str]]:
+        model, voices = verified_kokoro()
+        command = [
+            str(PATHS.tts_python),
+            str(PATHS.app / "workers" / "kokoro_worker.py"),
+            "--input",
+            str(source),
+            "--output",
+            str(output_dir),
+            "--model",
+            str(model),
+            "--voices",
+            str(voices),
+            "--voice",
+            voice,
+            "--speed",
+            str(speed),
+            "--language",
+            language,
+        ]
+        environment = os.environ.copy()
+        environment["PYTHONPATH"] = str(PATHS.app / "runtime_guard")
+        environment["HF_HUB_OFFLINE"] = "1"
+        environment["PYTHONNOUSERSITE"] = "1"
+        return command, environment
+
+    def _fallback_to_kokoro(
+        self,
+        source: Path,
+        output_dir: Path,
+        *,
+        speed: float,
+        language: str,
+    ) -> EngineResult:
+        _, local_voice, _, _ = resolved_options("", speed, language, "kokoro")
+        command, environment = self._kokoro_command(
+            source,
+            output_dir,
+            voice=local_voice,
+            speed=speed,
+            language=language,
+        )
+        for name in ("speech.mp3", "speech.json"):
+            (output_dir / name).unlink(missing_ok=True)
+        completed = run_worker(
+            command,
+            cwd=PATHS.app,
+            timeout=12 * 60 * 60,
+            env=environment,
+            network=False,
+        )
+        if completed.returncode:
+            raise RuntimeError("Edge-TTS and its Kokoro backup both failed")
+        result = self._result(output_dir, "kokoro")
+        return EngineResult(
+            summary={
+                **result.summary,
+                "fallback_from": "edge-tts",
+                "notice": "Edge-TTS non era raggiungibile: ho usato Kokoro offline.",
+            },
+            artifacts=result.artifacts,
+        )
+
     def process(
         self,
         source: Path,
@@ -118,34 +190,18 @@ class EdgeSpeechEngine(LocalEngine):
             ]
             environment = edge_environment()
         elif provider == "kokoro":
-            model, voices = verified_kokoro()
             configured = speech_runtime_config(provider)
             default_voice = configured.get(
                 "voice_it" if language == "it" else "voice_en", "if_sara"
             )
             voice = voice or str(default_voice)
-            command = [
-                str(PATHS.tts_python),
-                str(PATHS.app / "workers" / "kokoro_worker.py"),
-                "--input",
-                str(source),
-                "--output",
-                str(output_dir),
-                "--model",
-                str(model),
-                "--voices",
-                str(voices),
-                "--voice",
-                voice,
-                "--speed",
-                str(speed),
-                "--language",
-                language,
-            ]
-            environment = os.environ.copy()
-            environment["PYTHONPATH"] = str(PATHS.app / "runtime_guard")
-            environment["HF_HUB_OFFLINE"] = "1"
-            environment["PYTHONNOUSERSITE"] = "1"
+            command, environment = self._kokoro_command(
+                source,
+                output_dir,
+                voice=voice,
+                speed=speed,
+                language=language,
+            )
         elif provider == "fish-local":
             if not PATHS.mac_voice_python.is_file():
                 raise RuntimeError(
@@ -229,14 +285,28 @@ class EdgeSpeechEngine(LocalEngine):
             return self._result(output_dir, provider)
         else:
             raise RuntimeError("unknown speech provider")
-        completed = run_worker(
-            command,
-            cwd=PATHS.app,
-            timeout=12 * 60 * 60,
-            env=environment,
-            network=provider == "edge-tts",
-        )
+        try:
+            completed = run_worker(
+                command,
+                cwd=PATHS.app,
+                timeout=12 * 60 * 60,
+                env=environment,
+                network=provider == "edge-tts",
+            )
+        except (subprocess.TimeoutExpired, OfflineModeEnabled):
+            if provider != "edge-tts":
+                raise
+            return self._fallback_to_kokoro(
+                source, output_dir, speed=speed, language=language
+            )
         if completed.returncode:
+            if provider == "edge-tts":
+                return self._fallback_to_kokoro(
+                    source,
+                    output_dir,
+                    speed=speed,
+                    language=language,
+                )
             raise RuntimeError(f"{provider} speech worker failed")
         return self._result(output_dir, provider)
 
@@ -244,7 +314,7 @@ class EdgeSpeechEngine(LocalEngine):
     def _result(output_dir: Path, provider: str) -> EngineResult:
         audio = output_dir / "speech.mp3"
         report = output_dir / "speech.json"
-        if not audio.is_file() or not report.is_file():
+        if not audio.is_file() or not audio.stat().st_size or not report.is_file():
             raise RuntimeError("speech worker did not produce its declared output")
 
         summary = json.loads(report.read_text(encoding="utf-8"))

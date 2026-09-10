@@ -256,14 +256,11 @@ def _save_settings(payload: dict[str, Any]) -> dict[str, Any]:
                     tts["kokoro"][field], maximum=maximum
                 )
 
-    if current["tts"].get("offline_mode"):
-        from .processes import network_busy
-
-        if network_busy():
-            raise ValueError(
-                "Attendi che il lavoro online finisca, poi attiva la modalità offline."
-            )
     _write_settings(current)
+    if current["tts"].get("offline_mode"):
+        from .processes import stop_network_workers
+
+        stop_network_workers()
     return public_settings()
 
 

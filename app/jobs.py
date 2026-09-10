@@ -16,6 +16,15 @@ from .utils import remove_output_tree, remove_work_tree
 LOGGER = logging.getLogger(__name__)
 
 
+def public_failure_code(engine_id: str) -> str:
+    return {
+        "accessible-document": "ocr_failed",
+        "edge-tts": "speech_failed",
+        "lfm-reflow": "organization_failed",
+        "plain-text": "text_failed",
+    }.get(engine_id, "processing_failed")
+
+
 class JobRunner:
     def __init__(self) -> None:
         self._queue: queue.Queue[str | None] = queue.Queue()
@@ -149,7 +158,7 @@ class JobRunner:
                 job_id,
                 type(exc).__name__,
             )
-            error = f"{type(exc).__name__}: local processing failed"
+            error = public_failure_code(engine.engine_id)
             STORE.update(
                 job_id,
                 status="failed",

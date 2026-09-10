@@ -82,8 +82,11 @@ const COPY = {
     progressSpeech: "Creazione dell’audio",
     progressLabel: "Avanzamento",
     completeStart: "Comincio con la lettura del documento…",
+    ocrRunning: "Sto leggendo il documento. Se ha molte pagine, attendi qualche minuto…",
     completeOcr: "Il testo è stato estratto. Ora creo l’audio…",
+    speechRunning: "Sto creando l’audio. Puoi lasciare aperta questa pagina…",
     completeDone: "Fatto: il tuo audio è pronto.",
+    completeDoneFallback: "Audio pronto. Edge-TTS non rispondeva, quindi ho usato Kokoro offline.",
     audioReady: "Audio pronto",
     audioReadyHelp: "Puoi ascoltarlo qui oppure scaricarlo.",
     downloadAudio: "Scarica audio",
@@ -175,6 +178,10 @@ const COPY = {
     jobCompleted: "Operazione completata.",
     jobRunning: "Sto lavorando…",
     jobFailed: "Operazione non riuscita.",
+    ocrFailed: "Non sono riuscito a leggere il documento. Prova con un PDF o un’immagine più nitida.",
+    speechFailed: "Non sono riuscito a creare l’audio. Attiva Modalità offline e riprova con Kokoro.",
+    organizationFailed: "Non sono riuscito a organizzare il testo. Il testo originale è ancora disponibile.",
+    textFailed: "Non sono riuscito a preparare il testo. Riprova.",
     textRequired: "incolla un testo o scegli un file",
     sending: "Preparazione…",
     ocrQueued: "Documento in coda. Ti avviso quando il testo è pronto.",
@@ -370,8 +377,11 @@ const COPY = {
     progressSpeech: "Creating the audio",
     progressLabel: "Progress",
     completeStart: "Starting with the document reading…",
+    ocrRunning: "Reading the document. A document with many pages may take a few minutes…",
     completeOcr: "The text is ready. Now I create the audio…",
+    speechRunning: "Creating the audio. You can leave this page open…",
     completeDone: "Done: your audio is ready.",
+    completeDoneFallback: "Audio ready. Edge-TTS was unavailable, so I used offline Kokoro.",
     audioReady: "Audio ready",
     audioReadyHelp: "Listen here or download it.",
     downloadAudio: "Download audio",
@@ -463,6 +473,10 @@ const COPY = {
     jobCompleted: "Operation completed.",
     jobRunning: "Working…",
     jobFailed: "Operation failed.",
+    ocrFailed: "I could not read the document. Try a clearer PDF or image.",
+    speechFailed: "I could not create the audio. Turn on Offline mode and retry with Kokoro.",
+    organizationFailed: "I could not organize the text. The original text is still available.",
+    textFailed: "I could not prepare the text. Please retry.",
     textRequired: "paste text or choose a file",
     sending: "Preparing…",
     ocrQueued: "Document queued. I will let you know when the text is ready.",
@@ -940,8 +954,9 @@ async function setOfflineMode(enabled) {
     settings = settings ? {...settings, settings: response.settings} : {settings: response.settings};
     offlineMode = Boolean(response.settings.tts.offline_mode);
     document.querySelector("#default-tts-provider").value = provider;
+    renderOfflineMode();
     setStatus(document.querySelector("#mode-status"), offlineMode ? t("offlineModeStatus") : t("onlineMode"));
-    await renderStatus();
+    void renderStatus().catch(() => {});
   } catch (error) {
     setStatus(document.querySelector("#mode-status"), `${t("failed")} ${error.message}`, true);
   } finally {
@@ -1352,7 +1367,16 @@ function jobType(job) {
 }
 
 function jobMessage(job) {
-  if (job.status === "failed") return job.error || t("jobFailed");
+  if (job.status === "failed") {
+    const errorCopy = {
+      ocr_failed: "ocrFailed",
+      speech_failed: "speechFailed",
+      organization_failed: "organizationFailed",
+      text_failed: "textFailed",
+      processing_failed: "jobFailed",
+    };
+    return t(errorCopy[job.error] || "jobFailed");
+  }
   if (["queued", "running", "uploading"].includes(job.status)) return job.message || t("jobRunning");
   return job.message || t("jobCompleted");
 }
@@ -1366,6 +1390,7 @@ function humanSummary(job) {
   if (summary.reasoning === "off") values.push(language === "it" ? "ragionamento disattivato" : "reasoning off");
   if (summary.fallback_chunks) values.push(`${summary.fallback_chunks} fallback`);
   if (summary.provider) values.push(summary.provider);
+  if (summary.fallback_from) values.push(language === "it" ? "ripiego offline automatico" : "automatic offline backup");
   return values;
 }
 
@@ -1536,7 +1561,9 @@ function setFullStage(stage, message = "") {
     progress.classList.toggle("active", index === stage && stage < 2);
   });
   document.querySelector("#complete-percent").textContent = stage >= 2 ? "2/2" : `${stage + 1}/2`;
-  document.querySelector("#complete-progress-bar").style.width = `${Math.max(8, Math.min(100, stage >= 2 ? 100 : ((stage + 1) / 2) * 100))}%`;
+  const progressBar = document.querySelector("#complete-progress-bar");
+  progressBar.style.width = `${Math.max(8, Math.min(100, stage >= 2 ? 100 : ((stage + 1) / 2) * 100))}%`;
+  progressBar.classList.toggle("working", stage < 2);
   document.querySelector("#complete-progress-message").textContent = message;
 }
 
@@ -1599,15 +1626,24 @@ async function startFullWorkflow(event) {
     const speed = Number(document.querySelector("#complete-speed").value);
     const ocr = await submitDocument(file, {auto_speech: false, document_language: speechLanguage === "it" ? "it" : "en", speech_language: speechLanguage, speech_provider: provider, voice, speed});
     setWorkflow("complete", {phase: "ocr", ocrJobId: ocr.id, speechJobId: "", speechLanguage, provider, voice, speed});
-    const completedOcr = await waitForJob(ocr.id, (job) => { setStatus(status, job.status === "failed" ? jobMessage(job) : t("completeStart")); });
+    const completedOcr = await waitForJob(ocr.id, (job) => {
+      const message = job.status === "queued" ? t("ocrQueued") : job.status === "running" ? t("ocrRunning") : jobMessage(job);
+      setStatus(status, message, job.status === "failed");
+      setFullStage(0, message);
+    });
     lastOcrJob = completedOcr;
     setFullStage(1, t("completeOcr"));
     const speech = await queueSpeech(completedOcr.id, voice, speed, speechLanguage, provider);
     setWorkflow("complete", {phase: "speech", ocrJobId: ocr.id, speechJobId: speech.id, speechLanguage, provider, voice, speed});
-    const completedSpeech = await waitForJob(speech.id, () => {});
-    setFullStage(2, t("completeDone"));
+    const completedSpeech = await waitForJob(speech.id, (job) => {
+      const message = job.status === "queued" ? t("speechQueued") : job.status === "running" ? t("speechRunning") : jobMessage(job);
+      setStatus(status, message, job.status === "failed");
+      setFullStage(1, message);
+    });
+    const doneMessage = completedSpeech.summary?.fallback_from ? t("completeDoneFallback") : t("completeDone");
+    setFullStage(2, doneMessage);
     showAudio(completedSpeech.id, "complete-audio", "complete-download");
-    setStatus(status, t("completeDone"));
+    setStatus(status, doneMessage);
     clearWorkflow("complete");
     await renderJobs();
   } catch (error) {
@@ -1629,8 +1665,12 @@ async function startOcr(event) {
     const job = await submitDocument(file, {auto_speech: false, document_language: "it", speech_language: "it", voice: "it-IT-GiuseppeMultilingualNeural", speed: 1});
     setWorkflow("ocr", {jobId: job.id});
     setStatus(status, t("ocrQueued"));
-    lastOcrJob = await waitForJob(job.id, () => {});
+    lastOcrJob = await waitForJob(job.id, (value) => {
+      const message = value.status === "queued" ? t("ocrQueued") : value.status === "running" ? t("ocrRunning") : jobMessage(value);
+      setStatus(status, message, value.status === "failed");
+    });
     document.querySelector("#ocr-result").hidden = false;
+    setStatus(status, t("ocrReady"));
     clearWorkflow("ocr");
     await renderJobs();
   } catch (error) { setStatus(status, `${t("failed")} ${error.message}`, true); }
@@ -1689,9 +1729,12 @@ async function startTts(event) {
     const completedPlain = await waitForJob(plain.id, () => {});
     const speech = await queueSpeech(completedPlain.id, voice, speed, speechLanguage, provider);
     setWorkflow("tts", {phase: "speech", plainJobId: plain.id, speechJobId: speech.id, voice, speed, speechLanguage, provider});
-    const completedSpeech = await waitForJob(speech.id, () => {});
+    const completedSpeech = await waitForJob(speech.id, (job) => {
+      const message = job.status === "queued" ? t("speechQueued") : job.status === "running" ? t("speechRunning") : jobMessage(job);
+      setStatus(status, message, job.status === "failed");
+    });
     showAudio(completedSpeech.id, "tts-audio", "tts-download");
-    setStatus(status, t("audioReady"));
+    setStatus(status, completedSpeech.summary?.fallback_from ? t("completeDoneFallback") : t("audioReady"));
     clearWorkflow("tts");
     await renderJobs();
   } catch (error) { setStatus(status, `${t("failed")} ${error.message}`, true); }

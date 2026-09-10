@@ -102,6 +102,7 @@ def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser()
     root.add_argument("--full", action="store_true")
     root.add_argument("--offline", action="store_true")
+    root.add_argument("--long-speech", action="store_true")
     return root
 
 
@@ -197,6 +198,58 @@ def main() -> int:
                     method="DELETE",
                 )
                 assert status == 200 and cleared["deleted"] == 0
+
+            if args.long_speech:
+                long_text = "\n\n".join(
+                    f"Paragrafo {number}. Questo è un testo italiano di prova, "
+                    "chiaro e innocuo, usato per controllare una lettura lunga."
+                    for number in range(1, 181)
+                )
+                status, text_job = request_json(
+                    f"{base}/api/text",
+                    token=True,
+                    data=json.dumps(
+                        {
+                            "title": "lettura-lunga.txt",
+                            "text": long_text,
+                            "options": {
+                                "auto_speech": False,
+                                "document_language": "it",
+                                "speech_language": "it",
+                                "voice": "it-IT-GiuseppeMultilingualNeural",
+                                "speed": 1.0,
+                            },
+                        }
+                    ).encode(),
+                    content_type="application/json",
+                )
+                assert status == 202, (status, text_job)
+                text_job = wait_for_job(base, text_job["id"])
+                assert text_job["status"] == "completed", text_job
+                status, queued_speech = request_json(
+                    f"{base}/api/jobs/{text_job['id']}/speech",
+                    token=True,
+                    data=json.dumps(
+                        {
+                            "provider": "edge-tts",
+                            "voice": "it-IT-GiuseppeMultilingualNeural",
+                            "speed": 1.0,
+                            "language": "it",
+                        }
+                    ).encode(),
+                    content_type="application/json",
+                )
+                assert status == 202, (status, queued_speech)
+                speech_job = wait_for_job(base, queued_speech["id"], timeout=900)
+                assert speech_job["status"] == "completed", speech_job
+                assert speech_job["summary"]["provider"] in {"edge-tts", "kokoro"}
+                audio = root / "outputs" / speech_job["id"] / "speech.mp3"
+                assert audio.stat().st_size > 100_000
+                print(
+                    "Long speech smoke test passed with "
+                    f"{speech_job['summary']['provider']}."
+                )
+                return 0
 
             if args.offline:
                 status, settings = request_json(
@@ -295,7 +348,11 @@ def main() -> int:
                 automatic = next(job for job in jobs if job["engine"] == "edge-tts")
                 automatic = wait_for_job(base, automatic["id"], timeout=300)
                 assert automatic["status"] == "completed", automatic
-                assert automatic["summary"]["voice"] == "en-GB-SoniaNeural"
+                assert automatic["summary"]["voice"] == (
+                    "af_heart"
+                    if automatic["summary"]["provider"] == "kokoro"
+                    else "en-GB-SoniaNeural"
+                )
                 assert automatic["summary"]["language"] == "en-gb"
                 automatic_audio = root / "outputs" / automatic["id"] / "speech.mp3"
                 assert automatic_audio.stat().st_size > 10_000
@@ -380,8 +437,10 @@ def main() -> int:
                 assert status == 202, (status, queued_speech)
                 speech_job = wait_for_job(base, queued_speech["id"], timeout=300)
                 assert speech_job["status"] == "completed", speech_job
-                assert (
-                    speech_job["summary"]["voice"] == "en-US-AndrewMultilingualNeural"
+                assert speech_job["summary"]["voice"] == (
+                    "af_heart"
+                    if speech_job["summary"]["provider"] == "kokoro"
+                    else "en-US-AndrewMultilingualNeural"
                 )
                 assert speech_job["summary"]["language"] == "en-us"
                 audio = root / "outputs" / speech_job["id"] / "speech.mp3"
@@ -405,7 +464,7 @@ def main() -> int:
                 assert not (root / "outputs" / ocr_job["id"]).exists()
                 status, jobs = request_json(f"{base}/api/jobs", token=True)
                 assert status == 200 and jobs == []
-                print("Full OCR, text, review, and Edge-TTS smoke test passed.")
+                print("Full OCR, text, review, and speech smoke test passed.")
             else:
                 print("Local server core smoke test passed.")
         finally:

@@ -92,6 +92,19 @@ il prefetch completo e lascia disponibili soltanto i componenti già in cache.
 
 ## Pacchetti plug-and-play
 
+Scarica il pacchetto del tuo sistema dalla
+[pagina Release](https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/latest):
+
+| Sistema | Pacchetto |
+| --- | --- |
+| Windows 10/11 x86-64 | `.exe` |
+| Linux x86-64 | `.AppImage` (rendilo eseguibile prima di aprirlo) |
+| macOS Apple Silicon | `.dmg` oppure `.app.zip` |
+
+I pacchetti non sono firmati con certificati commerciali; macOS non è
+notarizzato. Il primo avvio richiede Internet per installare i componenti.
+Le release includono `SHA256SUMS.txt` per verificare i download.
+
 I pacchetti portabili usano un piccolo launcher compilato: al primo avvio
 creano una copia privata dell’app nella cartella dati dell’utente, scaricano
 `uv` con checksum, preparano Python 3.12 e installano automaticamente i
@@ -113,7 +126,13 @@ Su Windows PowerShell:
 
 PyInstaller produce binari nativi: ogni script va eseguito sul sistema
 operativo di destinazione. La build Linux viene verificata in locale; macOS e
-Windows richiedono una macchina nativa corrispondente.
+Windows vengono compilati sui rispettivi runner GitHub Actions.
+
+Se aggiorni il codice mentre l’app è aperta, chiudi il server precedente,
+riavvia l’app e ricarica la pagina: server e interfaccia devono usare la stessa
+versione. La modalità offline interrompe i lavori online attivi; una lettura
+Edge-TTS riparte con Kokoro. Se Edge-TTS fallisce, il recupero con Kokoro è
+automatico quando il modello offline è installato.
 
 Il modello LFM2.5 Q8 viene cercato prima nel runtime dell’app e poi, per
 riusare un’installazione già presente, in:

@@ -183,6 +183,8 @@ output { display: block; margin-top: 2px; color: var(--muted); font-size: .8rem;
 .progress-card > p { margin: 8px 0 12px; font-size: .78rem; }
 .progress-track { height: 8px; overflow: hidden; border-radius: 99px; background: #d7e7e0; }
 .progress-track span { display: block; width: 33%; height: 100%; border-radius: inherit; background: var(--teal); transition: width .25s ease; }
+.progress-track span.working { animation: progress-working 1.2s ease-in-out infinite alternate; }
+@keyframes progress-working { from { opacity: .55; } to { opacity: 1; } }
 .progress-list { display: grid; gap: 6px; margin-top: 14px; }
 .progress-list p { display: flex; align-items: center; gap: 8px; margin: 0; color: #899792; font-size: .76rem; }
 .progress-list i { width: 9px; height: 9px; border: 2px solid #b7c9c2; border-radius: 50%; }

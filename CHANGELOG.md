@@ -2,7 +2,19 @@
 
 All notable changes to Local Accessibility Studio are documented here.
 
-## Unreleased
+## 0.3.1 - 2026-09-10
+
+- Offline mode immediately stops online workers and routes speech to Kokoro.
+- Edge-TTS retries partial or empty responses, with bounded timeouts and an
+  automatic Kokoro fallback when the online service is unavailable.
+- Long speech uses two concurrent requests, ordered audio assembly, and fewer
+  requests for documents with many short paragraphs.
+- Kokoro uses at most four CPU threads and disables idle thread spinning.
+- Clear OCR/speech progress and localized failure messages.
+- Native Linux AppImage, Windows EXE, and macOS Apple Silicon DMG/APP ZIP
+  packages published together with SHA-256 checksums.
+
+## 0.3.0
 
 - Added the local-reader workflow for inclusive education with a bilingual UI,
   OpenDyslexic font, paste/text-file input, and long-document reading.

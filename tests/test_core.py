@@ -34,6 +34,7 @@ from app.documents import (  # noqa: E402
     write_exports,
 )
 from app.engines import ENGINES  # noqa: E402
+from app.engines.speech import EdgeSpeechEngine  # noqa: E402
 from app.processes import (  # noqa: E402
     allow_worker_processes,
     run_worker,
@@ -51,6 +52,7 @@ from app.speech_jobs import normalized_options, queue_speech_job  # noqa: E402
 from app.store import JobStore  # noqa: E402
 from app.utils import remove_work_tree, resolve_artifact, safe_name  # noqa: E402
 from scripts.start import guarded_environment  # noqa: E402
+from workers.audio_utils import text_chunks  # noqa: E402
 from workers.provider_models_worker import model_ids, request_headers  # noqa: E402
 
 
@@ -96,7 +98,7 @@ class ProductTests(unittest.TestCase):
     def test_product_and_engine_registry(self) -> None:
         product = load_product()
         self.assertEqual(product.slug, "local-accessibility-studio")
-        self.assertEqual(product.version, "0.3.0")
+        self.assertEqual(product.version, "0.3.1")
         self.assertEqual(TOKEN_COOKIE, "local_accessibility_studio_token")
         self.assertEqual(
             set(ENGINES),
@@ -310,6 +312,60 @@ class RequestBodyLimitTests(unittest.IsolatedAsyncioTestCase):
 
 
 class WorkerProcessTests(unittest.TestCase):
+    def test_offline_switch_stops_online_work_and_rejects_new_network_work(
+        self,
+    ) -> None:
+        allow_worker_processes()
+        save_settings({"tts": {"offline_mode": False}})
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ready = root / "ready"
+            result = []
+
+            def target():
+                result.append(
+                    run_worker(
+                        [
+                            sys.executable,
+                            "-c",
+                            "from pathlib import Path; import time; "
+                            f"Path({str(ready)!r}).touch(); time.sleep(60)",
+                        ],
+                        cwd=root,
+                        timeout=60,
+                        network=True,
+                    )
+                )
+
+            thread = threading.Thread(target=target)
+            thread.start()
+            try:
+                deadline = time.monotonic() + 5
+                while not ready.exists() and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                self.assertTrue(ready.exists())
+                started = time.monotonic()
+                value = save_settings({"tts": {"offline_mode": True}})
+                self.assertTrue(value["tts"]["offline_mode"])
+                self.assertLess(time.monotonic() - started, 2)
+                thread.join(timeout=5)
+                self.assertFalse(thread.is_alive())
+                self.assertNotEqual(result[0].returncode, 0)
+                with self.assertRaises(RuntimeError):
+                    run_worker(
+                        [sys.executable, "-c", "pass"],
+                        cwd=root,
+                        timeout=5,
+                        network=True,
+                    )
+                local = run_worker([sys.executable, "-c", "pass"], cwd=root, timeout=5)
+                self.assertEqual(local.returncode, 0)
+            finally:
+                stop_worker_processes(timeout=2)
+                thread.join(timeout=5)
+                allow_worker_processes()
+                save_settings({"tts": {"offline_mode": False}})
+
     def test_active_worker_is_terminated_during_shutdown(self) -> None:
         allow_worker_processes()
         with tempfile.TemporaryDirectory() as temporary:
@@ -586,6 +642,74 @@ class SpeechQueueTests(unittest.TestCase):
             normalized_options("it-IT-GiuseppeMultilingualNeural", 1.0, "en-us")
         voice, speed, language = normalized_options("en-GB-SoniaNeural", 1.0, "en-gb")
         self.assertEqual((voice, speed, language), ("en-GB-SoniaNeural", 1.0, "en-gb"))
+
+
+class SpeechEngineTests(unittest.TestCase):
+    def test_short_ocr_paragraphs_are_grouped_into_bounded_audio_chunks(self) -> None:
+        text = "\n\n".join(
+            f"Paragrafo {number}. Frase breve di prova." for number in range(1, 181)
+        )
+        chunks = list(text_chunks(text, maximum=500))
+
+        self.assertLess(len(chunks), 20)
+        self.assertTrue(all(len(chunk) <= 500 for chunk in chunks))
+        self.assertEqual(" ".join(chunks).split(), text.split())
+
+    def test_edge_failure_uses_local_kokoro_backup(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "reading.txt"
+            output = root / "output"
+            source.write_text("Testo da leggere.", encoding="utf-8")
+
+            calls = 0
+
+            def run(command, **_kwargs):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    return subprocess.CompletedProcess(command, 1, "", "offline")
+                output.mkdir(parents=True, exist_ok=True)
+                (output / "speech.mp3").write_bytes(b"local-audio")
+                (output / "speech.json").write_text(
+                    json.dumps(
+                        {
+                            "provider": "kokoro",
+                            "voice": "if_sara",
+                            "language": "it",
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+            with (
+                mock.patch(
+                    "app.engines.speech.PATHS",
+                    tts_python=Path(sys.executable),
+                    app=root,
+                ),
+                mock.patch("app.engines.speech.run_worker", side_effect=run),
+                mock.patch(
+                    "app.engines.speech.verified_kokoro",
+                    return_value=(root / "model.onnx", root / "voices.bin"),
+                ),
+            ):
+                result = EdgeSpeechEngine().process(
+                    source,
+                    output,
+                    {
+                        "provider": "edge-tts",
+                        "voice": "it-IT-GiuseppeMultilingualNeural",
+                        "speed": 1.0,
+                        "language": "it",
+                    },
+                )
+
+            self.assertEqual(calls, 2)
+            self.assertEqual(result.summary["provider"], "kokoro")
+            self.assertEqual(result.summary["fallback_from"], "edge-tts")
+            self.assertTrue((output / "speech.mp3").is_file())
 
 
 if __name__ == "__main__":

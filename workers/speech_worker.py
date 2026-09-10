@@ -4,12 +4,13 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import re
-from collections.abc import Iterator
 from pathlib import Path
 
+from audio_utils import combine_audio, text_chunks
+
 MAX_CHARACTERS = 10_000_000
-MAX_CHUNK = 2_500
+MAX_CHUNK = 1_800
+MAX_ATTEMPTS = 2
 VOICE_CHOICES = (
     "it-IT-GiuseppeMultilingualNeural",
     "it-IT-ElsaNeural",
@@ -20,31 +21,51 @@ VOICE_CHOICES = (
 )
 
 
-def chunks(text: str) -> Iterator[str]:
-    paragraphs = re.split(r"\n\s*\n+", text)
-    pending = ""
-    for paragraph in paragraphs:
-        paragraph = re.sub(r"[ \t]+", " ", paragraph).strip()
-        if not paragraph:
-            continue
-        sentences = re.split(r"(?<=[.!?;:])\s+", paragraph)
-        for sentence in sentences:
-            words = sentence.split()
-            for word in words:
-                candidate = f"{pending} {word}".strip()
-                if pending and len(candidate) > MAX_CHUNK:
-                    yield pending
-                    pending = word
-                else:
-                    pending = candidate
-        if pending:
-            yield pending
-            pending = ""
-
-
 def rate_for_speed(speed: float) -> str:
     percentage = round((speed - 1.0) * 100)
     return f"{percentage:+d}%"
+
+
+async def synthesize_chunk(
+    text: str,
+    destination: Path,
+    *,
+    voice: str,
+    speed: float,
+) -> None:
+    import edge_tts
+
+    rate = rate_for_speed(speed)
+    last_error: Exception | None = None
+    for attempt in range(MAX_ATTEMPTS):
+        destination.unlink(missing_ok=True)
+        received = 0
+        try:
+            communicate = edge_tts.Communicate(
+                text=text,
+                voice=voice,
+                rate=rate,
+                volume="+0%",
+                pitch="+0Hz",
+                connect_timeout=5,
+                receive_timeout=20,
+            )
+            async with asyncio.timeout(45):
+                with destination.open("xb") as audio:
+                    async for message in communicate.stream():
+                        if message["type"] == "audio":
+                            payload = message["data"]
+                            audio.write(payload)
+                            received += len(payload)
+            if received:
+                return
+            raise RuntimeError("Edge-TTS returned no audio")
+        except Exception as exc:
+            last_error = exc
+            destination.unlink(missing_ok=True)
+            if attempt + 1 < MAX_ATTEMPTS:
+                await asyncio.sleep(1)
+    raise RuntimeError(f"Edge-TTS failed after {MAX_ATTEMPTS} attempts") from last_error
 
 
 async def synthesize(
@@ -54,24 +75,35 @@ async def synthesize(
     voice: str,
     speed: float,
 ) -> int:
-    import edge_tts
+    parts: list[Path] = []
+    semaphore = asyncio.Semaphore(2)
 
-    count = 0
-    rate = rate_for_speed(speed)
-    with output.open("wb") as audio:
-        for chunk in chunks(text):
-            communicate = edge_tts.Communicate(
-                text=chunk,
-                voice=voice,
-                rate=rate,
-                volume="+0%",
-                pitch="+0Hz",
-            )
-            async for message in communicate.stream():
-                if message["type"] == "audio":
-                    audio.write(message["data"])
-            count += 1
-    return count
+    async def generate(chunk: str, part: Path) -> None:
+        async with semaphore:
+            await synthesize_chunk(chunk, part, voice=voice, speed=speed)
+
+    try:
+        # Bounded batches avoid scheduling thousands of tasks for long books.
+        chunks = iter(text_chunks(text, maximum=MAX_CHUNK))
+        while True:
+            batch = []
+            for _ in range(2):
+                chunk = next(chunks, None)
+                if chunk is None:
+                    break
+                part = output.parent / f".edge-{len(parts):05d}.mp3"
+                parts.append(part)
+                batch.append((chunk, part))
+            if not batch:
+                break
+            async with asyncio.TaskGroup() as group:
+                for chunk, part in batch:
+                    group.create_task(generate(chunk, part))
+        combine_audio(parts, output)
+        return len(parts)
+    finally:
+        for part in parts:
+            part.unlink(missing_ok=True)
 
 
 def main() -> int:

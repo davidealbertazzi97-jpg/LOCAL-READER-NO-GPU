@@ -32,9 +32,8 @@ def text_chunks(text: str, maximum: int = 2_000) -> Iterator[str]:
                     pending = word
                 else:
                     pending = candidate
-        if pending:
-            yield pending
-            pending = ""
+    if pending:
+        yield pending
 
 
 def combine_audio(parts: Iterable[Path], output: Path, *, suffix: str = ".mp3") -> None:

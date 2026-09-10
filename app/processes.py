@@ -18,9 +18,20 @@ class WorkerStopping(RuntimeError):
     pass
 
 
+class OfflineModeEnabled(RuntimeError):
+    pass
+
+
 def network_busy() -> bool:
     with _LOCK:
         return any(process.poll() is None for process in _NETWORK)
+
+
+def stop_network_workers() -> None:
+    """Stop cloud work immediately when the user switches to offline mode."""
+    with _LOCK:
+        for process in tuple(_NETWORK):
+            _terminate(process, force=True)
 
 
 def allow_worker_processes() -> None:
@@ -73,7 +84,7 @@ def run_worker(
         if _STOPPING:
             raise WorkerStopping("application shutdown is in progress")
         if network and load_settings()["tts"].get("offline_mode"):
-            raise RuntimeError(
+            raise OfflineModeEnabled(
                 "Modalità offline attiva: i servizi online sono disabilitati."
             )
         process = subprocess.Popen(

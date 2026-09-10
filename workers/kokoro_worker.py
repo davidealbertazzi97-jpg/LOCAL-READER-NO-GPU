@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import wave
 from pathlib import Path
 
@@ -42,7 +43,16 @@ def main() -> int:
         raise RuntimeError(
             "Kokoro is not installed in the isolated speech environment"
         ) from exc
-    engine = Kokoro(args.model, args.voices)
+    import onnxruntime as rt
+
+    session_options = rt.SessionOptions()
+    session_options.intra_op_num_threads = max(1, min(4, os.cpu_count() or 2))
+    session_options.inter_op_num_threads = 1
+    session_options.add_session_config_entry("session.intra_op.allow_spinning", "0")
+    session = rt.InferenceSession(
+        args.model, sess_options=session_options, providers=["CPUExecutionProvider"]
+    )
+    engine = Kokoro.from_session(session, args.voices)
     output.mkdir(parents=True, exist_ok=True)
     chunks = list(text_chunks(text, maximum=4_000))
     wavs: list[Path] = []
