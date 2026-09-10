@@ -7,16 +7,6 @@ if ($env:OS -ne "Windows_NT" -or $env:PROCESSOR_ARCHITECTURE -ne "AMD64") {
 $AppDir = Split-Path -Parent $PSScriptRoot
 $BuildDir = Join-Path $AppDir "build\windows"
 $DistDir = Join-Path $AppDir "dist"
-$Python = Get-Command py -ErrorAction SilentlyContinue
-if ($Python) {
-    $PythonCommand = "py"
-    $PythonArgs = @("-3.12")
-} else {
-    $Python = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $Python) { throw "Python 3.12 or the py launcher is required." }
-    $PythonCommand = $Python.Source
-    $PythonArgs = @()
-}
 $Uv = $env:LOCAL_AI_APP_UV
 if (-not $Uv) {
     $UvCommand = Get-Command uv -ErrorAction SilentlyContinue
@@ -26,7 +16,7 @@ if (-not $Uv) { throw "uv is required to build the package." }
 
 Remove-Item -LiteralPath $BuildDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $BuildDir, $DistDir | Out-Null
-& $PythonCommand @PythonArgs (Join-Path $AppDir "packaging\create_payload.py") `
+& $Uv run --no-project --python 3.12 python (Join-Path $AppDir "packaging\create_payload.py") `
     --output (Join-Path $BuildDir "payload.zip")
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 

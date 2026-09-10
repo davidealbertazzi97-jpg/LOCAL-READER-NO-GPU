@@ -15,19 +15,38 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def project_files() -> list[Path]:
     git = shutil.which("git")
-    if git is None:
-        raise RuntimeError("git is required to create the application payload")
-    result = subprocess.run(
-        [git, "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-    )
+    if git is not None and (ROOT / ".git").exists():
+        result = subprocess.run(
+            [git, "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        )
+        candidates = [ROOT / raw for raw in result.stdout.decode().split("\0") if raw]
+    else:
+        # The Windows/macOS builders run from the extracted source payload, which
+        # intentionally does not contain .git or require git on the target OS.
+        candidates = list(ROOT.rglob("*"))
+
+    excluded_directories = {
+        ".git",
+        ".pytest_cache",
+        ".ruff_cache",
+        "bin",
+        "build",
+        "data",
+        "dist",
+        "models",
+        "outputs",
+    }
     files: list[Path] = []
-    for raw in result.stdout.decode().split("\0"):
-        if not raw:
+    for path in candidates:
+        relative_parts = path.relative_to(ROOT).parts
+        if any(
+            part in excluded_directories or part.startswith(".venv")
+            for part in relative_parts
+        ):
             continue
-        path = ROOT / raw
         if path.is_file() and not path.name.endswith((".pyc", ".download")):
             files.append(path)
     return sorted(files, key=lambda path: path.relative_to(ROOT).as_posix())
