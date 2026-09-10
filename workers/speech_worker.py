@@ -2,20 +2,22 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
-import math
-import os
 import re
 from collections.abc import Iterator
 from pathlib import Path
 
-os.environ.setdefault("OMP_NUM_THREADS", str(max(1, min(4, os.cpu_count() or 2))))
-os.environ.setdefault("OMP_WAIT_POLICY", "PASSIVE")
-
-MAX_CHARACTERS = 250_000
-MAX_CHUNK = 1_200
-MAX_CHUNK_SECONDS = 10 * 60
-MAX_AUDIO_SECONDS = 4 * 60 * 60
+MAX_CHARACTERS = 10_000_000
+MAX_CHUNK = 2_500
+VOICE_CHOICES = (
+    "it-IT-GiuseppeMultilingualNeural",
+    "it-IT-ElsaNeural",
+    "en-US-AndrewMultilingualNeural",
+    "en-US-AvaMultilingualNeural",
+    "en-GB-RyanNeural",
+    "en-GB-SoniaNeural",
+)
 
 
 def chunks(text: str) -> Iterator[str]:
@@ -27,18 +29,12 @@ def chunks(text: str) -> Iterator[str]:
             continue
         sentences = re.split(r"(?<=[.!?;:])\s+", paragraph)
         for sentence in sentences:
-            if len(sentence) > MAX_CHUNK:
-                pieces = [
-                    sentence[index : index + MAX_CHUNK]
-                    for index in range(0, len(sentence), MAX_CHUNK)
-                ]
-            else:
-                pieces = [sentence]
-            for piece in pieces:
-                candidate = f"{pending} {piece}".strip()
+            words = sentence.split()
+            for word in words:
+                candidate = f"{pending} {word}".strip()
                 if pending and len(candidate) > MAX_CHUNK:
                     yield pending
-                    pending = piece
+                    pending = word
                 else:
                     pending = candidate
         if pending:
@@ -46,105 +42,77 @@ def chunks(text: str) -> Iterator[str]:
             pending = ""
 
 
-def write_json(path: Path, value: object) -> None:
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    os.replace(temporary, path)
+def rate_for_speed(speed: float) -> str:
+    percentage = round((speed - 1.0) * 100)
+    return f"{percentage:+d}%"
+
+
+async def synthesize(
+    text: str,
+    output: Path,
+    *,
+    voice: str,
+    speed: float,
+) -> int:
+    import edge_tts
+
+    count = 0
+    rate = rate_for_speed(speed)
+    with output.open("wb") as audio:
+        for chunk in chunks(text):
+            communicate = edge_tts.Communicate(
+                text=chunk,
+                voice=voice,
+                rate=rate,
+                volume="+0%",
+                pitch="+0Hz",
+            )
+            async for message in communicate.stream():
+                if message["type"] == "audio":
+                    audio.write(message["data"])
+            count += 1
+    return count
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--model", required=True)
-    parser.add_argument("--voices", required=True)
-    parser.add_argument(
-        "--voice",
-        required=True,
-        choices=(
-            "im_nicola",
-            "if_sara",
-            "am_michael",
-            "af_heart",
-            "bm_george",
-            "bf_emma",
-        ),
-    )
+    parser.add_argument("--voice", required=True, choices=VOICE_CHOICES)
     parser.add_argument("--speed", required=True, type=float)
-    parser.add_argument(
-        "--language",
-        required=True,
-        choices=("it", "en-us", "en-gb"),
-    )
+    parser.add_argument("--language", required=True, choices=("it", "en-us", "en-gb"))
     args = parser.parse_args()
-    if not math.isfinite(args.speed) or not 0.75 <= args.speed <= 1.5:
-        raise ValueError("speech speed must be between 0.75 and 1.5")
+    if not 0.75 <= args.speed <= 1.5:
+        raise ValueError("speech speed is outside the supported range")
     source = Path(args.input)
-    output = Path(args.output)
-    output.mkdir(parents=True, exist_ok=True)
+    output_dir = Path(args.output)
     text = source.read_text(encoding="utf-8", errors="strict").strip()
     if not text:
         raise ValueError("reading text is empty")
     if len(text) > MAX_CHARACTERS:
         raise ValueError("reading text exceeds the supported limit")
 
-    import numpy as np
-    import soundfile as sf
-    from kokoro_onnx import Kokoro
-
-    engine = Kokoro(args.model, args.voices)
-    output_path = output / "speech.wav"
-    sample_rate = 24_000
-    pause = np.zeros(round(sample_rate * 0.24), dtype=np.float32)
-    chunk_count = 0
-    sample_count = 0
-    with sf.SoundFile(
-        output_path,
-        mode="w",
-        samplerate=sample_rate,
-        channels=1,
-        subtype="PCM_16",
-    ) as audio:
-        for chunk in chunks(text):
-            samples, generated_rate = engine.create(
-                chunk,
-                voice=args.voice,
-                speed=args.speed,
-                lang=args.language,
-            )
-            if generated_rate != sample_rate:
-                raise RuntimeError("Kokoro returned an unexpected sample rate")
-            samples = np.asarray(samples)
-            if (
-                samples.ndim != 1
-                or not np.issubdtype(samples.dtype, np.floating)
-                or not np.all(np.isfinite(samples))
-                or len(samples) > sample_rate * MAX_CHUNK_SECONDS
-            ):
-                raise RuntimeError("Kokoro returned invalid audio samples")
-            projected_samples = sample_count + len(samples) + len(pause)
-            if projected_samples > sample_rate * MAX_AUDIO_SECONDS:
-                raise RuntimeError("generated audio exceeds the supported duration")
-            audio.write(samples)
-            audio.write(pause)
-            sample_count += len(samples) + len(pause)
-            chunk_count += 1
+    output_dir.mkdir(parents=True, exist_ok=True)
+    audio = output_dir / "speech.mp3"
+    chunk_count = asyncio.run(
+        synthesize(text, audio, voice=args.voice, speed=args.speed)
+    )
     report = {
-        "engine": "Kokoro ONNX 0.5.0",
-        "model_profile": (
-            "INT8 CPU" if "int8" in Path(args.model).name.casefold() else "full"
-        ),
+        "engine": "Microsoft Edge Neural TTS",
+        "provider": "edge-tts",
         "voice": args.voice,
         "language": args.language,
         "speed": args.speed,
-        "sample_rate": sample_rate,
+        "rate": rate_for_speed(args.speed),
+        "format": "mp3",
         "chunks": chunk_count,
-        "duration_seconds": round(sample_count / sample_rate, 3),
+        "characters": len(text),
+        "network": "Microsoft Edge speech endpoint",
     }
-    write_json(output / "speech.json", report)
+    (output_dir / "speech.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     return 0
 
 

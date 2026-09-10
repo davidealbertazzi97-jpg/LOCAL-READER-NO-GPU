@@ -17,12 +17,13 @@ Thank you for helping improve Local Accessibility Studio.
    .\install.ps1 --core-only --skip-desktop
    ```
 
-3. For complete OCR and speech work, run the normal installer. The optional
-   `--fast-tts` profile downloads the larger FP32 Kokoro model.
+3. For complete OCR and speech work, run the normal installer. It installs
+   PaddleOCR and Edge-TTS and prefetches the plain OCR models.
 4. Run `./scripts/check.sh` before opening a pull request.
 5. Run `.venv/bin/python tests/smoke_local.py` for the core integration test.
 6. Run `.venv/bin/python tests/smoke_local.py --full` only after installing the
-   OCR and Kokoro environments.
+   OCR and Edge-TTS environments and configuring llama.cpp/LFM if reflow is to
+   be exercised.
 
 Tests must use synthetic fixtures. Never commit real personal documents,
 tokens, model weights, voice bundles, virtual environments, generated page
@@ -32,7 +33,8 @@ previews, audio, databases, or application state.
 
 - Keep the service bound to numeric loopback.
 - Preserve token authentication, exact-origin checks, and network guards.
-- Do not add telemetry, remote inference, CDN assets, or account requirements.
+- Do not add telemetry, unrequested remote inference, CDN assets, or account
+  requirements. Edge-TTS is the documented, explicit remote exception.
 - Treat OCR structure and accessibility output as review candidates.
 - Keep user/OCR text escaped from executable HTML.
 - Preserve cleanup on success, failure, deletion, and interrupted restart.

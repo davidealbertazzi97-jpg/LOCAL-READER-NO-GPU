@@ -37,12 +37,12 @@ jobs:
           git diff --check
           ruff check .
           ruff format --check .
-          bandit -q -c pyproject.toml -r app runtime_guard scripts workers
-          python -m compileall -q app runtime_guard scripts tests workers
+          bandit -q -c pyproject.toml -r app packaging runtime_guard scripts workers
+          python -m compileall -q app packaging runtime_guard scripts tests workers
           python -m unittest discover -s tests -p "test_*.py"
-          find scripts -type f -name '*.sh' -print0 |
+          find scripts packaging -type f -name '*.sh' -print0 |
             xargs -0 -n1 bash -n
-          bash -n install.sh start.sh
+          bash -n install.sh start.sh packaging/AppRun
           node --check static/app.js
           test -z "$(git ls-files models .venv .venv-ocr .venv-tts bin data outputs)"
           private_marker='-----BEGIN '"(RSA |EC |OPENSSH )?PRIVATE KEY-----"
@@ -53,8 +53,7 @@ jobs:
           slack_token='xox''[baprs]-[[:alnum:]-]{10,}'
           secret_pattern="${private_marker}|${github_fine_grained}|${github_classic}|${aws_access_key}|${google_api_key}|${slack_token}"
           test -z "$(git grep -IlE -- "$secret_pattern" -- . || true)"
-          machine_path="/home/""davide"
-          test -z "$(git grep -IlF -- "$machine_path" -- . || true)"
+          python scripts/check_portability.py
 
   core-smoke:
     name: Core smoke (${{ matrix.os }})
@@ -91,7 +90,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          foreach ($file in @("install.ps1", "start.ps1")) {
+          foreach ($file in @("install.ps1", "start.ps1", "packaging/build_windows.ps1")) {
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(
               "$PWD\$file", [ref]$null, [ref]$errors

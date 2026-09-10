@@ -62,29 +62,24 @@ def download(name: str, expected_size: int, expected_hash: str) -> None:
     if parsed.scheme != "https" or parsed.hostname != "github.com":
         raise RuntimeError("unexpected Kokoro download URL")
     temporary = destination.with_suffix(destination.suffix + ".download")
-    if temporary.exists():
-        temporary.unlink()
+    temporary.unlink(missing_ok=True)
     request = urllib.request.Request(
-        url,
-        headers={"User-Agent": "Local-Accessibility-Studio/0.2"},
+        url, headers={"User-Agent": "Local-Accessibility-Studio/0.3"}
     )
     try:
         # HTTPS host, expected size, and SHA-256 are fixed and checked here.
         # nosemgrep
         response = urllib.request.urlopen(request, timeout=60)  # nosec B310
         received = 0
-        with (
-            response,
-            temporary.open("xb") as output,
-        ):
+        with response, temporary.open("xb") as output:
             while chunk := response.read(1024 * 1024):
                 received += len(chunk)
                 if received > expected_size:
                     raise RuntimeError(f"download exceeds the approved size for {name}")
                 output.write(chunk)
-        if received != expected_size:
-            raise RuntimeError(f"download size verification failed for {name}")
-        if not verified(temporary, expected_size, expected_hash):
+        if received != expected_size or not verified(
+            temporary, expected_size, expected_hash
+        ):
             raise RuntimeError(f"checksum verification failed for {name}")
         os.replace(temporary, destination)
     except Exception:
@@ -96,9 +91,7 @@ def download(name: str, expected_size: int, expected_hash: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Install a verified Kokoro CPU model.")
     parser.add_argument(
-        "--fast",
-        action="store_true",
-        help="install the larger FP32 model, often faster on modern x86 CPUs",
+        "--fast", action="store_true", help="install the larger FP32 model"
     )
     args = parser.parse_args()
     TARGET.mkdir(parents=True, exist_ok=True)

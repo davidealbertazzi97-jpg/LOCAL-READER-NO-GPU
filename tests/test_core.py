@@ -28,6 +28,7 @@ from app.body_limit import RequestBodyLimitMiddleware  # noqa: E402
 from app.config import PATHS, PORT, _private_directory  # noqa: E402
 from app.documents import (  # noqa: E402
     accessible_html,
+    document_from_text_pages,
     reading_text,
     validate_document,
     write_exports,
@@ -39,11 +40,14 @@ from app.processes import (  # noqa: E402
     stop_worker_processes,
 )
 from app.product import load_product  # noqa: E402
+from app.provider_config import AI_PROVIDER_PRESETS  # noqa: E402
+from app.reflow import format_for_speech, validated_model_output  # noqa: E402
 from app.security import TOKEN_COOKIE, origin_is_allowed  # noqa: E402
 from app.speech_jobs import normalized_options, queue_speech_job  # noqa: E402
 from app.store import JobStore  # noqa: E402
 from app.utils import remove_work_tree, resolve_artifact, safe_name  # noqa: E402
 from scripts.start import guarded_environment  # noqa: E402
+from workers.provider_models_worker import model_ids, request_headers  # noqa: E402
 
 
 def example_document() -> dict:
@@ -88,14 +92,42 @@ class ProductTests(unittest.TestCase):
     def test_product_and_engine_registry(self) -> None:
         product = load_product()
         self.assertEqual(product.slug, "local-accessibility-studio")
-        self.assertEqual(product.version, "0.2.0")
+        self.assertEqual(product.version, "0.3.0")
         self.assertEqual(TOKEN_COOKIE, "local_accessibility_studio_token")
         self.assertEqual(
             set(ENGINES),
-            {"accessible-document", "kokoro-italian"},
+            {"accessible-document", "plain-text", "edge-tts", "lfm-reflow"},
         )
         self.assertTrue(ENGINES["accessible-document"].user_upload)
-        self.assertFalse(ENGINES["kokoro-italian"].user_upload)
+        self.assertFalse(ENGINES["edge-tts"].user_upload)
+        self.assertFalse(ENGINES["lfm-reflow"].user_upload)
+
+
+class FrontendAccessibilityContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        root = Path(__file__).resolve().parents[1]
+        cls.html = (root / "static" / "index.html").read_text(encoding="utf-8")
+        cls.javascript = (root / "static" / "app.js").read_text(encoding="utf-8")
+
+    def test_primary_landmarks_and_live_regions_are_present(self) -> None:
+        self.assertIn('data-i18n-aria-label="mainNavLabel"', self.html)
+        self.assertIn(
+            'id="complete-progress" class="progress-card" hidden role="status"',
+            self.html,
+        )
+        self.assertIn(
+            'id="review-live-status" class="visually-hidden" role="status"',
+            self.html,
+        )
+        self.assertIn('id="model-list" class="model-list" role="listbox"', self.html)
+
+    def test_dynamic_navigation_and_keyboard_review_contract_is_present(self) -> None:
+        self.assertIn('link.setAttribute("aria-current", "page")', self.javascript)
+        self.assertIn("heading.tabIndex = -1", self.javascript)
+        self.assertIn('event.key === "ArrowDown"', self.javascript)
+        self.assertIn('option.setAttribute("aria-posinset"', self.javascript)
+        self.assertIn('t("blockMoved")', self.javascript)
 
     def test_launcher_removes_inherited_injection_paths(self) -> None:
         hostile = {
@@ -323,13 +355,39 @@ class PublicUiTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         for name in ("index.html", "legal.html"):
             html = (root / "static" / name).read_text(encoding="utf-8")
-            asset_urls = re.findall(r'(?:href|src)="([^"]+)"', html)
+            asset_urls = re.findall(
+                r'<(?:link|script|img)\b[^>]*(?:href|src)="([^"]+)"', html
+            )
             self.assertTrue(asset_urls)
             for url in asset_urls:
                 self.assertFalse(
                     url.startswith(("http://", "https://", "//")),
                     f"remote asset is not allowed in {name}: {url}",
                 )
+
+
+class ProviderTests(unittest.TestCase):
+    def test_nvidia_nim_preset_uses_hosted_openai_endpoint(self) -> None:
+        self.assertEqual(
+            AI_PROVIDER_PRESETS["nvidia-nim"]["base_url"],
+            "https://integrate.api.nvidia.com/v1",
+        )
+        self.assertEqual(
+            AI_PROVIDER_PRESETS["nvidia-nim"]["model"],
+            "meta/llama-3.3-70b-instruct",
+        )
+
+    def test_provider_model_response_is_normalized(self) -> None:
+        payload = {"data": [{"id": "b"}, {"id": "A"}, {"id": "b"}, "c"]}
+        self.assertEqual(model_ids(payload), ["A", "b", "c"])
+        self.assertEqual(
+            request_headers({"provider": "claude", "api_key": "secret"}),
+            {
+                "x-api-key": "secret",
+                "anthropic-version": "2023-06-01",
+                "Accept": "application/json",
+            },
+        )
 
 
 class DocumentTests(unittest.TestCase):
@@ -374,6 +432,28 @@ class DocumentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_document(value)
 
+    def test_plain_text_pages_create_reviewable_blocks_without_previews(self) -> None:
+        document = document_from_text_pages(
+            "Testo",
+            ["Prima riga.\nSeconda riga."],
+            language="it",
+            speech_language="it",
+        )
+        self.assertEqual(document["pages"][0]["preview"], "")
+        self.assertEqual(len(document["pages"][0]["blocks"]), 2)
+
+
+class ReflowTests(unittest.TestCase):
+    def test_reflow_guard_preserves_non_whitespace_characters(self) -> None:
+        source = "Una riga OCR.\nUn’altra riga."
+        accepted = validated_model_output(source, "Una riga OCR. Un’altra riga.")
+        self.assertEqual(accepted, "Una riga OCR. Un’altra riga.\n")
+        self.assertIsNone(validated_model_output(source, "Testo modificato."))
+        self.assertEqual(
+            format_for_speech(source),
+            "Una riga OCR. Un’altra riga.\n",
+        )
+
 
 class PathTests(unittest.TestCase):
     def test_upload_name_and_artifact_boundary(self) -> None:
@@ -412,6 +492,23 @@ class StoreTests(unittest.TestCase):
             self.assertTrue(store.delete_finished("upload"))
             self.assertIsNone(store.get("upload"))
 
+    def test_running_job_with_private_source_is_requeued_after_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            store = JobStore(root / "jobs.sqlite3")
+            store.create("recover", "plain-text", "reading.txt", {})
+            store.mark_queued("recover")
+            store.update("recover", status="running", message="Running")
+            source = root / "work" / "recover" / "reading.txt"
+            source.parent.mkdir(parents=True)
+            source.write_text("Testo da riprendere.", encoding="utf-8")
+
+            recovered, failed = store.recover_incomplete(root / "work")
+
+            self.assertEqual(recovered, ["recover"])
+            self.assertEqual(failed, [])
+            self.assertEqual(store.get("recover")["status"], "queued")
+
 
 class SpeechQueueTests(unittest.TestCase):
     def test_reviewed_text_is_copied_and_queued_privately(self) -> None:
@@ -447,7 +544,7 @@ class SpeechQueueTests(unittest.TestCase):
                 store,
                 source,
                 source_job="parent",
-                voice="im_nicola",
+                voice="it-IT-GiuseppeMultilingualNeural",
                 speed=1.0,
             )
             work_dir = PATHS.work / child["id"]
@@ -464,13 +561,13 @@ class SpeechQueueTests(unittest.TestCase):
 
     def test_invalid_speech_numbers_are_rejected(self) -> None:
         with self.assertRaises(ValueError):
-            normalized_options("im_nicola", math.nan)
+            normalized_options("it-IT-GiuseppeMultilingualNeural", math.nan)
         with self.assertRaises(ValueError):
-            normalized_options("im_nicola", True)
+            normalized_options("it-IT-GiuseppeMultilingualNeural", True)
         with self.assertRaises(ValueError):
-            normalized_options("im_nicola", 1.0, "en-us")
-        voice, speed, language = normalized_options("bf_emma", 1.0, "en-gb")
-        self.assertEqual((voice, speed, language), ("bf_emma", 1.0, "en-gb"))
+            normalized_options("it-IT-GiuseppeMultilingualNeural", 1.0, "en-us")
+        voice, speed, language = normalized_options("en-GB-SoniaNeural", 1.0, "en-gb")
+        self.assertEqual((voice, speed, language), ("en-GB-SoniaNeural", 1.0, "en-gb"))
 
 
 if __name__ == "__main__":

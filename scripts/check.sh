@@ -28,18 +28,18 @@ fi
 run_tool "ruff==0.16.0" ruff check .
 run_tool "ruff==0.16.0" ruff format --check .
 run_tool "bandit==1.9.4" bandit -q -c pyproject.toml \
-  -r app runtime_guard scripts workers
+  -r app packaging runtime_guard scripts workers
 
 while IFS= read -r -d '' script; do
   bash -n "$script"
-done < <(find scripts -type f -name '*.sh' -print0)
-bash -n install.sh start.sh
+done < <(find scripts packaging -type f -name '*.sh' -print0)
+bash -n install.sh start.sh packaging/AppRun
 
 if command -v node >/dev/null 2>&1; then
   node --check static/app.js
 fi
 
-.venv/bin/python -m compileall -q app runtime_guard scripts tests workers
+.venv/bin/python -m compileall -q app packaging runtime_guard scripts tests workers
 .venv/bin/python -m unittest discover -s tests -p "test_*.py"
 .venv/bin/python tests/smoke_local.py
 
@@ -61,13 +61,8 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       "$tracked_secrets" >&2
     exit 1
   fi
-  machine_path="/home/""davide"
-  local_paths="$(git grep -IlF -- "$machine_path" -- . || true)"
-  if [[ -n "$local_paths" ]]; then
-    printf 'Machine-specific paths found in tracked files:\n%s\n' \
-      "$local_paths" >&2
-    exit 1
-  fi
 fi
+
+.venv/bin/python scripts/check_portability.py
 
 printf 'Static, unit, security, and core smoke checks passed.\n'

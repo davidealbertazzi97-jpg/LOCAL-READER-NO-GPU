@@ -28,7 +28,10 @@ class JobRunner:
         self._queue = queue.Queue()
         self._stopping.clear()
         allow_worker_processes()
-        for interrupted_id in STORE.interrupt_incomplete():
+        recovered_ids, interrupted_ids = STORE.recover_incomplete(PATHS.work)
+        for recovered_id in recovered_ids:
+            remove_output_tree(PATHS.outputs / recovered_id)
+        for interrupted_id in interrupted_ids:
             remove_work_tree(PATHS.work / interrupted_id)
             remove_output_tree(PATHS.outputs / interrupted_id)
         self._thread = threading.Thread(
@@ -107,27 +110,30 @@ class JobRunner:
                     raise RuntimeError("engine returned an artifact outside its output")
                 artifact_names.append(resolved.relative_to(root).as_posix())
             summary = dict(result.summary)
-            if engine.engine_id == "accessible-document" and job["options"].get(
-                "auto_speech"
-            ):
+            if engine.engine_id in {"accessible-document", "plain-text"} and job[
+                "options"
+            ].get("auto_speech"):
                 try:
                     queue_speech_job(
                         self,
                         STORE,
                         output_dir / "reading.txt",
                         source_job=job_id,
-                        voice=job["options"].get("voice", "im_nicola"),
+                        voice=job["options"].get(
+                            "voice", "it-IT-GiuseppeMultilingualNeural"
+                        ),
                         speed=job["options"].get("speed", 1.0),
                         language=job["options"].get("speech_language", "it"),
+                        provider=job["options"].get("speech_provider", "edge-tts"),
                     )
-                    summary["audio"] = "Kokoro queued automatically"
+                    summary["audio"] = "Edge-TTS queued automatically"
                 except (OSError, RuntimeError, ValueError) as exc:
                     LOGGER.warning(
                         "Automatic speech for job %s could not be queued: %s",
                         job_id,
                         type(exc).__name__,
                     )
-                    summary["audio"] = "Kokoro could not be queued"
+                    summary["audio"] = "Edge-TTS could not be queued"
             STORE.update(
                 job_id,
                 status="completed",

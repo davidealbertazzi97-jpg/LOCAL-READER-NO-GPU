@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 _LOCK = threading.Lock()
@@ -58,6 +58,7 @@ def run_worker(
     *,
     cwd: Path,
     timeout: float,
+    env: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     with _LOCK:
         if _STOPPING:
@@ -69,6 +70,7 @@ def run_worker(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            env=dict(env) if env is not None else None,
         )
         _ACTIVE.add(process)
     try:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,6 +50,8 @@ class Paths:
     database: Path
     ocr_python: Path
     tts_python: Path
+    llama_cli: Path
+    llama_model: Path
     kokoro_model: Path
     kokoro_voices: Path
 
@@ -63,10 +66,107 @@ class Paths:
         ).expanduser()
         executable = "python.exe" if os.name == "nt" else "python"
         scripts_dir = "Scripts" if os.name == "nt" else "bin"
-        models = APP_ROOT / "models" / "kokoro"
-        fast_model = models / "kokoro-v1.0.onnx"
-        compact_model = models / "kokoro-v1.0.int8.onnx"
-        default_model = fast_model if fast_model.is_file() else compact_model
+        executable_suffix = ".exe" if os.name == "nt" else ""
+        llama_candidates = []
+        configured_cli = os.environ.get("LOCAL_ACCESSIBILITY_STUDIO_LLAMA_CLI")
+        if configured_cli:
+            llama_candidates.append(Path(configured_cli).expanduser())
+        llama_candidates.extend(
+            (
+                APP_ROOT / "bin" / f"llama-cli{executable_suffix}",
+                APP_ROOT / "bin" / f"llama-completion{executable_suffix}",
+            )
+        )
+        system_completion = shutil.which("llama-completion")
+        if system_completion:
+            llama_candidates.append(Path(system_completion))
+        system_cli = shutil.which("llama-cli")
+        if system_cli:
+            llama_candidates.append(Path(system_cli))
+        llama_candidates.extend(
+            [
+                Path.home()
+                / "llama.cpp"
+                / "build"
+                / "bin"
+                / f"llama-completion{executable_suffix}",
+                Path.home()
+                / "llama.cpp"
+                / "build-local-reader"
+                / "bin"
+                / f"llama-completion{executable_suffix}",
+                Path.home()
+                / "llama.cpp"
+                / "build"
+                / "bin"
+                / f"llama-cli{executable_suffix}",
+                Path.home()
+                / "llama.cpp"
+                / "build-local-reader"
+                / "bin"
+                / f"llama-cli{executable_suffix}",
+                Path.home()
+                / "llama.cpp"
+                / "build-cuda"
+                / "bin"
+                / f"llama-cli{executable_suffix}",
+            ]
+        )
+        configured_model = os.environ.get("LOCAL_ACCESSIBILITY_STUDIO_LFM_MODEL")
+        model_candidates = []
+        if configured_model:
+            model_candidates.append(Path(configured_model).expanduser())
+        model_candidates.extend(
+            (
+                APP_ROOT / "models" / "lfm" / "LFM2.5-230M-Q4_K_M.gguf",
+                APP_ROOT / "models" / "lfm" / "LFM2.5-230M-Q8_0.gguf",
+            )
+        )
+        model_candidates.extend(
+            (
+                Path.home()
+                / ".lmstudio"
+                / "models"
+                / "LiquidAI"
+                / "LFM2.5-230M-GGUF"
+                / "LFM2.5-230M-Q4_K_M.gguf",
+                Path.home()
+                / ".lmstudio"
+                / "models"
+                / "LiquidAI"
+                / "LFM2.5-230M-GGUF"
+                / "LFM2.5-230M-Q8_0.gguf",
+            )
+        )
+        kokoro_model_candidates = []
+        configured_kokoro_model = os.environ.get(
+            "LOCAL_ACCESSIBILITY_STUDIO_KOKORO_MODEL"
+        )
+        if configured_kokoro_model:
+            kokoro_model_candidates.append(Path(configured_kokoro_model).expanduser())
+        kokoro_model_candidates.extend(
+            (
+                APP_ROOT / "models" / "kokoro" / "kokoro-v1.0.int8.onnx",
+                APP_ROOT / "models" / "kokoro" / "kokoro-v1.0.onnx",
+            )
+        )
+        kokoro_voice_candidates = []
+        configured_kokoro_voices = os.environ.get(
+            "LOCAL_ACCESSIBILITY_STUDIO_KOKORO_VOICES"
+        )
+        if configured_kokoro_voices:
+            kokoro_voice_candidates.append(Path(configured_kokoro_voices).expanduser())
+        kokoro_voice_candidates.extend(
+            (
+                APP_ROOT / "models" / "kokoro" / "voices-v1.0.bin",
+                Path.home()
+                / ".cache"
+                / "hyperframes"
+                / "tts"
+                / "voices"
+                / "voices-v1.0.bin",
+            )
+        )
         paths = cls(
             app=APP_ROOT,
             data=data,
@@ -76,18 +176,22 @@ class Paths:
             database=data / "jobs.sqlite3",
             ocr_python=APP_ROOT / ".venv-ocr" / scripts_dir / executable,
             tts_python=APP_ROOT / ".venv-tts" / scripts_dir / executable,
-            kokoro_model=Path(
-                os.environ.get(
-                    f"{prefix}_KOKORO_MODEL",
-                    default_model,
-                )
-            ).expanduser(),
-            kokoro_voices=Path(
-                os.environ.get(
-                    f"{prefix}_KOKORO_VOICES",
-                    models / "voices-v1.0.bin",
-                )
-            ).expanduser(),
+            llama_cli=next(
+                (path for path in llama_candidates if path.is_file()),
+                llama_candidates[0],
+            ),
+            llama_model=next(
+                (path for path in model_candidates if path.is_file()),
+                model_candidates[0],
+            ),
+            kokoro_model=next(
+                (path for path in kokoro_model_candidates if path.is_file()),
+                kokoro_model_candidates[0],
+            ),
+            kokoro_voices=next(
+                (path for path in kokoro_voice_candidates if path.is_file()),
+                kokoro_voice_candidates[0],
+            ),
         )
         for directory in (paths.data, paths.work, paths.outputs, paths.state):
             _private_directory(directory)

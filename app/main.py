@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import threading
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Any
@@ -15,9 +18,22 @@ from .body_limit import RequestBodyLimitMiddleware
 from .config import MAX_UPLOAD_BYTES, PATHS
 from .documents import load_document, validate_document, write_exports
 from .engines import ENGINES
-from .engines.speech import verified_kokoro
+from .engines.speech import external_environment
 from .jobs import RUNNER
+from .processes import run_worker
 from .product import PRODUCT
+from .provider_config import (
+    AI_PROVIDER_PRESETS,
+    TTS_PROVIDER_INFO,
+    add_clone,
+    ai_config_for,
+    load_settings,
+    public_settings,
+    save_settings,
+    speech_runtime_config,
+    valid_url,
+)
+from .reflow_jobs import queue_reflow_job
 from .security import (
     TOKEN_COOKIE,
     origin_is_allowed,
@@ -29,6 +45,7 @@ from .speech_jobs import (
     DEFAULT_VOICES,
     VOICE_LANGUAGES,
     normalized_options,
+    normalized_speed,
     queue_speech_job,
 )
 from .store import STORE
@@ -37,8 +54,13 @@ from .utils import remove_output_tree, remove_work_tree, resolve_artifact, safe_
 STATIC = PATHS.app / "static"
 CHUNK_SIZE = 1024 * 1024
 MAX_DOCUMENT_EDIT_BYTES = 12 * 1024 * 1024
+MAX_TEXT_INPUT_BYTES = 20 * 1024 * 1024
 DOCUMENT_LOCK = threading.Lock()
-MAX_UPLOAD_REQUEST_BYTES = MAX_UPLOAD_BYTES + 256 * 1024
+MAX_UPLOAD_REQUEST_BYTES = max(MAX_UPLOAD_BYTES, MAX_TEXT_INPUT_BYTES) + 256 * 1024
+TEXT_ENGINES = {"plain-text", "lfm-reflow"}
+SPEECH_SOURCE_ENGINES = {"accessible-document", *TEXT_ENGINES}
+SPEECH_PROVIDERS = set(TTS_PROVIDER_INFO)
+REFLOW_PROVIDERS = set(AI_PROVIDER_PRESETS)
 
 
 async def limited_body(request: Request, maximum: int, label: str) -> bytes:
@@ -79,6 +101,56 @@ def completed_artifact(job_id: str, artifact: str) -> tuple[dict[str, Any], Path
     return job, path
 
 
+def normalized_processing_options(
+    engine: str,
+    options: dict[str, Any],
+) -> dict[str, Any]:
+    if engine not in {"accessible-document", "plain-text"}:
+        return options
+    auto_speech = options.get("auto_speech", False)
+    if not isinstance(auto_speech, bool):
+        raise HTTPException(400, "auto_speech must be true or false")
+    document_language = options.get("document_language", "it")
+    speech_language = options.get(
+        "speech_language",
+        "it" if document_language == "it" else "en-us",
+    )
+    if not isinstance(document_language, str) or document_language not in {"it", "en"}:
+        raise HTTPException(400, "document_language must be it or en")
+    if not isinstance(speech_language, str):
+        raise HTTPException(400, "speech_language must be a string")
+    if (
+        document_language == "it"
+        and speech_language != "it"
+        or document_language == "en"
+        and speech_language not in {"en-us", "en-gb"}
+    ):
+        raise HTTPException(400, "speech language does not match the document")
+    try:
+        voice, speed, speech_language = normalized_options(
+            options.get("voice", DEFAULT_VOICES[str(speech_language)]),
+            options.get("speed", 1.0),
+            speech_language,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    preserve_text = options.get("preserve_text", False)
+    if not isinstance(preserve_text, bool):
+        raise HTTPException(400, "preserve_text must be true or false")
+    speech_provider = options.get("speech_provider", "edge-tts")
+    if not isinstance(speech_provider, str) or speech_provider not in SPEECH_PROVIDERS:
+        raise HTTPException(400, "unknown speech provider")
+    return {
+        "auto_speech": auto_speech,
+        "preserve_text": preserve_text,
+        "document_language": document_language,
+        "speech_language": speech_language,
+        "voice": voice,
+        "speed": speed,
+        "speech_provider": speech_provider,
+    }
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     RUNNER.start()
@@ -95,7 +167,13 @@ app = FastAPI(
     middleware=[
         Middleware(
             RequestBodyLimitMiddleware,
-            path="/api/jobs",
+            path=(
+                "/api/jobs",
+                "/api/text",
+                "/api/settings",
+                "/api/provider-models",
+                "/api/voice-clones",
+            ),
             maximum=MAX_UPLOAD_REQUEST_BYTES,
         )
     ],
@@ -205,33 +283,265 @@ def engines() -> list[dict[str, Any]]:
 def status() -> dict[str, Any]:
     ocr_ready = PATHS.ocr_python.is_file()
     tts_ready = PATHS.tts_python.is_file()
-    model_ready = False
-    speech_engine = "Kokoro ONNX / CPU"
-    if tts_ready:
-        try:
-            model, _ = verified_kokoro()
-            model_ready = True
-            speech_engine = (
-                "Kokoro ONNX INT8 compact / CPU"
-                if "int8" in model.name.casefold()
-                else "Kokoro ONNX FP32 fast / CPU"
-            )
-        except RuntimeError:
-            model_ready = False
+    reflow_ready = PATHS.llama_cli.is_file() and PATHS.llama_model.is_file()
+    settings = public_settings()
+    kokoro_ready = (
+        tts_ready and PATHS.kokoro_model.is_file() and PATHS.kokoro_voices.is_file()
+    )
     return {
         "ocr": {
             "ready": ocr_ready,
-            "engine": "RapidOCR PP-OCRv6 small / ONNX CPU",
+            "engine": "PaddleOCR PP-OCRv6 / CPU",
         },
         "speech": {
-            "ready": tts_ready and model_ready,
-            "engine": speech_engine,
+            "ready": tts_ready,
+            "engine": "Microsoft Edge Neural TTS",
             "voices": {
                 language: sorted(voices) for language, voices in VOICE_LANGUAGES.items()
             },
-            "piper": False,
+            "network": "Microsoft Edge speech endpoint",
+        },
+        "providers": {
+            "ai": {
+                "presets": AI_PROVIDER_PRESETS,
+                "configured": settings["ai"]["configured"],
+                "selected": settings["ai"]["provider"],
+                "configured_by_provider": settings["ai"].get("providers", {}),
+            },
+            "tts": {
+                "edge-tts": {"ready": tts_ready, "network": True},
+                "kokoro": {"ready": kokoro_ready, "network": False},
+                "voxtral": {
+                    "ready": settings["tts"]["mistral"]["configured"],
+                    "network": True,
+                },
+                "fish": {
+                    "ready": settings["tts"]["fish"]["configured"],
+                    "network": True,
+                },
+                "elevenlabs": {
+                    "ready": settings["tts"]["elevenlabs"]["configured"],
+                    "network": True,
+                },
+                "pocket-tts": {
+                    "ready": False,
+                    "network": False,
+                    "note": "optional adapter not installed",
+                },
+            },
+        },
+        "reflow": {
+            "ready": reflow_ready,
+            "engine": "LFM2.5 230M / llama.cpp",
+            "model": PATHS.llama_model.name,
+            "device": os.environ.get("LOCAL_ACCESSIBILITY_STUDIO_LFM_DEVICE", "auto"),
+            "reasoning": "disabled",
         },
     }
+
+
+@app.get("/api/settings")
+def get_settings() -> dict[str, Any]:
+    return {
+        "settings": public_settings(),
+        "ai_presets": AI_PROVIDER_PRESETS,
+        "tts_providers": TTS_PROVIDER_INFO,
+    }
+
+
+@app.put("/api/settings")
+async def put_settings(request: Request) -> dict[str, Any]:
+    body = await limited_body(request, 64 * 1024, "Provider settings")
+    try:
+        payload = json.loads(body or b"{}")
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(400, "Provider settings must be valid JSON") from exc
+    try:
+        return {"settings": save_settings(payload)}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.post("/api/provider-models")
+async def provider_models(request: Request) -> dict[str, Any]:
+    body = await limited_body(request, 64 * 1024, "Provider model request")
+    try:
+        payload = json.loads(body or b"{}")
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(400, "Provider model request must be valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Provider model request must be an object")
+
+    provider = payload.get("provider", "")
+    if not isinstance(provider, str) or provider not in AI_PROVIDER_PRESETS:
+        raise HTTPException(400, "unknown AI provider")
+    if provider == "local":
+        return {
+            "provider": provider,
+            "models": [AI_PROVIDER_PRESETS[provider]["model"]],
+        }
+
+    settings = load_settings()
+    api_key = payload.get("api_key", "")
+    if not isinstance(api_key, str) or len(api_key) > 1024:
+        raise HTTPException(400, "API key is invalid")
+    api_key = api_key.strip() or str(settings["ai_keys"].get(provider, "")).strip()
+    if not api_key:
+        raise HTTPException(400, "Enter the provider API key first")
+
+    if provider == "custom":
+        base_url = payload.get("base_url", "")
+        if not isinstance(base_url, str) or len(base_url) > 512:
+            raise HTTPException(400, "Provider URL is invalid")
+        base_url = base_url.strip()
+        if not base_url and settings["ai"].get("provider") == "custom":
+            base_url = str(settings["ai"].get("base_url", "")).strip()
+        if not valid_url(base_url):
+            raise HTTPException(400, "The custom provider URL must use HTTPS")
+    else:
+        base_url = AI_PROVIDER_PRESETS[provider]["base_url"]
+
+    if not PATHS.tts_python.is_file():
+        raise HTTPException(503, "The local worker environment is not installed")
+    PATHS.data.mkdir(mode=0o700, parents=True, exist_ok=True)
+    config_fd, config_name = tempfile.mkstemp(
+        prefix=".provider-models-", suffix=".json", dir=PATHS.data
+    )
+    output_fd, output_name = tempfile.mkstemp(
+        prefix=".provider-models-", suffix=".out", dir=PATHS.data
+    )
+    config_path = Path(config_name)
+    output_path = Path(output_name)
+    try:
+        if os.name != "nt":
+            os.chmod(config_path, 0o600)
+            os.chmod(output_path, 0o600)
+        with os.fdopen(config_fd, "w", encoding="utf-8") as handle:
+            json.dump(
+                {"provider": provider, "base_url": base_url, "api_key": api_key},
+                handle,
+                ensure_ascii=False,
+            )
+        os.close(output_fd)
+        command = [
+            str(PATHS.tts_python),
+            str(PATHS.app / "workers" / "provider_models_worker.py"),
+            "--config",
+            str(config_path),
+            "--output",
+            str(output_path),
+        ]
+        environment = os.environ.copy()
+        environment.pop("PYTHONPATH", None)
+        environment.pop("LD_PRELOAD", None)
+        environment["PYTHONNOUSERSITE"] = "1"
+        completed = run_worker(command, cwd=PATHS.app, timeout=90, env=environment)
+        if completed.returncode:
+            raise HTTPException(502, "The provider model list could not be retrieved")
+        try:
+            result = json.loads(output_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise HTTPException(
+                502, "The provider returned an invalid model list"
+            ) from exc
+        models = result.get("models") if isinstance(result, dict) else None
+        if not isinstance(models, list) or not all(
+            isinstance(model, str) for model in models
+        ):
+            raise HTTPException(502, "The provider returned an invalid model list")
+        return {"provider": provider, "models": models}
+    finally:
+        config_path.unlink(missing_ok=True)
+        output_path.unlink(missing_ok=True)
+
+
+@app.post("/api/voice-clones", status_code=201)
+async def create_voice_clone(
+    provider: Annotated[str, Form()],
+    name: Annotated[str, Form()],
+    consent: Annotated[str, Form()],
+    file: Annotated[UploadFile, File()],
+) -> dict[str, Any]:
+    if provider not in {"voxtral", "elevenlabs"}:
+        raise HTTPException(
+            400, "Voice cloning is currently available for Voxtral and ElevenLabs"
+        )
+    if consent.casefold() not in {"true", "1", "yes", "on"}:
+        raise HTTPException(
+            400, "You must confirm that you have permission to use this voice"
+        )
+    safe_title = safe_name(name)[:120]
+    if not safe_title:
+        raise HTTPException(400, "Voice name is empty")
+    suffix = Path(file.filename or "sample.wav").suffix.casefold()
+    if suffix not in {".wav", ".mp3", ".m4a", ".ogg", ".flac", ".webm"}:
+        raise HTTPException(
+            415, "Choose an audio sample: WAV, MP3, M4A, OGG, FLAC or WEBM"
+        )
+    settings = load_settings()
+    section_name = "mistral" if provider == "voxtral" else "elevenlabs"
+    config = dict(settings["tts"][section_name])
+    if not config.get("api_key"):
+        raise HTTPException(503, "Configure the provider API key in Settings first")
+    clone_dir = PATHS.data / "voice-clones"
+    clone_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    sample_path = clone_dir / f".sample-{uuid.uuid4().hex}{suffix}"
+    result_path = clone_dir / f".result-{uuid.uuid4().hex}.json"
+    received = 0
+    try:
+        with sample_path.open("xb") as handle:
+            while chunk := await file.read(CHUNK_SIZE):
+                received += len(chunk)
+                if received > 25 * 1024 * 1024:
+                    raise HTTPException(413, "The voice sample is too large")
+                handle.write(chunk)
+        fd, config_name = tempfile.mkstemp(
+            prefix=".clone-provider-", suffix=".json", dir=PATHS.data
+        )
+        config_path = Path(config_name)
+        try:
+            if os.name != "nt":
+                os.chmod(config_path, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump(config, handle, ensure_ascii=False)
+            command = [
+                str(PATHS.tts_python),
+                str(PATHS.app / "workers" / "cloud_clone_worker.py"),
+                "--provider",
+                provider,
+                "--name",
+                safe_title,
+                "--sample",
+                str(sample_path),
+                "--config",
+                str(config_path),
+                "--output",
+                str(result_path),
+            ]
+            completed = run_worker(
+                command, cwd=PATHS.app, timeout=30 * 60, env=external_environment()
+            )
+        finally:
+            config_path.unlink(missing_ok=True)
+        if completed.returncode or not result_path.is_file():
+            raise HTTPException(502, "The provider could not create the voice clone")
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        voice_id = result.get("voice_id") if isinstance(result, dict) else None
+        if not isinstance(voice_id, str) or not voice_id:
+            raise HTTPException(502, "The provider returned no voice ID")
+        clone = add_clone(provider=provider, name=safe_title, voice_id=voice_id)
+        save_settings({"tts": {section_name: {"voice_id": voice_id}}})
+        return {"clone": clone}
+    except HTTPException:
+        raise
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise HTTPException(
+            502, "The provider could not create the voice clone"
+        ) from exc
+    finally:
+        sample_path.unlink(missing_ok=True)
+        result_path.unlink(missing_ok=True)
+        await file.close()
 
 
 @app.get("/api/jobs")
@@ -293,50 +603,7 @@ async def create_job(
         raise HTTPException(400, "Options must be valid JSON") from exc
     if not isinstance(parsed_options, dict):
         raise HTTPException(400, "Options must be a JSON object")
-    if engine == "accessible-document":
-        auto_speech = parsed_options.get("auto_speech", False)
-        if not isinstance(auto_speech, bool):
-            raise HTTPException(400, "auto_speech must be true or false")
-        document_language = parsed_options.get("document_language", "it")
-        speech_language = parsed_options.get(
-            "speech_language",
-            "it" if document_language == "it" else "en-us",
-        )
-        if document_language not in {"it", "en"}:
-            raise HTTPException(400, "document_language must be it or en")
-        if (
-            document_language == "it"
-            and speech_language != "it"
-            or document_language == "en"
-            and speech_language not in {"en-us", "en-gb"}
-        ):
-            raise HTTPException(400, "speech language does not match the document")
-        requested_voice = parsed_options.get(
-            "voice",
-            DEFAULT_VOICES[str(speech_language)],
-        )
-        requested_speed = parsed_options.get("speed", 1.0)
-        parsed_options = {
-            "auto_speech": auto_speech,
-            "document_language": document_language,
-            "speech_language": speech_language,
-        }
-        if auto_speech:
-            try:
-                voice, speed, speech_language = normalized_options(
-                    requested_voice,
-                    requested_speed,
-                    speech_language,
-                )
-            except ValueError as exc:
-                raise HTTPException(400, str(exc)) from exc
-            parsed_options.update(
-                {
-                    "voice": voice,
-                    "speed": speed,
-                    "speech_language": speech_language,
-                }
-            )
+    parsed_options = normalized_processing_options(engine, parsed_options)
 
     input_name = safe_name(file.filename or "document")
     if not selected.accepts(Path(input_name)):
@@ -369,6 +636,50 @@ async def create_job(
         raise
     finally:
         await file.close()
+
+
+@app.post("/api/text", status_code=202)
+async def create_text_job(request: Request) -> dict[str, Any]:
+    body = await limited_body(request, MAX_TEXT_INPUT_BYTES, "Text input")
+    try:
+        payload = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(400, "Text input must be valid JSON") from exc
+    if not isinstance(payload, dict) or not isinstance(payload.get("text"), str):
+        raise HTTPException(400, "Text input must contain a text string")
+    text = payload["text"]
+    if not text.strip():
+        raise HTTPException(400, "Text input is empty")
+    if len(text.encode("utf-8")) > MAX_TEXT_INPUT_BYTES:
+        raise HTTPException(413, "Text input exceeds the local limit")
+    raw_options = payload.get("options", payload)
+    if not isinstance(raw_options, dict):
+        raise HTTPException(400, "Text options must be an object")
+    options = normalized_processing_options("plain-text", raw_options)
+    title = safe_name(str(payload.get("title", "testo-incollato.txt")))
+    if Path(title).suffix.casefold() not in {".txt", ".text", ".md", ".markdown"}:
+        title = f"{title}.txt"
+
+    job = RUNNER.submit("plain-text", title, options)
+    job_id = str(job["id"])
+    work_dir = PATHS.work / job_id
+    destination = work_dir / title
+    try:
+        work_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
+        with destination.open("xb") as handle:
+            handle.write(text.encode("utf-8"))
+        job = STORE.mark_queued(job_id)
+        RUNNER.enqueue(job_id)
+        return public_job(job)
+    except Exception:
+        remove_work_tree(work_dir)
+        STORE.update(
+            job_id,
+            status="failed",
+            message="Text input failed",
+            error="The private text copy could not be stored.",
+        )
+        raise
 
 
 @app.get("/api/jobs/{job_id}/document")
@@ -409,6 +720,100 @@ async def update_document(job_id: str, request: Request) -> dict[str, Any]:
         raise HTTPException(400, str(exc)) from exc
 
 
+def completed_text_source(job_id: str) -> tuple[dict[str, Any], Path]:
+    job, path = completed_artifact(job_id, "reading.txt")
+    if job["engine"] not in SPEECH_SOURCE_ENGINES:
+        raise HTTPException(404, "Reading text not found")
+    return job, path
+
+
+@app.get("/api/jobs/{job_id}/text")
+def get_text(job_id: str) -> dict[str, str]:
+    job, path = completed_text_source(job_id)
+    try:
+        return {
+            "title": str(job["input_name"]),
+            "text": path.read_text(encoding="utf-8"),
+        }
+    except OSError as exc:
+        raise HTTPException(500, "Stored reading text is unavailable") from exc
+
+
+@app.put("/api/jobs/{job_id}/text")
+async def update_text(job_id: str, request: Request) -> dict[str, str]:
+    body = await limited_body(request, MAX_TEXT_INPUT_BYTES, "Text edit")
+    try:
+        submitted = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(400, "Text edit must be valid JSON") from exc
+    if not isinstance(submitted, dict) or not isinstance(submitted.get("text"), str):
+        raise HTTPException(400, "Text edit must contain a text string")
+    text = submitted["text"]
+    if not text.strip():
+        raise HTTPException(400, "Text edit is empty")
+    if len(text.encode("utf-8")) > MAX_TEXT_INPUT_BYTES:
+        raise HTTPException(413, "Text edit exceeds the local limit")
+    job, path = completed_text_source(job_id)
+    if job["engine"] not in TEXT_ENGINES:
+        raise HTTPException(404, "Only text jobs can be edited here")
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    try:
+        with DOCUMENT_LOCK:
+            temporary.write_text(text, encoding="utf-8")
+            temporary.replace(path)
+        return {"title": str(job["input_name"]), "text": text}
+    except OSError as exc:
+        temporary.unlink(missing_ok=True)
+        raise HTTPException(500, "Text could not be saved locally") from exc
+
+
+@app.post("/api/jobs/{job_id}/reflow", status_code=202)
+async def create_reflow(job_id: str, request: Request) -> dict[str, Any]:
+    body = await limited_body(request, 4096, "Reflow options")
+    try:
+        options = json.loads(body or b"{}")
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(400, "Reflow options must be valid JSON") from exc
+    if not isinstance(options, dict):
+        raise HTTPException(400, "Reflow options must be an object")
+    device = options.get(
+        "device",
+        os.environ.get("LOCAL_ACCESSIBILITY_STUDIO_LFM_DEVICE", "auto"),
+    )
+    if not isinstance(device, str) or device not in {"auto", "cpu", "gpu"}:
+        raise HTTPException(400, "device must be auto, cpu, or gpu")
+    provider = options.get("provider", "local")
+    if not isinstance(provider, str) or provider not in REFLOW_PROVIDERS:
+        raise HTTPException(400, "unknown organization provider")
+    if not PATHS.tts_python.is_file():
+        raise HTTPException(503, "The local worker environment is not installed")
+    if provider == "local" and (
+        not PATHS.llama_cli.is_file() or not PATHS.llama_model.is_file()
+    ):
+        raise HTTPException(503, "llama.cpp and the LFM2.5 model are not installed")
+    if provider != "local":
+        try:
+            ai_config_for(provider)
+        except ValueError as exc:
+            raise HTTPException(503, str(exc)) from exc
+    _, source = completed_text_source(job_id)
+    try:
+        with DOCUMENT_LOCK:
+            child = queue_reflow_job(
+                RUNNER,
+                STORE,
+                source,
+                source_job=job_id,
+                device=device,
+                provider=provider,
+            )
+        return public_job(child)
+    except ValueError as exc:
+        raise HTTPException(413, "Text exceeds the reflow limit") from exc
+    except (OSError, RuntimeError) as exc:
+        raise HTTPException(500, "Reflow could not be queued locally") from exc
+
+
 @app.post("/api/jobs/{job_id}/speech", status_code=202)
 async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
     body = await limited_body(request, 4096, "Speech options")
@@ -418,26 +823,48 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
         raise HTTPException(400, "Speech options must be valid JSON") from exc
     if not isinstance(options, dict):
         raise HTTPException(400, "Speech options must be an object")
+    provider = options.get("provider", "edge-tts")
+    if not isinstance(provider, str) or provider not in SPEECH_PROVIDERS:
+        raise HTTPException(400, "unknown speech provider")
+    speech_language = options.get("language", "it")
+    if not isinstance(speech_language, str) or speech_language not in {
+        "it",
+        "en-us",
+        "en-gb",
+    }:
+        raise HTTPException(400, "unsupported speech language")
     try:
-        voice, speed, language = normalized_options(
-            options.get(
-                "voice",
-                DEFAULT_VOICES.get(str(options.get("language", "it")), "im_nicola"),
-            ),
-            options.get("speed", 1.0),
-            options.get("language", "it"),
-        )
+        if provider == "edge-tts":
+            voice, speed, language = normalized_options(
+                options.get(
+                    "voice",
+                    DEFAULT_VOICES.get(
+                        speech_language, "it-IT-GiuseppeMultilingualNeural"
+                    ),
+                ),
+                options.get("speed", 1.0),
+                speech_language,
+            )
+        else:
+            voice = str(options.get("voice", ""))
+            speed = normalized_speed(options.get("speed", 1.0))
+            language = speech_language
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     if not PATHS.tts_python.is_file():
-        raise HTTPException(503, "The local Kokoro environment is not installed")
-    try:
-        verified_kokoro()
-    except RuntimeError as exc:
-        raise HTTPException(503, "Verified Kokoro files are not installed") from exc
-    parent, source = completed_artifact(job_id, "reading.txt")
-    if parent["engine"] != "accessible-document":
-        raise HTTPException(404, "Accessible document not found")
+        raise HTTPException(503, "The isolated speech environment is not installed")
+    if provider == "kokoro" and (
+        not PATHS.kokoro_model.is_file() or not PATHS.kokoro_voices.is_file()
+    ):
+        raise HTTPException(503, "Kokoro model or voices are not installed")
+    if provider == "pocket-tts":
+        raise HTTPException(503, "Pocket TTS is not installed in this build")
+    if provider in {"voxtral", "fish", "elevenlabs"}:
+        try:
+            speech_runtime_config(provider)
+        except ValueError as exc:
+            raise HTTPException(503, str(exc)) from exc
+    _, source = completed_text_source(job_id)
 
     try:
         with DOCUMENT_LOCK:
@@ -449,10 +876,11 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
                 voice=voice,
                 speed=speed,
                 language=language,
+                provider=provider,
             )
         return public_job(child)
     except ValueError as exc:
-        raise HTTPException(413, "Reviewed text exceeds the speech limit") from exc
+        raise HTTPException(413, "Reading text exceeds the speech limit") from exc
     except (OSError, RuntimeError) as exc:
         raise HTTPException(500, "Speech could not be queued locally") from exc
 
@@ -460,6 +888,6 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
 @app.get("/api/jobs/{job_id}/files/{artifact:path}")
 def download_artifact(job_id: str, artifact: str):
     _, path = completed_artifact(job_id, artifact)
-    if path.suffix.casefold() in {".webp", ".wav"}:
+    if path.suffix.casefold() in {".webp", ".wav", ".mp3"}:
         return FileResponse(path)
     return FileResponse(path, filename=path.name)

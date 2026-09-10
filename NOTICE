@@ -2,5 +2,6 @@ Local Accessibility Studio
 Copyright (C) 2026 Davide Albertazzi
 
 Original project code and documentation are licensed under GNU GPL version 3
-only. Third-party packages, OCR models, Kokoro weights, voices, and installer
-tools remain under their respective licenses. See THIRD_PARTY_NOTICES.md.
+only. Third-party packages, PaddleOCR models, OpenDyslexic, llama.cpp, the LFM
+model, Edge-TTS, and installer tools remain under their respective licenses.
+See THIRD_PARTY_NOTICES.md.

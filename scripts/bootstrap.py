@@ -70,12 +70,15 @@ def parser() -> argparse.ArgumentParser:
     root.add_argument(
         "--skip-models",
         action="store_true",
-        help="do not download the verified Kokoro model and voices",
+        help="skip all model downloads; use models already available on the system",
     )
     root.add_argument(
         "--fast-tts",
         action="store_true",
-        help="install the larger Kokoro FP32 model for faster synthesis on many CPUs",
+        help=(
+            "kept for installer compatibility; the default Kokoro model is "
+            "already quantized for CPU"
+        ),
     )
     root.add_argument(
         "--skip-desktop",
@@ -104,23 +107,10 @@ def main() -> int:
                 []
                 if args.core_only
                 else [
-                    "rapidocr-ppocrv6-small",
-                    (
-                        "kokoro-fp32-fast-cpu"
-                        if args.fast_tts
-                        else "kokoro-int8-compact-cpu"
-                    ),
-                    *(
-                        []
-                        if args.skip_models
-                        else [
-                            (
-                                "kokoro-fp32-model"
-                                if args.fast_tts
-                                else "kokoro-int8-model"
-                            )
-                        ]
-                    ),
+                    "paddleocr-pp-ocrv6-cpu",
+                    "edge-tts-neural-voices",
+                    "kokoro-82m-offline-voice",
+                    "lfm2.5-230m-local-model-and-llama-cli",
                 ]
             ),
             "runtime-network-guard",
@@ -159,9 +149,11 @@ def main() -> int:
             [
                 str(ocr_python),
                 "-c",
-                "import onnxruntime, pypdfium2, rapidocr; print('OCR ready')",
+                "import paddle, paddleocr; print('PaddleOCR ready')",
             ]
         )
+        if not args.skip_models:
+            run([str(ocr_python), str(APP_DIR / "scripts" / "prefetch_paddle.py")])
         tts_python = install_requirements(
             uv,
             ".venv-tts",
@@ -171,17 +163,12 @@ def main() -> int:
             [
                 str(tts_python),
                 "-c",
-                "import kokoro_onnx, onnxruntime, soundfile; print('Kokoro ready')",
+                "import edge_tts, kokoro_onnx; print('Edge-TTS and Kokoro ready')",
             ]
         )
         if not args.skip_models:
-            command = [
-                str(core_python),
-                str(APP_DIR / "scripts" / "install_kokoro.py"),
-            ]
-            if args.fast_tts:
-                command.append("--fast")
-            run(command)
+            run([str(tts_python), str(APP_DIR / "scripts" / "install_kokoro.py")])
+            run([str(core_python), str(APP_DIR / "scripts" / "install_lfm.py")])
 
     if system == "Linux" and shutil.which("cc"):
         run(["bash", str(APP_DIR / "scripts" / "install-netguard.sh")])

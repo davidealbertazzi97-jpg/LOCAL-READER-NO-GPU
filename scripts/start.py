@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import secrets
+import shutil
 import signal
 import socket
 import subprocess
@@ -169,15 +170,11 @@ def stop_process(process: subprocess.Popen[Any] | None) -> None:
         process.wait(timeout=12)
     except subprocess.TimeoutExpired:
         if os.name == "nt":
-            taskkill = (
-                Path(os.environ.get("SYSTEMROOT", r"C:\Windows"))
-                / "System32"
-                / "taskkill.exe"
-            )
-            if taskkill.is_file():
+            taskkill = shutil.which("taskkill.exe")
+            if taskkill:
                 subprocess.run(
                     [
-                        str(taskkill),
+                        taskkill,
                         "/PID",
                         str(process.pid),
                         "/T",

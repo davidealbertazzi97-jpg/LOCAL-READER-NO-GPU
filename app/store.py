@@ -159,6 +159,53 @@ class JobStore:
             )
         return [str(row["id"]) for row in rows]
 
+    def recover_incomplete(self, work_root: Path) -> tuple[list[str], list[str]]:
+        """Recover jobs whose worker was stopped by a machine restart.
+
+        A queued job is already recoverable through ``pending_ids``. A running
+        job can safely be retried only when its private input copy exists. An
+        upload that was still being written is deliberately failed instead of
+        being treated as complete.
+        """
+        recovered: list[str] = []
+        failed: list[str] = []
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT id, input_name, status
+                FROM jobs
+                WHERE status IN ('uploading', 'running')
+                """
+            ).fetchall()
+            for row in rows:
+                job_id = str(row["id"])
+                source = work_root / job_id / str(row["input_name"])
+                can_resume = row["status"] == "running" and source.is_file()
+                if can_resume:
+                    connection.execute(
+                        """
+                        UPDATE jobs
+                        SET status = 'queued', updated_at = ?,
+                            message = 'Resuming after machine restart', error = ''
+                        WHERE id = ?
+                        """,
+                        (utc_now(), job_id),
+                    )
+                    recovered.append(job_id)
+                else:
+                    connection.execute(
+                        """
+                        UPDATE jobs
+                        SET status = 'failed', updated_at = ?,
+                            message = 'Interrupted before completion',
+                            error = 'The previous local process stopped unexpectedly.'
+                        WHERE id = ?
+                        """,
+                        (utc_now(), job_id),
+                    )
+                    failed.append(job_id)
+        return recovered, failed
+
     def pending_ids(self) -> list[str]:
         with self._connect() as connection:
             rows = connection.execute(

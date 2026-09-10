@@ -16,8 +16,10 @@ that demonstrates the problem.
 
 ## Supported version
 
-Security fixes target the latest source on `main`. Version 0.2.0 is the current
-prepared source release. No prebuilt binary release is currently supported.
+Security fixes target the latest source on `main`. Version 0.3.0 is the current
+prepared source release. The Linux AppImage can be built and verified locally;
+Windows and macOS packages must be built and tested on their native target
+systems before distribution.
 
 ## Scope and deployment boundary
 
@@ -31,7 +33,8 @@ The launcher:
 - creates a private random token per installation;
 - checks the exact browser origin on state-changing API requests;
 - rejects oversized uploads before multipart parsing;
-- injects a Python outbound-network guard into web, OCR, and speech processes;
+- injects a Python outbound-network guard into web, OCR, and local reflow
+  processes; the Edge-TTS child is the documented remote-network exception;
 - adds a native `LD_PRELOAD` network guard on Linux when compilation is
   available.
 
@@ -41,9 +44,9 @@ validated. User/OCR text is escaped into fixed HTML and is never executed as
 markup.
 
 Private working copies are removed after completion, failure, deletion, and an
-interrupted restart. Active OCR and speech process groups are terminated during
-an orderly application shutdown. Page previews, reviewed text, HTML, reports,
-and WAV files are intentional durable results and can contain confidential
+interrupted restart. Active OCR, reflow, and speech process groups are
+terminated during an orderly application shutdown. Page previews, reviewed
+text, HTML, reports, and MP3 files are intentional durable results and can contain confidential
 information. They are stored in the user's results directory with private
 permissions where the operating system supports them.
 

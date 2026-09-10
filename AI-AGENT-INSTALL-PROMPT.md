@@ -9,8 +9,7 @@ to the agent. Installation and verification do not require one.
 ## English prompt
 
 ```text
-Install and start LOCAL READER (NO GPU), whose installed application name is
-Local Accessibility Studio, from this official repository:
+Install and start Local Accessibility Studio from this official repository:
 
 https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU
 
@@ -30,13 +29,12 @@ Work only on this computer and follow these rules:
       ./install.sh
    On Windows PowerShell run:
       .\install.ps1
-   On Linux x86-64, if there is enough disk space and the user prioritizes
-   speech speed, the official fast profile may be installed with:
-      ./install.sh --fast-tts
-   Do not install CUDA, GPU packages, Piper, cloud speech services, telemetry,
-   browser extensions, or unrelated system packages.
-6. Let the verified installer obtain its pinned Python environments, RapidOCR,
-   and Kokoro files. Do not replace model URLs or bypass SHA-256 checks.
+   Do not install unrelated system packages, telemetry, browser extensions, or
+   API keys. Edge-TTS is an explicit optional remote speech service; explain
+   that it sends selected text to Microsoft. LFM2.5 and llama.cpp are optional.
+6. Let the verified installer obtain its pinned Python environments, PaddleOCR,
+   Edge-TTS, cached OCR models, LFM2.5, and the matching CPU llama.cpp runtime.
+   Do not bypass dependency or model hashes.
 7. Start with ./start.sh on Linux/macOS or .\start.ps1 on Windows. Confirm that
    the application binds only to 127.0.0.1 and that /health reports status ok.
    Do not expose it to the LAN, a public address, a reverse proxy, or a tunnel.
@@ -46,9 +44,9 @@ Work only on this computer and follow these rules:
 9. Do not request, open, copy, upload, or inspect a real user document. If a
    functional example is needed, use only the synthetic fixture produced by
    tests/create_sample.py.
-10. At the end, report the installed version, selected compact or fast Kokoro
-    profile, local start command, local data/results directories, checks
-    completed, and any limitation. If any step fails, stop and provide the
+10. At the end, report the installed version, OCR/Edge-TTS/Kokoro/LFM availability,
+    local start command, local data/results directories, checks completed, and
+    any limitation. If any step fails, stop and provide the
     exact non-sensitive error; never disable authentication, origin checks,
     network guards, checksum validation, or cleanup.
 ```
@@ -56,8 +54,7 @@ Work only on this computer and follow these rules:
 ## Prompt italiano
 
 ```text
-Installa e avvia LOCAL READER (NO GPU), il cui nome nell'applicazione installata
-è Local Accessibility Studio, da questo repository ufficiale:
+Installa e avvia Local Accessibility Studio da questo repository ufficiale:
 
 https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU
 
@@ -79,14 +76,12 @@ Lavora soltanto su questo computer e rispetta queste regole:
       ./install.sh
    Su Windows PowerShell esegui:
       .\install.ps1
-   Su Linux x86-64, se lo spazio è sufficiente e l'utente privilegia la velocità
-   della voce, puoi usare il profilo rapido ufficiale:
-      ./install.sh --fast-tts
-   Non installare CUDA, pacchetti GPU, Piper, servizi vocali cloud, telemetria,
-   estensioni del browser o pacchetti di sistema non collegati.
+   Non installare pacchetti di sistema non collegati, telemetria o estensioni
+   del browser. Edge-TTS è un servizio vocale remoto opzionale: spiega che
+   invia il testo selezionato a Microsoft. LFM2.5 e llama.cpp sono opzionali.
 6. Lascia che l'installer verificato scarichi gli ambienti Python versionati,
-   RapidOCR e i file Kokoro. Non cambiare gli URL dei modelli e non aggirare i
-   controlli SHA-256.
+   PaddleOCR, Edge-TTS, i modelli OCR, LFM2.5 e il runtime CPU di llama.cpp.
+   Non aggirare gli hash di dipendenze o modelli.
 7. Avvia con ./start.sh su Linux/macOS o .\start.ps1 su Windows. Verifica che
    l'applicazione ascolti soltanto su 127.0.0.1 e che /health riporti status ok.
    Non esporla alla LAN, a indirizzi pubblici, reverse proxy o tunnel.
@@ -96,7 +91,8 @@ Lavora soltanto su questo computer e rispetta queste regole:
 9. Non chiedere, aprire, copiare, caricare o ispezionare documenti reali
    dell'utente. Se serve un esempio funzionale, usa soltanto il documento
    sintetico prodotto da tests/create_sample.py.
-10. Alla fine indica versione installata, profilo Kokoro compatto o rapido,
+10. Alla fine indica versione installata, disponibilità di OCR, Edge-TTS,
+    Kokoro e LFM,
     comando locale di avvio, cartelle locali di dati/risultati, controlli
     completati ed eventuali limiti. Se un passaggio fallisce, fermati e riporta
     l'errore esatto ma non sensibile; non disattivare autenticazione, controlli

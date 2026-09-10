@@ -115,9 +115,8 @@ def validate_document(value: Any) -> dict[str, Any]:
         if page_number != page_index:
             raise ValueError("pages must be consecutive")
         preview = raw_page.get("preview", f"pages/page-{page_index:04d}.webp")
-        if not isinstance(preview, str) or not re.fullmatch(
-            r"pages/page-[0-9]{4}\.webp",
-            preview,
+        if not isinstance(preview, str) or (
+            preview and not re.fullmatch(r"pages/page-[0-9]{4}\.webp", preview)
         ):
             raise ValueError("invalid page preview")
         pages.append({"number": page_index, "preview": preview, "blocks": blocks})
@@ -152,6 +151,64 @@ def reading_text(document: dict[str, Any]) -> str:
             else:
                 parts.append(text)
     return "\n\n".join(part.strip() for part in parts if part.strip()).strip() + "\n"
+
+
+def _text_blocks(text: str, page_number: int) -> list[dict[str, Any]]:
+    paragraphs = [
+        re.sub(r"[ \t]+", " ", part).strip()
+        for part in re.split(r"\n\s*\n+", text)
+        if part.strip()
+    ]
+    if len(paragraphs) == 1 and "\n" in paragraphs[0]:
+        paragraphs = [
+            line.strip() for line in paragraphs[0].splitlines() if line.strip()
+        ]
+    blocks: list[dict[str, Any]] = []
+    for paragraph in paragraphs:
+        while len(paragraph) > 18_000:
+            split_at = paragraph.rfind(" ", 0, 18_000)
+            split_at = split_at if split_at > 0 else 18_000
+            blocks.append(paragraph[:split_at].strip())
+            paragraph = paragraph[split_at:].strip()
+        if paragraph:
+            blocks.append(paragraph)
+    return [
+        {
+            "id": f"p{page_number}-b{index}",
+            "role": "paragraph",
+            "text": block,
+            "confidence": 1.0,
+            "bbox": [0, 0, 0, 0],
+        }
+        for index, block in enumerate(blocks, start=1)
+    ]
+
+
+def document_from_text_pages(
+    title: str,
+    page_texts: list[str],
+    *,
+    language: str = "it",
+    speech_language: str = "it",
+) -> dict[str, Any]:
+    pages = [
+        {
+            "number": page_number,
+            "preview": "",
+            "blocks": _text_blocks(text, page_number),
+        }
+        for page_number, text in enumerate(page_texts, start=1)
+    ]
+    return validate_document(
+        {
+            "schema": 1,
+            "revision": 1,
+            "title": title,
+            "language": language,
+            "speech_language": speech_language,
+            "pages": pages or [{"number": 1, "preview": "", "blocks": []}],
+        }
+    )
 
 
 def accessible_html(document: dict[str, Any]) -> str:

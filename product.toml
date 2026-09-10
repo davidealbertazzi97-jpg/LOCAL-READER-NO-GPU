@@ -1,7 +1,7 @@
 [product]
 name = "Local Accessibility Studio"
 slug = "local-accessibility-studio"
-version = "0.2.0"
-description_en = "Private local OCR, accessible document preparation, and natural Italian or English speech on CPU."
-description_it = "OCR privato in locale, preparazione di documenti accessibili e sintesi vocale naturale italiana o inglese su CPU."
+version = "0.3.0"
+description_en = "Accessible OCR, direct long-form reading, offline Kokoro, and optional provider voices."
+description_it = "OCR accessibile, lettura diretta lunga, Kokoro offline e provider vocali opzionali."
 default_language = "it"

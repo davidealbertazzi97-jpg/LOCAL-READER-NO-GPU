@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise the real local server; optionally run OCR, review, and Kokoro."""
+"""Exercise the real local server; optionally run OCR, text input, and speech."""
 
 from __future__ import annotations
 
@@ -179,7 +179,7 @@ def main() -> int:
                 assert headers["Cross-Origin-Resource-Policy"] == "same-origin"
                 assert "default-src 'self'" in headers["Content-Security-Policy"]
             status, engines = request_json(f"{base}/api/engines", token=True)
-            assert status == 200 and len(engines) == 2
+            assert status == 200 and len(engines) == 4
             status, _ = request_json(
                 f"{base}/api/jobs",
                 token=True,
@@ -214,7 +214,7 @@ def main() -> int:
                         "auto_speech": True,
                         "document_language": "en",
                         "speech_language": "en-gb",
-                        "voice": "bf_emma",
+                        "voice": "en-GB-SoniaNeural",
                         "speed": 1.0,
                     },
                 )
@@ -225,22 +225,63 @@ def main() -> int:
                     content_type=content_type,
                 )
                 assert status == 202, (status, queued)
-                ocr_job = wait_for_job(base, queued["id"])
+                ocr_job = wait_for_job(base, queued["id"], timeout=900)
                 assert ocr_job["status"] == "completed", ocr_job
-                assert ocr_job["summary"]["audio"] == "Kokoro queued automatically"
+                assert ocr_job["summary"]["audio"] == "Edge-TTS queued automatically"
                 assert not (root / "data" / "work" / ocr_job["id"]).exists()
 
                 status, jobs = request_json(f"{base}/api/jobs", token=True)
                 assert status == 200
-                automatic = next(
-                    job for job in jobs if job["engine"] == "kokoro-italian"
-                )
+                automatic = next(job for job in jobs if job["engine"] == "edge-tts")
                 automatic = wait_for_job(base, automatic["id"], timeout=300)
                 assert automatic["status"] == "completed", automatic
-                assert automatic["summary"]["voice"] == "bf_emma"
+                assert automatic["summary"]["voice"] == "en-GB-SoniaNeural"
                 assert automatic["summary"]["language"] == "en-gb"
-                automatic_audio = root / "outputs" / automatic["id"] / "speech.wav"
+                automatic_audio = root / "outputs" / automatic["id"] / "speech.mp3"
                 assert automatic_audio.stat().st_size > 10_000
+
+                status, text_job = request_json(
+                    f"{base}/api/text",
+                    token=True,
+                    data=json.dumps(
+                        {
+                            "title": "testo-incollato.txt",
+                            "text": "Prima riga.\nSeconda riga.",
+                            "options": {
+                                "auto_speech": False,
+                                "document_language": "it",
+                                "speech_language": "it",
+                                "voice": "it-IT-GiuseppeMultilingualNeural",
+                                "speed": 1.0,
+                            },
+                        }
+                    ).encode(),
+                    content_type="application/json",
+                )
+                assert status == 202, (status, text_job)
+                text_job = wait_for_job(base, text_job["id"])
+                assert text_job["status"] == "completed", text_job
+                status, text_payload = request_json(
+                    f"{base}/api/jobs/{text_job['id']}/text",
+                    token=True,
+                )
+                assert status == 200 and "Prima riga." in text_payload["text"]
+                status, reflow_job = request_json(
+                    f"{base}/api/jobs/{text_job['id']}/reflow",
+                    token=True,
+                    data=json.dumps({"device": "cpu"}).encode(),
+                    content_type="application/json",
+                )
+                assert status == 202, (status, reflow_job)
+                reflow_job = wait_for_job(base, reflow_job["id"])
+                assert reflow_job["status"] == "completed", reflow_job
+                assert reflow_job["summary"]["reasoning"] == "off"
+                status, reflow_text = request_json(
+                    f"{base}/api/jobs/{reflow_job['id']}/text",
+                    token=True,
+                )
+                assert status == 200
+                assert "Prima riga." in reflow_text["text"]
 
                 status, document = request_json(
                     f"{base}/api/jobs/{ocr_job['id']}/document",
@@ -250,7 +291,7 @@ def main() -> int:
                 assert document["language"] == "en"
                 assert document["speech_language"] == "en-gb"
                 document["title"] = "Documento corretto"
-                document["pages"][0]["blocks"][1]["text"] = "Testo revisionato."
+                document["pages"][0]["blocks"][0]["text"] = "Testo revisionato."
                 status, document = request_json(
                     f"{base}/api/jobs/{ocr_job['id']}/document",
                     token=True,
@@ -269,7 +310,7 @@ def main() -> int:
                     token=True,
                     data=json.dumps(
                         {
-                            "voice": "am_michael",
+                            "voice": "en-US-AndrewMultilingualNeural",
                             "speed": 1.0,
                             "language": "en-us",
                         }
@@ -279,9 +320,11 @@ def main() -> int:
                 assert status == 202, (status, queued_speech)
                 speech_job = wait_for_job(base, queued_speech["id"], timeout=300)
                 assert speech_job["status"] == "completed", speech_job
-                assert speech_job["summary"]["voice"] == "am_michael"
+                assert (
+                    speech_job["summary"]["voice"] == "en-US-AndrewMultilingualNeural"
+                )
                 assert speech_job["summary"]["language"] == "en-us"
-                audio = root / "outputs" / speech_job["id"] / "speech.wav"
+                audio = root / "outputs" / speech_job["id"] / "speech.mp3"
                 assert audio.stat().st_size > 10_000
                 status, deleted = request_json(
                     f"{base}/api/jobs/{automatic['id']}",
@@ -297,12 +340,12 @@ def main() -> int:
                     data=b"",
                     method="DELETE",
                 )
-                assert status == 200 and cleared["deleted"] == 2
+                assert status == 200 and cleared["deleted"] == 4
                 assert not (root / "outputs" / speech_job["id"]).exists()
                 assert not (root / "outputs" / ocr_job["id"]).exists()
                 status, jobs = request_json(f"{base}/api/jobs", token=True)
                 assert status == 200 and jobs == []
-                print("Full OCR, review, and Kokoro smoke test passed.")
+                print("Full OCR, text, review, and Edge-TTS smoke test passed.")
             else:
                 print("Local server core smoke test passed.")
         finally:

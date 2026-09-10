@@ -9,16 +9,25 @@ from .store import JobStore
 from .utils import remove_work_tree
 
 VOICE_LANGUAGES = {
-    "it": {"im_nicola", "if_sara"},
-    "en-us": {"am_michael", "af_heart"},
-    "en-gb": {"bm_george", "bf_emma"},
+    "it": {
+        "it-IT-GiuseppeMultilingualNeural",
+        "it-IT-ElsaNeural",
+    },
+    "en-us": {
+        "en-US-AndrewMultilingualNeural",
+        "en-US-AvaMultilingualNeural",
+    },
+    "en-gb": {
+        "en-GB-RyanNeural",
+        "en-GB-SoniaNeural",
+    },
 }
 DEFAULT_VOICES = {
-    "it": "im_nicola",
-    "en-us": "am_michael",
-    "en-gb": "bm_george",
+    "it": "it-IT-GiuseppeMultilingualNeural",
+    "en-us": "en-US-AndrewMultilingualNeural",
+    "en-gb": "en-GB-RyanNeural",
 }
-MAX_SPEECH_SOURCE_BYTES = 2 * 1024 * 1024
+MAX_SPEECH_SOURCE_BYTES = 20 * 1024 * 1024
 COPY_CHUNK = 1024 * 1024
 
 
@@ -55,33 +64,53 @@ def normalized_options(
     return selected_voice, selected_speed, selected_language
 
 
+def normalized_speed(speed: Any) -> float:
+    if isinstance(speed, bool):
+        raise ValueError("invalid speech speed")
+    try:
+        selected_speed = float(speed)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("invalid speech speed") from exc
+    if not math.isfinite(selected_speed) or not 0.75 <= selected_speed <= 1.5:
+        raise ValueError("speech speed must be between 0.75 and 1.5")
+    return selected_speed
+
+
 def queue_speech_job(
     runner: SpeechQueue,
     store: JobStore,
     source: Path,
     *,
     source_job: str,
-    voice: Any = "im_nicola",
+    voice: Any = DEFAULT_VOICES["it"],
     speed: Any = 1.0,
     language: Any = "it",
+    provider: Any = "edge-tts",
 ) -> dict[str, Any]:
-    selected_voice, selected_speed, selected_language = normalized_options(
-        voice,
-        speed,
-        language,
-    )
+    selected_provider = str(provider)
+    if selected_provider == "edge-tts":
+        selected_voice, selected_speed, selected_language = normalized_options(
+            voice, speed, language
+        )
+    else:
+        selected_voice = str(voice or "")
+        selected_speed = normalized_speed(speed)
+        selected_language = str(language)
+        if selected_language not in {"it", "en-us", "en-gb"}:
+            raise ValueError("unsupported speech language")
     if not source.is_file():
         raise FileNotFoundError("reviewed reading text is missing")
     if source.stat().st_size > MAX_SPEECH_SOURCE_BYTES:
         raise ValueError("reviewed reading text exceeds the speech limit")
 
     child = runner.submit(
-        "kokoro-italian",
+        "edge-tts",
         "reading.txt",
         {
             "voice": selected_voice,
             "speed": selected_speed,
             "language": selected_language,
+            "provider": selected_provider,
             "source_job": source_job,
         },
     )

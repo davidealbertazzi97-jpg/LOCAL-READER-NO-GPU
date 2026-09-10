@@ -1,75 +1,55 @@
 # Third-party notices
 
-Local Accessibility Studio's original code and documentation are licensed under
-GNU GPL version 3 only. Dependencies, models, runtimes, and voice data retain
-their own licences.
+Local Accessibility Studio’s original code and documentation are licensed
+under GNU GPL version 3 only. Dependencies, fonts, runtimes, model files, and
+remote services retain their own licences and terms.
 
-The source repository does not commit model weights, virtual environments,
-generated native libraries, user documents, page previews, or audio output.
-The installer obtains dependencies from their upstream distribution channels.
+## Runtime components
 
-## Direct runtime components
+| Component | Pinned version / source | Notes |
+| --- | --- | --- |
+| FastAPI, Uvicorn, python-multipart | See `requirements-core.lock` | Web runtime; their upstream licences apply |
+| PaddlePaddle | 3.3.1 | Apache-2.0 upstream |
+| PaddleOCR | 3.7.0 with `doc-parser` extra | Apache-2.0 upstream; plain OCR pipeline used here |
+| Pillow | 12.3.0 | MIT-CMU upstream |
+| pypdfium2 | 5.12.1 | BSD-3-Clause / Apache-2.0 and bundled PDFium notices |
+| Edge-TTS | 7.2.8 | Upstream package terms apply; its Microsoft speech endpoint is remote |
+| kokoro-onnx | 0.6.1 | ONNX runtime adapter; package and Kokoro model terms apply |
+| Kokoro 82M ONNX / voices | Local model assets | Used offline; preserve the model and voice asset terms |
+| llama.cpp | CPU build `b10886`, downloaded with SHA-256 pin | MIT upstream; the portable launcher downloads the target build when missing |
+| OpenDyslexic | Vendored WOFF2 font | Upstream font licence applies; keep its licence with distributions |
+| LFM2.5 230M GGUF | Liquid AI Q8 model, downloaded with SHA-256 pin | Do not redistribute without observing the model’s own terms |
 
-| Component | Pinned version | Licence |
-| --- | ---: | --- |
-| FastAPI | 0.140.13 | MIT |
-| Uvicorn | 0.51.0 | BSD-3-Clause |
-| python-multipart | 0.0.32 | Apache-2.0 |
-| RapidOCR | 3.9.2 | Apache-2.0; OCR model copyright remains with Baidu/PaddleOCR |
-| ONNX Runtime, OCR environment | 1.23.2 | MIT |
-| OmegaConf, OCR compatibility pin | 2.0.6 | BSD-3-Clause |
-| Pillow | 12.3.0 | MIT-CMU |
-| pypdfium2 | 5.12.1 | BSD-3-Clause / Apache-2.0 plus bundled PDFium notices |
-| Kokoro ONNX wrapper | 0.5.0 | MIT |
-| ONNX Runtime, speech environment | 1.27.0 (Linux/Windows); 1.23.2 (macOS) | MIT |
-| python-soundfile | 0.14.0 | BSD-3-Clause |
-| uv installer tool | 0.11.16 | Apache-2.0 OR MIT |
-
-Notable components resolved by the prepared 0.2.0 environments include OpenCV
-5.0.0.93 (Apache-2.0), NumPy 2.5.1 (BSD-3-Clause plus bundled notices),
-Shapely 2.1.2 (BSD-3-Clause plus GEOS notices), `phonemizer-fork` 3.3.2
-(GPL-3.0-or-later), and eSpeak NG code/data loaded by `espeakng-loader` 0.2.4
-(GPL-3.0-or-later upstream). The GPL-3.0-only licence of this application is
-compatible with selecting GPL version 3 for GPL-3.0-or-later components.
-
-The complete transitive versions and approved distribution hashes are recorded
-in `requirements-core.lock`, `requirements-ocr.lock`, and
-`requirements-tts.lock`. `requirements-dev.lock` performs the same role for CI
-quality tools.
-
-Before distributing a preassembled executable or environment, copy the exact
-licence files and corresponding-source obligations from every wheel and native
-library included for that platform. In particular, the `espeakng-loader` wheel
-contains an eSpeak NG shared library and data; a binary distributor must
-provide the notices and corresponding source required by eSpeak NG's GPL.
+Exact transitive versions and approved wheel hashes are recorded in
+`requirements-core.lock`, `requirements-ocr.lock`, `requirements-tts.lock`,
+and `requirements-dev.lock`. The installer accepts wheels only.
 
 ## OCR models
 
-RapidOCR 3.9.2's wheel contains the PP-OCRv6 small detection, recognition, and
-orientation ONNX models used by this application. RapidOCR states that its
-project is Apache-2.0 and that OCR model copyright belongs to Baidu. The models
-are converted from PaddleOCR assets. Record the exact wheel and its notices in
-every binary release.
+The installer prefetches the plain PaddleOCR models used by the worker into the
+PaddleX local cache. The application disables document orientation,
+unwarping, text-line orientation, and PP-Structure for this flow. It therefore
+reads text lines without attempting table reconstruction. PaddleOCR and its
+model assets retain the notices and terms published by PaddlePaddle:
 
-Sources:
-
-- <https://github.com/RapidAI/RapidOCR>
 - <https://github.com/PaddlePaddle/PaddleOCR>
+- <https://github.com/PaddlePaddle/Paddle>
 
-## Kokoro model and voices
+## Speech service
 
-The installer downloads these unmodified release assets and verifies SHA-256:
+Edge-TTS is used by the simple complete workflow. The worker sends bounded
+text chunks to Microsoft’s Edge speech endpoint and writes the returned audio
+as MP3. Kokoro 82M is the offline alternative. Voxtral/Mistral, Fish Audio,
+and ElevenLabs are optional remote services and retain their own package,
+model, account, and voice-consent terms.
 
-| Asset | Size | SHA-256 |
-| --- | ---: | --- |
-| `kokoro-v1.0.int8.onnx` | 92,361,271 bytes | `6e742170d309016e5891a994e1ce1559c702a2ccd0075e67ef7157974f6406cb` |
-| `kokoro-v1.0.onnx` (optional fast profile) | 325,532,387 bytes | `7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5` |
-| `voices-v1.0.bin` | 28,214,398 bytes | `bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d` |
+## Font and local model
 
-The Kokoro ONNX project identifies its wrapper as MIT and the Kokoro model as
-Apache-2.0. The application exposes the upstream voices `im_nicola`, `if_sara`,
-`am_michael`, `af_heart`, `bm_george`, and `bf_emma`.
+OpenDyslexic is vendored only as a browser font asset. The LFM2.5 GGUF file is
+resolved from the user’s local LM Studio directory, the app runtime, or an
+explicit environment variable and is not copied into this repository. The
+portable launcher may download both the model and the CPU llama.cpp build into
+the user’s private runtime directory; preserve their upstream notices when
+packaging either component.
 
-Source: <https://github.com/thewh1teagle/kokoro-onnx>
-
-This inventory supports release preparation; it is not legal advice.
+This inventory is technical information, not legal advice.

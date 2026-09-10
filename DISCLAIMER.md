@@ -29,8 +29,8 @@ not permit to be excluded or limited.
 - OCR can omit, invent, merge, split, or misread content.
 - Reading order, headings, lists, page-number detection, and exclusions are
   heuristic and can be wrong.
-- Kokoro speech can mispronounce words, names, abbreviations, numbers, or switch
-  language incorrectly when the selected locale does not match the document.
+- PaddleOCR and Edge-TTS can misread, mispronounce, or mishandle words, names,
+  abbreviations, numbers, or language changes.
 - Semantic HTML and reading text are review candidates. Their generation does
   not prove conformance with WCAG, PDF/UA, EN 301 549, the European
   Accessibility Act, or another standard or law.
@@ -51,7 +51,7 @@ GDPR or other regulatory compliance. Users remain responsible for having a
 lawful basis to process files and for applying appropriate legal,
 organizational, backup, endpoint-security, and access-control measures.
 
-Page previews, reviewed text, HTML, reports, and WAV files are durable results
+Page previews, reviewed text, HTML, reports, and MP3 files are durable results
 and can contain confidential information. Deleting history removes the
 application's result directory, but it does not erase independent copies,
 backups, browser downloads, or the original file.
@@ -104,8 +104,8 @@ applicabile non consente di escludere o limitare.
 - L'OCR può omettere, inventare, unire, separare o leggere male i contenuti.
 - Ordine di lettura, titoli, elenchi, numeri di pagina ed esclusioni sono
   euristiche e possono essere errati.
-- Kokoro può pronunciare male parole, nomi, abbreviazioni e numeri oppure usare
-  una fonetica inadeguata se la lingua scelta non corrisponde al documento.
+- PaddleOCR ed Edge-TTS possono leggere o pronunciare male parole, nomi,
+  abbreviazioni e numeri oppure gestire male un cambio di lingua.
 - HTML semantico e testo sono bozze da revisionare. La loro generazione non
   dimostra conformità a WCAG, PDF/UA, EN 301 549, European Accessibility Act o
   altri standard e leggi.
@@ -126,7 +126,7 @@ la conformità al GDPR o ad altre norme. L'utente resta responsabile del titolo
 per trattare i file e delle misure legali, organizzative, di backup, sicurezza
 del dispositivo e controllo degli accessi.
 
-Anteprime, testo revisionato, HTML, rapporti e WAV sono risultati persistenti e
+Anteprime, testo revisionato, HTML, rapporti e MP3 sono risultati persistenti e
 possono contenere informazioni riservate. Cancellare la cronologia elimina la
 cartella dei risultati dell'applicazione, ma non copie indipendenti, backup,
 download del browser o il file originale.

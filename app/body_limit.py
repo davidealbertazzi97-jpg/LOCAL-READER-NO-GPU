@@ -17,11 +17,11 @@ class RequestBodyLimitMiddleware:
         self,
         app: Callable[[Scope, Receive, Send], Awaitable[None]],
         *,
-        path: str,
+        path: str | tuple[str, ...],
         maximum: int,
     ) -> None:
         self.app = app
-        self.path = path
+        self.paths = {path} if isinstance(path, str) else set(path)
         self.maximum = maximum
 
     @staticmethod
@@ -47,7 +47,7 @@ class RequestBodyLimitMiddleware:
         if (
             scope["type"] != "http"
             or scope.get("method") != "POST"
-            or scope.get("path") != self.path
+            or scope.get("path") not in self.paths
         ):
             await self.app(scope, receive, send)
             return

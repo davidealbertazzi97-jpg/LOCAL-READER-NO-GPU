@@ -1,0 +1,48 @@
+$ErrorActionPreference = "Stop"
+
+if ($env:OS -ne "Windows_NT" -or $env:PROCESSOR_ARCHITECTURE -ne "AMD64") {
+    throw "The Windows builder requires Windows x86-64."
+}
+
+$AppDir = Split-Path -Parent $PSScriptRoot
+$BuildDir = Join-Path $AppDir "build\windows"
+$DistDir = Join-Path $AppDir "dist"
+$Python = Get-Command py -ErrorAction SilentlyContinue
+if ($Python) {
+    $PythonCommand = "py"
+    $PythonArgs = @("-3.12")
+} else {
+    $Python = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $Python) { throw "Python 3.12 or the py launcher is required." }
+    $PythonCommand = $Python.Source
+    $PythonArgs = @()
+}
+$Uv = $env:LOCAL_AI_APP_UV
+if (-not $Uv) {
+    $UvCommand = Get-Command uv -ErrorAction SilentlyContinue
+    if ($UvCommand) { $Uv = $UvCommand.Source }
+}
+if (-not $Uv) { throw "uv is required to build the package." }
+
+Remove-Item -LiteralPath $BuildDir -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $BuildDir, $DistDir | Out-Null
+& $PythonCommand @PythonArgs (Join-Path $AppDir "packaging\create_payload.py") `
+    --output (Join-Path $BuildDir "payload.zip")
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+$PyInstallerArgs = @(
+    "run", "--no-project", "--python", "3.12", "--with", "pyinstaller==6.19.0",
+    "pyinstaller", "--clean", "--noconfirm", "--onefile",
+    "--name", "local-accessibility-studio",
+    "--distpath", (Join-Path $BuildDir "pyinstaller-dist"),
+    "--workpath", (Join-Path $BuildDir "pyinstaller-work"),
+    "--specpath", $BuildDir,
+    "--add-data", "$(Join-Path $BuildDir 'payload.zip');.",
+    (Join-Path $AppDir "packaging\launcher.py")
+)
+& $Uv @PyInstallerArgs
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+$Output = Join-Path $DistDir "Local-Accessibility-Studio-0.3.0-windows-x86_64.exe"
+Copy-Item (Join-Path $BuildDir "pyinstaller-dist\local-accessibility-studio.exe") $Output -Force
+Write-Host "Built $Output"

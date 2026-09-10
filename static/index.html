@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f6f8f6">
     <title>Local Accessibility Studio</title>
     <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/assets/app.css">
@@ -11,15 +11,24 @@
   </head>
   <body>
     <a class="skip-link" href="#main" data-i18n="skip">Vai al contenuto</a>
-    <header>
-      <div class="brand">
-        <img src="/assets/icon.svg" width="48" height="48" alt="">
-        <div>
-          <h1 id="product-name">Local Accessibility Studio</h1>
-          <p id="product-description"></p>
-        </div>
-      </div>
-      <label class="language">
+
+    <header class="site-header">
+      <a class="brand" href="#complete" data-view-link="complete" aria-label="Local Accessibility Studio">
+        <img src="/assets/icon.svg" width="44" height="44" alt="">
+        <span>
+          <strong id="product-name">Local Accessibility Studio</strong>
+          <small id="product-description"></small>
+        </span>
+      </a>
+      <nav id="main-nav" class="main-nav" aria-label="Menu principale" data-i18n-aria-label="mainNavLabel">
+        <button class="nav-link active" type="button" data-view-link="complete" data-i18n="navComplete">Studio completo</button>
+        <button class="nav-link" type="button" data-view-link="ocr" data-i18n="navOcr">Solo OCR</button>
+        <button class="nav-link" type="button" data-view-link="organize" data-i18n="navOrganize">Solo organizza</button>
+        <button class="nav-link" type="button" data-view-link="tts" data-i18n="navTts">Solo voce</button>
+        <button class="nav-link" type="button" data-view-link="history" data-i18n="navHistory">Cronologia</button>
+        <button class="nav-link" type="button" data-view-link="settings" data-i18n="navSettings">Impostazioni</button>
+      </nav>
+      <label class="language-picker">
         <span data-i18n="language">Lingua</span>
         <select id="language-select">
           <option value="it">Italiano</option>
@@ -30,121 +39,185 @@
 
     <main id="main">
       <section class="privacy-note" aria-labelledby="privacy-title">
-        <strong id="privacy-title" data-i18n="privacyTitle">Documenti e voce restano locali</strong>
-        <span data-i18n="privacyBody">OCR e sintesi vocale funzionano sul computer. I risultati vanno comunque controllati prima dell’uso.</span>
-      </section>
-
-      <section class="status-grid" aria-label="Stato dei motori">
-        <div class="status-card">
-          <span class="status-dot" id="ocr-dot"></span>
-          <div><strong>RapidOCR</strong><span id="ocr-status"></span></div>
-        </div>
-        <div class="status-card">
-          <span class="status-dot" id="speech-dot"></span>
-          <div><strong>Kokoro</strong><span id="speech-status"></span></div>
+        <span class="privacy-mark" aria-hidden="true">✓</span>
+        <div>
+          <strong id="privacy-title" data-i18n="privacyTitle">I tuoi documenti restano sul computer</strong>
+          <span data-i18n="privacyBody">OCR e organizzazione sono locali. Per la voce, Edge-TTS invia il testo al servizio vocale Microsoft.</span>
         </div>
       </section>
 
-      <section class="panel" aria-labelledby="new-job-title">
-        <h2 id="new-job-title" data-i18n="newJob">Riconosci un documento</h2>
-        <p data-i18n="newJobHelp">Carica un PDF o un’immagine. Verranno create copie revisionabili; l’originale non viene modificato.</p>
-        <form id="job-form">
-          <label>
-            <span data-i18n="file">Documento locale</span>
-            <input id="file" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp" required>
-          </label>
-          <label class="check-option">
-            <input id="auto-speech" type="checkbox" checked>
-            <span data-i18n="autoSpeech">Crea anche una bozza audio Kokoro dopo l’OCR</span>
-          </label>
-          <label>
-            <span data-i18n="speechLanguage">Lingua della voce</span>
-            <select id="auto-speech-language">
-              <option value="it" data-i18n="languageItalian">Italiano</option>
-              <option value="en-us" data-i18n="languageEnglishUs">English — Stati Uniti</option>
-              <option value="en-gb" data-i18n="languageEnglishUk">English — Regno Unito</option>
-            </select>
-          </label>
-          <label>
-            <span data-i18n="autoVoice">Voce della bozza automatica</span>
-            <select id="auto-voice">
-              <option value="im_nicola">Maschile — Nicola</option>
-              <option value="if_sara">Femminile — Sara</option>
-            </select>
-          </label>
-          <p class="muted compact" data-i18n="autoSpeechHelp">Puoi correggere il testo e rigenerare l’audio con un’altra voce in seguito.</p>
-          <button type="submit" data-i18n="start">Avvia OCR locale</button>
-          <p id="form-status" role="status" aria-live="polite"></p>
-        </form>
+      <section id="resume-banner" class="resume-banner" hidden role="status" aria-live="polite">
+        <div><strong data-i18n="resumeTitle">Sessione ripristinata</strong><p id="resume-message" data-i18n="resumeBody">Ho recuperato l’ultimo punto di lavoro salvato su questo computer.</p></div>
+        <button id="dismiss-resume" class="secondary" type="button" data-i18n="resumeDismiss">Chiudi</button>
       </section>
 
-      <section class="panel" aria-labelledby="jobs-title">
-        <div class="section-heading">
-          <h2 id="jobs-title" data-i18n="jobs">Lavori locali</h2>
-          <div class="section-actions">
-            <button id="refresh" type="button" class="secondary" data-i18n="refresh">Aggiorna</button>
-            <button id="clear-history" type="button" class="secondary danger" data-i18n="clearHistory">Cancella cronologia conclusa</button>
-          </div>
-        </div>
-        <p id="history-status" role="status" aria-live="polite"></p>
-        <div id="jobs" class="jobs" aria-live="polite"></div>
+      <section class="service-strip" aria-label="Stato dei servizi">
+        <span class="service-label" data-i18n="services">Servizi pronti</span>
+        <span class="service-status"><i class="status-dot" id="ocr-dot"></i><b>PaddleOCR</b><span id="ocr-status"></span></span>
+        <span class="service-status"><i class="status-dot" id="reflow-dot"></i><b>LFM 230M</b><span id="reflow-status"></span></span>
+        <span class="service-status"><i class="status-dot" id="speech-dot"></i><b>Edge-TTS</b><span id="speech-status"></span></span>
       </section>
 
-      <section id="editor" class="panel editor" aria-labelledby="editor-title" hidden>
-        <div class="section-heading">
-          <h2 id="editor-title" data-i18n="reviewTitle">Revisione accessibile</h2>
-          <button id="close-editor" type="button" class="secondary" data-i18n="close">Chiudi</button>
+      <section id="view-complete" class="view active-view" aria-labelledby="complete-title">
+        <div class="page-intro">
+          <p class="eyebrow" data-i18n="completeEyebrow">IL PERCORSO PIÙ SEMPLICE</p>
+          <div class="title-with-info"><h1 id="complete-title" data-i18n="completeTitle">Carica un documento. Al resto pensiamo noi.</h1><button class="info-button page-info" type="button" data-help-key="complete" data-i18n-aria-label="infoCompleteLabel" aria-label="Informazioni sullo studio completo">i</button></div>
+          <p class="intro-copy" data-i18n="completeHelp">Il documento viene letto con PaddleOCR e trasformato direttamente in audio con Edge-TTS.</p>
         </div>
-        <p data-i18n="reviewHelp">Controlla testo, ordine e ruolo di ogni blocco. La confidenza bassa richiede particolare attenzione.</p>
-        <div class="document-settings">
-          <label>
-            <span data-i18n="documentTitle">Titolo del documento</span>
-            <input id="document-title" maxlength="200">
-          </label>
-          <label>
-            <span data-i18n="documentLanguage">Lingua del documento</span>
-            <select id="document-language">
-              <option value="it">Italiano</option>
-              <option value="en">English</option>
-            </select>
-          </label>
+        <ol class="workflow-steps" aria-label="Passaggi del percorso completo">
+          <li class="step active" id="full-step-ocr"><span>1</span><div><b data-i18n="stepOcr">Leggiamo</b><small data-i18n="stepOcrHelp">PaddleOCR estrae il testo</small></div></li>
+          <li class="step" id="full-step-speech"><span>2</span><div><b data-i18n="stepListen">Ascolti</b><small data-i18n="stepListenHelp">Edge-TTS crea l’audio</small></div></li>
+        </ol>
+        <div class="content-grid">
+          <section class="panel primary-panel">
+            <div class="panel-heading">
+              <div class="number-badge">1</div>
+              <div><h2 data-i18n="chooseDocument">Scegli il documento</h2><p data-i18n="chooseDocumentHelp">PDF o immagine. Anche molte pagine.</p></div>
+            </div>
+            <form id="complete-form" class="guided-form">
+              <label class="dropzone" for="complete-file">
+                <span class="dropzone-icon" aria-hidden="true">↑</span>
+                <strong data-i18n="dropTitle">Trascina qui il file</strong>
+                <span data-i18n="dropHelp">oppure fai clic per sceglierlo dal computer</span>
+                <input id="complete-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp" required>
+                <em id="complete-file-name" data-i18n="noFile">Nessun file scelto</em>
+              </label>
+              <details class="advanced-settings">
+                <summary data-i18n="voiceSettings">Scegli voce e velocità</summary>
+                <div class="settings-grid">
+                  <label><span data-i18n="speechLanguage">Lingua</span><select id="complete-language"><option value="it">Italiano</option><option value="en-us">English — Stati Uniti</option><option value="en-gb">English — Regno Unito</option></select></label>
+                  <label><span data-i18n="voice">Voce</span><select id="complete-voice"></select></label>
+                  <label><span data-i18n="speed">Velocità</span><input id="complete-speed" type="range" min="0.75" max="1.5" step="0.05" value="1"><output id="complete-speed-value">1,00×</output></label>
+                </div>
+              </details>
+              <button class="primary-action" type="submit" data-i18n="startComplete">Avvia il percorso completo</button>
+              <p class="form-status" id="complete-status" role="status" aria-live="polite"></p>
+            </form>
+            <div id="complete-progress" class="progress-card" hidden role="status" aria-live="polite" aria-atomic="true">
+              <div class="progress-title"><strong data-i18n="workingTitle">Sto lavorando sul documento</strong><span id="complete-percent" data-i18n-aria-label="progressLabel" aria-label="Avanzamento">1/2</span></div>
+              <p id="complete-progress-message" class="muted"></p>
+              <div class="progress-track"><span id="complete-progress-bar"></span></div>
+              <div class="progress-list">
+                <p id="progress-ocr"><i></i><span data-i18n="progressOcr">Lettura del documento</span></p>
+                <p id="progress-speech"><i></i><span data-i18n="progressSpeech">Creazione dell’audio</span></p>
+              </div>
+            </div>
+            <div id="complete-result" class="result-card" hidden>
+              <span class="result-icon" aria-hidden="true">✓</span>
+              <div><h3 data-i18n="audioReady">Audio pronto</h3><p data-i18n="audioReadyHelp">Puoi ascoltarlo qui oppure scaricarlo.</p><audio id="complete-audio" controls preload="metadata"></audio><a id="complete-download" class="button-link secondary" download="audio.mp3" data-i18n="downloadAudio">Scarica audio</a></div>
+            </div>
+          </section>
+          <aside class="panel guide-panel">
+            <p class="eyebrow" data-i18n="howItWorks">COME FUNZIONA</p>
+            <h2 data-i18n="completeSideTitle">Due passaggi, uno solo per te</h2>
+            <div class="guide-item"><span>1</span><p><b data-i18n="guideOne">Leggiamo</b><small data-i18n="guideOneHelp">Il testo viene estratto dal PDF o dall’immagine.</small></p></div>
+            <div class="guide-item"><span>2</span><p><b data-i18n="guideThree">Facciamo ascoltare</b><small data-i18n="guideThreeHelp">Edge-TTS crea l’audio con il testo estratto.</small></p></div>
+            <p class="tip"><b data-i18n="tipTitle">Non puoi sbagliare</b><span data-i18n="tipHelp">Se vuoi fare solo un passaggio, usa una delle modalità nel menu in alto.</span></p>
+          </aside>
         </div>
-        <div class="editor-actions">
-          <button id="save-document" type="button" data-i18n="save">Salva correzioni</button>
-          <a id="download-html" class="button-link secondary" data-i18n="downloadHtml">Scarica HTML accessibile</a>
-          <a id="download-text" class="button-link secondary" data-i18n="downloadText">Scarica testo per lettura</a>
-        </div>
-        <p id="save-status" role="status" aria-live="polite"></p>
+      </section>
 
-        <fieldset class="speech-controls">
-          <legend data-i18n="speechTitle">Sintesi vocale</legend>
-          <label>
-            <span data-i18n="speechLanguage">Lingua della voce</span>
-            <select id="speech-language">
-              <option value="it" data-i18n="languageItalian">Italiano</option>
-              <option value="en-us" data-i18n="languageEnglishUs">English — Stati Uniti</option>
-              <option value="en-gb" data-i18n="languageEnglishUk">English — Regno Unito</option>
-            </select>
-          </label>
-          <label>
-            <span data-i18n="voice">Voce</span>
-            <select id="voice">
-              <option value="im_nicola">Maschile — Nicola</option>
-              <option value="if_sara">Femminile — Sara</option>
-            </select>
-          </label>
-          <label>
-            <span data-i18n="speed">Velocità</span>
-            <input id="speed" type="range" min="0.75" max="1.5" step="0.05" value="1">
-            <output id="speed-value">1.00×</output>
-          </label>
-          <button id="create-speech" type="button" data-i18n="createSpeech">Crea audio con Kokoro</button>
-        </fieldset>
-        <div id="pages" class="pages"></div>
+      <section id="view-ocr" class="view" aria-labelledby="ocr-title" hidden>
+        <div class="page-intro compact-intro"><p class="eyebrow" data-i18n="ocrEyebrow">UN SOLO PASSAGGIO</p><div class="title-with-info"><h1 id="ocr-title" data-i18n="ocrTitle">Solo OCR: ottieni il testo</h1><button class="info-button page-info" type="button" data-help-key="ocr" data-i18n-aria-label="infoOcrLabel" aria-label="Informazioni su Solo OCR">i</button></div><p class="intro-copy" data-i18n="ocrHelp">Carica un documento e ricevi il testo estratto. Nessun audio e nessuna organizzazione automatica.</p></div>
+        <div class="content-grid single-grid">
+          <section class="panel primary-panel"><div class="panel-heading"><div class="number-badge">1</div><div><h2 data-i18n="chooseDocument">Scegli il documento</h2><p data-i18n="ocrChooseHelp">Il file originale non viene modificato.</p></div></div><form id="ocr-form" class="guided-form"><label class="dropzone" for="ocr-file"><span class="dropzone-icon" aria-hidden="true">↑</span><strong data-i18n="dropTitle">Trascina qui il file</strong><span data-i18n="dropHelp">oppure fai clic per sceglierlo dal computer</span><input id="ocr-file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp" required><em id="ocr-file-name" data-i18n="noFile">Nessun file scelto</em></label><button class="primary-action" type="submit" data-i18n="startOcr">Estrai il testo</button><p class="form-status" id="ocr-status-message" role="status" aria-live="polite"></p></form><div id="ocr-result" class="result-card" hidden><span class="result-icon" aria-hidden="true">✓</span><div><h3 data-i18n="ocrReady">Testo estratto</h3><p data-i18n="ocrReadyHelp">Aprilo dalla cronologia per controllarlo o scaricarlo.</p><button id="ocr-open-result" type="button" class="secondary" data-i18n="openResult">Apri il risultato</button></div></div></section><aside class="panel guide-panel"><p class="eyebrow" data-i18n="bestFor">QUANDO USARLO</p><h2 data-i18n="ocrSideTitle">Quando ti serve solo il testo</h2><p data-i18n="ocrSideHelp">È utile se vuoi copiare il testo in un’altra applicazione o correggerlo con un’altra intelligenza artificiale.</p><div class="info-pill"><b>PaddleOCR</b><span data-i18n="localEngine">funziona sul computer</span></div></aside></div>
+      </section>
+
+      <section id="view-organize" class="view" aria-labelledby="organize-title" hidden>
+        <div class="page-intro compact-intro"><p class="eyebrow" data-i18n="organizeEyebrow">UN SOLO PASSAGGIO</p><div class="title-with-info"><h1 id="organize-title" data-i18n="organizeTitle">Solo organizza: prepara il testo per la voce</h1><button class="info-button page-info" type="button" data-help-key="organize" data-i18n-aria-label="infoOrganizeLabel" aria-label="Informazioni su Solo organizza">i</button></div><p class="intro-copy" data-i18n="organizeHelp">Incolla o carica un testo. LFM conserva le parole e sistema solo pause e paragrafi.</p></div>
+        <div class="content-grid single-grid"><section class="panel primary-panel"><div class="panel-heading"><div class="number-badge">1</div><div><h2 data-i18n="giveText">Dai il testo a LFM</h2><p data-i18n="giveTextHelp">Puoi incollarlo oppure allegare un file .txt o .md.</p></div></div><form id="organize-form" class="guided-form"><label><span data-i18n="textTitle">Titolo</span><input id="organize-title-input" maxlength="180" value="testo-da-organizzare.txt"></label><label><span data-i18n="textPaste">Testo</span><textarea id="organize-input" rows="12" placeholder="Incolla qui il testo…"></textarea></label><label class="file-line"><span data-i18n="textFile">Oppure scegli un file di testo</span><input id="organize-file" type="file" accept=".txt,.text,.md,.markdown"></label><details class="advanced-settings"><summary data-i18n="modelSettings">Impostazioni del modello</summary><div class="settings-grid"><label><span data-i18n="organizationProvider">Intelligenza per l’ordine</span><select id="organize-provider"><option value="local">LFM 230M — locale</option><option value="mistral">Mistral</option><option value="opencode">OpenCode Zen</option><option value="gemini">Google Gemini</option><option value="claude">Anthropic Claude</option><option value="nvidia-nim">NVIDIA NIM</option><option value="kilo">Kilo Gateway</option><option value="custom">Provider personalizzato</option></select></label><label><span data-i18n="device">Computer per LFM</span><select id="organize-device"><option value="auto" data-i18n="deviceAuto">Automatico</option><option value="cpu" data-i18n="deviceCpu">Solo CPU</option><option value="gpu" data-i18n="deviceGpu">GPU, se disponibile</option></select></label></div></details><button class="primary-action" type="submit" data-i18n="startOrganize">Organizza il testo</button><p class="form-status" id="organize-status" role="status" aria-live="polite"></p></form><div id="organize-result" class="result-card" hidden><span class="result-icon" aria-hidden="true">✓</span><div><h3 data-i18n="organizeReady">Testo organizzato</h3><p data-i18n="organizeReadyHelp">Ora puoi copiarlo o passare alla modalità Solo voce.</p><button id="organize-open-result" type="button" class="secondary" data-i18n="openResult">Apri il risultato</button></div></div></section><aside class="panel guide-panel"><p class="eyebrow" data-i18n="important">IMPORTANTE</p><h2 data-i18n="organizeSideTitle">LFM resta separato</h2><p data-i18n="organizeSideHelp">Questa è l’unica modalità che organizza il testo. Il percorso completo non usa LFM e non modifica le parole.</p><div class="info-pill"><b>LFM 230M</b><span data-i18n="localEngine">funziona sul computer</span></div></aside></div>
+      </section>
+
+      <section id="view-tts" class="view" aria-labelledby="tts-title" hidden>
+        <div class="page-intro compact-intro"><p class="eyebrow" data-i18n="ttsEyebrow">UN SOLO PASSAGGIO</p><div class="title-with-info"><h1 id="tts-title" data-i18n="ttsTitle">Solo voce: leggi un testo già pronto</h1><button class="info-button page-info" type="button" data-help-key="tts" data-i18n-aria-label="infoTtsLabel" aria-label="Informazioni su Solo voce">i</button></div><p class="intro-copy" data-i18n="ttsHelp">Incolla o carica il testo già corretto e organizzato da te o da un’altra IA. Qui non usiamo OCR né LFM.</p></div>
+        <div class="content-grid single-grid"><section class="panel primary-panel"><div class="panel-heading"><div class="number-badge">1</div><div><h2 data-i18n="giveText">Dai il testo alla voce</h2><p data-i18n="ttsGiveHelp">Il testo verrà letto esattamente come lo inserisci.</p></div></div><form id="tts-form" class="guided-form"><label><span data-i18n="textTitle">Titolo</span><input id="tts-title-input" maxlength="180" value="testo-pronto.txt"></label><label><span data-i18n="textPaste">Testo da leggere</span><textarea id="tts-input" rows="12" placeholder="Incolla qui il testo…"></textarea></label><label class="file-line"><span data-i18n="textFile">Oppure scegli un file di testo</span><input id="tts-file" type="file" accept=".txt,.text,.md,.markdown"></label><details class="advanced-settings"><summary data-i18n="voiceSettings">Scegli voce e velocità</summary><div class="settings-grid"><label><span data-i18n="ttsProvider">Motore vocale</span><select id="tts-provider"><option value="edge-tts">Edge-TTS — online</option><option value="kokoro">Kokoro 82M — offline</option><option value="voxtral">Voxtral TTS — Mistral</option><option value="fish">Fish Audio</option><option value="elevenlabs">ElevenLabs</option></select></label><label><span data-i18n="speechLanguage">Lingua</span><select id="tts-language"><option value="it">Italiano</option><option value="en-us">English — Stati Uniti</option><option value="en-gb">English — Regno Unito</option></select></label><label><span data-i18n="voice">Voce</span><select id="tts-voice"></select></label><label><span data-i18n="speed">Velocità</span><input id="tts-speed" type="range" min="0.75" max="1.5" step="0.05" value="1"><output id="tts-speed-value">1,00×</output></label></div><p class="helper-text" data-i18n="providerHelp">Per usare un provider online inserisci prima la chiave in Impostazioni. Kokoro funziona anche senza rete.</p></details><button class="primary-action" type="submit" data-i18n="startTts">Crea l’audio</button><p class="form-status" id="tts-status" role="status" aria-live="polite"></p></form><div id="tts-result" class="result-card" hidden><span class="result-icon" aria-hidden="true">✓</span><div><h3 data-i18n="audioReady">Audio pronto</h3><p data-i18n="audioReadyHelp">Puoi ascoltarlo qui oppure scaricarlo.</p><audio id="tts-audio" controls preload="metadata"></audio><a id="tts-download" class="button-link secondary" download="audio.mp3" data-i18n="downloadAudio">Scarica audio</a></div></div></section><aside class="panel guide-panel"><p class="eyebrow" data-i18n="bestFor">QUANDO USARLO</p><h2 data-i18n="ttsSideTitle">Quando il testo è già a posto</h2><p data-i18n="ttsSideHelp">È il modo più rapido per ascoltare appunti, riassunti o testi preparati altrove.</p><div class="info-pill"><b id="tts-side-provider">Edge-TTS</b><span data-i18n="networkVoice">scegli online oppure offline</span></div></aside></div>
+      </section>
+
+      <section id="view-history" class="view" aria-labelledby="history-title" hidden>
+        <div class="page-intro compact-intro"><p class="eyebrow" data-i18n="historyEyebrow">TUTTO IN ORDINE</p><div class="title-with-info"><h1 id="history-title" data-i18n="historyTitle">Cronologia</h1><button class="info-button page-info" type="button" data-help-key="history" data-i18n-aria-label="infoHistoryLabel" aria-label="Informazioni sulla cronologia">i</button></div><p class="intro-copy" data-i18n="historyHelp">Qui trovi i documenti, i testi organizzati e gli audio creati su questo computer.</p></div>
+        <section class="panel history-panel"><div class="section-heading"><div><h2 data-i18n="recentWork">Lavori recenti</h2><p class="muted" data-i18n="historyLocal">La cronologia è locale.</p></div><div class="section-actions"><button id="refresh" type="button" class="secondary" data-i18n="refresh">Aggiorna</button><button id="clear-history" type="button" class="secondary danger" data-i18n="clearHistory">Cancella conclusi</button></div></div><p id="history-status" class="form-status" role="status" aria-live="polite"></p><div id="jobs" class="jobs" aria-live="polite"></div></section>
+      </section>
+
+      <section id="view-settings" class="view" aria-labelledby="settings-title" hidden>
+        <div class="page-intro compact-intro"><p class="eyebrow" data-i18n="settingsEyebrow">UNA VOLTA SOLA</p><div class="title-with-info"><h1 id="settings-title" data-i18n="settingsTitle">Impostazioni</h1><button class="info-button page-info" type="button" data-help-key="settings" data-i18n-aria-label="infoSettingsLabel" aria-label="Informazioni sulle impostazioni">i</button></div><p class="intro-copy" data-i18n="settingsHelp">Qui puoi collegare servizi esterni. Se non inserisci nulla, puoi usare PaddleOCR, Edge-TTS e Kokoro offline.</p></div>
+        <div class="settings-stack">
+          <section class="panel settings-panel">
+            <div class="panel-heading"><div class="number-badge">1</div><div><h2 data-i18n="aiSettingsTitle">Intelligenza per “Solo organizza”</h2><p data-i18n="aiSettingsHelp">Scegli un provider, apri la guida con il pulsante “i” e inserisci la chiave solo se vuoi usare un servizio online.</p></div></div>
+            <div class="api-provider-menu" aria-labelledby="ai-provider-menu-title">
+              <div class="api-menu-heading"><div><p class="eyebrow" data-i18n="apiMenuEyebrow">PROVIDER DISPONIBILI</p><h3 id="ai-provider-menu-title" data-i18n="apiMenuTitle">Scegli l’intelligenza che vuoi usare</h3></div><span class="api-menu-hint" data-i18n="apiMenuHint">Le chiavi restano locali</span></div>
+              <div class="api-provider-grid">
+                <div class="api-provider-card" data-provider-card="local"><button class="provider-card-select" type="button" data-provider-select="local"><span class="provider-avatar local-avatar">L</span><span><strong>Solo locale</strong><small>LFM 230M · offline</small></span><span class="provider-state" data-provider-state="local"></span></button><button class="info-button provider-info" type="button" data-guide-target="guide-local" data-i18n-aria-label="infoLocalLabel" aria-label="Guida Solo locale">i</button></div>
+                <div class="api-provider-card" data-provider-card="mistral"><button class="provider-card-select" type="button" data-provider-select="mistral"><span class="provider-avatar mistral-avatar">M</span><span><strong>Mistral</strong><small>Modelli Mistral</small></span><span class="provider-state" data-provider-state="mistral"></span></button><button class="info-button provider-info" type="button" data-guide-target="guide-mistral" data-i18n-aria-label="infoMistralLabel" aria-label="Guida Mistral">i</button></div>
+                <div class="api-provider-card" data-provider-card="opencode"><button class="provider-card-select" type="button" data-provider-select="opencode"><span class="provider-avatar opencode-avatar">O</span><span><strong>OpenCode Zen</strong><small>Gateway curato</small></span><span class="provider-state" data-provider-state="opencode"></span></button><button class="info-button provider-info" type="button" data-guide-target="guide-opencode" data-i18n-aria-label="infoOpenCodeLabel" aria-label="Guida OpenCode Zen">i</button></div>
+                <div class="api-provider-card" data-provider-card="gemini"><button class="provider-card-select" type="button" data-provider-select="gemini"><span class="provider-avatar gemini-avatar">G</span><span><strong>Google Gemini</strong><small>AI Studio</small></span><span class="provider-state" data-provider-state="gemini"></span></button><button class="info-button provider-info" type="button" data-guide-target="guide-gemini" data-i18n-aria-label="infoGeminiLabel" aria-label="Guida Google Gemini">i</button></div>
+                <div class="api-provider-card" data-provider-card="claude"><button class="provider-card-select" type="button" data-provider-select="claude"><span class="provider-avatar claude-avatar">C</span><span><strong>Anthropic Claude</strong><small>Claude API</small></span><span class="provider-state" data-provider-state="claude"></span></button><button class="info-button provider-info" type="button" data-guide-target="guide-claude" data-i18n-aria-label="infoClaudeLabel" aria-label="Guida Anthropic Claude">i</button></div>
+                <div class="api-provider-card" data-provider-card="nvidia-nim"><button class="provider-card-select" type="button" data-provider-select="nvidia-nim"><span class="provider-avatar nvidia-avatar">N</span><span><strong>NVIDIA NIM</strong><small>Hosted AI endpoints</small></span><span class="provider-state" data-provider-state="nvidia-nim"></span></button><button class="info-button provider-info" type="button" data-guide-target="guide-nvidia-nim" data-i18n-aria-label="infoNvidiaLabel" aria-label="Guida NVIDIA NIM">i</button></div>
+                <div class="api-provider-card" data-provider-card="kilo"><button class="provider-card-select" type="button" data-provider-select="kilo"><span class="provider-avatar kilo-avatar">K</span><span><strong>Kilo Gateway</strong><small>Più modelli</small></span><span class="provider-state" data-provider-state="kilo"></span></button><button class="info-button provider-info" type="button" data-guide-target="guide-kilo" data-i18n-aria-label="infoKiloLabel" aria-label="Guida Kilo Gateway">i</button></div>
+                <div class="api-provider-card" data-provider-card="custom"><button class="provider-card-select" type="button" data-provider-select="custom"><span class="provider-avatar custom-avatar">+</span><span><strong>Personalizzato</strong><small>OpenAI-compatible</small></span><span class="provider-state" data-provider-state="custom"></span></button><button class="info-button provider-info" type="button" data-guide-target="guide-custom" data-i18n-aria-label="infoCustomLabel" aria-label="Guida provider personalizzato">i</button></div>
+              </div>
+            </div>
+            <form id="ai-settings-form" class="guided-form settings-form">
+              <div class="selected-provider-bar"><div><span class="eyebrow" data-i18n="selectedProvider">PROVIDER SELEZIONATO</span><strong id="selected-provider-name">Solo locale</strong></div><span id="selected-provider-description" class="muted"></span></div>
+              <div class="settings-grid"><label class="provider-select-field"><span data-i18n="organizationProvider">Provider</span><select id="ai-provider"><option value="local">Solo locale — LFM 230M</option><option value="mistral">Mistral</option><option value="opencode">OpenCode Zen</option><option value="gemini">Google Gemini</option><option value="claude">Anthropic Claude</option><option value="nvidia-nim">NVIDIA NIM</option><option value="kilo">Kilo Gateway</option><option value="custom">OpenAI-compatible personalizzato</option></select></label><div class="model-field"><label for="ai-model"><span data-i18n="model">Modello</span><input id="ai-model" autocomplete="off"></label><button id="browse-models" class="secondary browse-models-button" type="button" data-i18n="browseModels">Browse Models</button><p id="browse-models-status" class="helper-text" role="status" aria-live="polite"></p></div><label class="wide-field"><span data-i18n="baseUrl">Indirizzo del provider</span><input id="ai-base-url" type="url" autocomplete="off" placeholder="https://…"></label><label class="wide-field"><span data-i18n="apiKey">Chiave API</span><input id="ai-key" type="password" autocomplete="new-password" placeholder="Lascia vuoto per non cambiarla"></label></div>
+              <p id="ai-key-status" class="key-status" role="status"></p><div class="editor-actions"><button type="submit" data-i18n="saveSettings">Salva impostazioni</button></div><p id="ai-settings-status" class="form-status" role="status" aria-live="polite"></p>
+            </form>
+          </section>
+          <section id="api-guides" class="panel settings-panel api-guides-panel">
+            <div class="section-heading"><div><p class="eyebrow" data-i18n="apiGuideEyebrow">GUIDA PASSO PASSO</p><h2 data-i18n="apiGuideTitle">Come ottenere e usare una chiave API</h2><p class="muted" data-i18n="apiGuideHelp">Scegli un provider qui sopra per configurarlo. Ogni guida apre il sito ufficiale in una nuova scheda.</p></div><button class="info-button" type="button" data-help-key="apiGuide" data-i18n-aria-label="infoApiGuideLabel" aria-label="Informazioni sulla guida API">i</button></div>
+            <div class="api-guide-list">
+              <article id="guide-local" class="api-guide-card"><div class="api-guide-heading"><div><h3>Solo locale</h3><p data-i18n="guideLocalIntro">Non serve nessuna chiave: LFM lavora sul computer.</p></div><span class="guide-badge offline" data-i18n="offlineBadge">OFFLINE</span></div><ol><li data-i18n="guideLocalStep1">Seleziona “Solo locale” nel menu degli AI.</li><li data-i18n="guideLocalStep2">Salva le impostazioni e usa “Solo organizza”.</li></ol></article>
+              <article id="guide-mistral" class="api-guide-card"><div class="api-guide-heading"><div><h3>Mistral</h3><p data-i18n="guideMistralIntro">Per usare i modelli Mistral con una chiave personale.</p></div><a class="guide-link" href="https://console.mistral.ai/api-keys" target="_blank" rel="noopener" data-i18n="openProviderPage">Apri Mistral Studio ↗</a></div><ol><li data-i18n="guideMistralStep1">Apri Mistral Studio e accedi o crea un account.</li><li data-i18n="guideMistralStep2">Apri “API Keys”, scegli “Create new key” e assegna un nome.</li><li data-i18n="guideMistralStep3">Copia subito la chiave: il valore completo viene mostrato una sola volta.</li><li data-i18n="guideMistralStep4">Torna qui, seleziona Mistral, incolla la chiave e salva.</li></ol></article>
+              <article id="guide-opencode" class="api-guide-card"><div class="api-guide-heading"><div><h3>OpenCode Zen</h3><p data-i18n="guideOpenCodeIntro">Gateway OpenCode con modelli verificati e pagamento a consumo.</p></div><a class="guide-link" href="https://opencode.ai/zen" target="_blank" rel="noopener" data-i18n="openProviderPage">Apri OpenCode Zen ↗</a></div><ol><li data-i18n="guideOpenCodeStep1">Apri OpenCode Zen e accedi con il tuo account.</li><li data-i18n="guideOpenCodeStep2">Aggiungi un metodo di pagamento o eventuali crediti.</li><li data-i18n="guideOpenCodeStep3">Crea o copia la tua API key dalla pagina Zen.</li><li data-i18n="guideOpenCodeStep4">Seleziona OpenCode Zen qui, lascia l’indirizzo proposto, incolla la chiave e salva.</li></ol></article>
+              <article id="guide-gemini" class="api-guide-card"><div class="api-guide-heading"><div><h3>Google Gemini</h3><p data-i18n="guideGeminiIntro">Gemini tramite Google AI Studio e la sua API compatibile OpenAI.</p></div><a class="guide-link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" data-i18n="openProviderPage">Apri Google AI Studio ↗</a></div><ol><li data-i18n="guideGeminiStep1">Apri Google AI Studio e accedi con il tuo account Google.</li><li data-i18n="guideGeminiStep2">Nella pagina API keys scegli “Create API key” e collega un progetto.</li><li data-i18n="guideGeminiStep3">Copia la chiave e controlla i limiti o la fatturazione del progetto.</li><li data-i18n="guideGeminiStep4">Torna qui, seleziona Google Gemini, incolla la chiave e salva.</li></ol></article>
+              <article id="guide-claude" class="api-guide-card"><div class="api-guide-heading"><div><h3>Anthropic Claude</h3><p data-i18n="guideClaudeIntro">Claude usa l’API Messages ufficiale di Anthropic.</p></div><a class="guide-link" href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener" data-i18n="openProviderPage">Apri Claude Console ↗</a></div><ol><li data-i18n="guideClaudeStep1">Apri Claude Console e accedi o crea un account.</li><li data-i18n="guideClaudeStep2">Vai in “Settings → API keys” e scegli “Create key”.</li><li data-i18n="guideClaudeStep3">Dai un nome, scegli la scadenza e copia la chiave.</li><li data-i18n="guideClaudeStep4">Torna qui, seleziona Anthropic Claude, incolla la chiave e salva.</li></ol></article>
+              <article id="guide-nvidia-nim" class="api-guide-card"><div class="api-guide-heading"><div><h3>NVIDIA NIM</h3><p data-i18n="guideNvidiaIntro">Endpoint NVIDIA compatibile OpenAI con modelli ospitati e lista modelli automatica.</p></div><a class="guide-link" href="https://build.nvidia.com/" target="_blank" rel="noopener" data-i18n="openNvidiaPage">Apri NVIDIA Build ↗</a></div><ol><li data-i18n="guideNvidiaStep1">Apri NVIDIA Build e accedi o crea un account NVIDIA.</li><li data-i18n="guideNvidiaStep2">Scegli un modello, apri la sezione API e crea una API key.</li><li data-i18n="guideNvidiaStep3">Copia la chiave e torna qui: l’endpoint NVIDIA NIM è già compilato.</li><li data-i18n="guideNvidiaStep4">Seleziona NVIDIA NIM, premi “Browse Models”, scegli il modello e salva.</li></ol></article>
+              <article id="guide-kilo" class="api-guide-card"><div class="api-guide-heading"><div><h3>Kilo Gateway</h3><p data-i18n="guideKiloIntro">Un endpoint compatibile OpenAI per molti modelli con una sola chiave.</p></div><a class="guide-link" href="https://app.kilo.ai/" target="_blank" rel="noopener" data-i18n="openProviderPage">Apri Kilo Gateway ↗</a></div><ol><li data-i18n="guideKiloStep1">Apri Kilo e accedi o crea un account.</li><li data-i18n="guideKiloStep2">Apri il profilo personale e raggiungi la sezione della chiave API.</li><li data-i18n="guideKiloStep3">Copia la chiave e aggiungi crediti se il modello lo richiede.</li><li data-i18n="guideKiloStep4">Torna qui, seleziona Kilo Gateway, incolla la chiave e salva.</li></ol></article>
+              <article id="guide-custom" class="api-guide-card"><div class="api-guide-heading"><div><h3>Provider personalizzato</h3><p data-i18n="guideCustomIntro">Per un endpoint OpenAI-compatible che conosci già.</p></div><a class="guide-link" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" data-i18n="guideCustomLink">Esempio: chiavi OpenAI ↗</a></div><ol><li data-i18n="guideCustomStep1">Scegli “Provider personalizzato”.</li><li data-i18n="guideCustomStep2">Inserisci l’indirizzo base HTTPS senza aggiungere “/chat/completions”.</li><li data-i18n="guideCustomStep3">Inserisci il nome esatto del modello e la chiave API.</li><li data-i18n="guideCustomStep4">Salva e prova “Solo organizza”.</li></ol></article>
+            </div>
+          </section>
+          <section class="panel settings-panel">
+            <div class="panel-heading"><div class="number-badge">2</div><div><h2 data-i18n="voiceProvidersTitle">Voci e audio premium</h2><p data-i18n="voiceProvidersHelp">Le chiavi restano in una cartella privata del computer e non vengono mostrate dopo il salvataggio.</p></div><button class="info-button" type="button" data-help-key="ttsSettings" data-i18n-aria-label="infoTtsSettingsLabel" aria-label="Informazioni sui provider vocali">i</button></div>
+            <form id="tts-settings-form" class="guided-form settings-form">
+              <label><span data-i18n="defaultVoiceProvider">Provider vocale predefinito</span><select id="default-tts-provider"><option value="edge-tts">Edge-TTS — online</option><option value="kokoro">Kokoro 82M — offline</option><option value="voxtral">Voxtral TTS — Mistral</option><option value="fish">Fish Audio</option><option value="elevenlabs">ElevenLabs</option></select></label>
+              <div class="provider-config-grid">
+                <fieldset><legend>Voxtral / Mistral</legend><label><span data-i18n="apiKey">Chiave API</span><input id="mistral-key" type="password" autocomplete="new-password"></label><label><span data-i18n="voiceId">ID voce salvata</span><input id="mistral-voice-id" autocomplete="off" placeholder="facoltativo"></label><p id="mistral-status" class="key-status"></p></fieldset>
+                <fieldset><legend>Fish Audio</legend><label><span data-i18n="apiKey">Chiave API</span><input id="fish-key" type="password" autocomplete="new-password"></label><label><span data-i18n="voiceId">Reference ID voce</span><input id="fish-voice-id" autocomplete="off" placeholder="facoltativo"></label><p id="fish-status" class="key-status"></p></fieldset>
+                <fieldset><legend>ElevenLabs</legend><label><span data-i18n="apiKey">Chiave API</span><input id="eleven-key" type="password" autocomplete="new-password"></label><label><span data-i18n="voiceId">ID voce</span><input id="eleven-voice-id" autocomplete="off" placeholder="facoltativo"></label><p id="eleven-status" class="key-status"></p></fieldset>
+              </div>
+              <div class="settings-grid"><label><span data-i18n="kokoroItalianVoice">Voce Kokoro italiana</span><select id="kokoro-voice-it"><option value="if_sara">Sara — femminile</option><option value="im_nicola">Nicola — maschile</option></select></label><label><span data-i18n="kokoroEnglishVoice">Voce Kokoro inglese</span><select id="kokoro-voice-en"><option value="af_heart">Heart — femminile</option><option value="am_michael">Michael — maschile</option></select></label></div>
+              <div class="editor-actions"><button type="submit" data-i18n="saveSettings">Salva impostazioni</button></div><p id="tts-settings-status" class="form-status" role="status" aria-live="polite"></p>
+            </form>
+          </section>
+          <section class="panel settings-panel">
+            <div class="panel-heading"><div class="number-badge">3</div><div><h2 data-i18n="cloneTitle">Clonazione della voce</h2><p data-i18n="cloneHelp">Usa un campione vocale solo con il consenso della persona. Il campione viene eliminato dal computer dopo l’invio.</p></div><button class="info-button" type="button" data-help-key="cloneSettings" data-i18n-aria-label="infoCloneSettingsLabel" aria-label="Informazioni sulla clonazione della voce">i</button></div>
+            <form id="clone-form" class="guided-form"><div class="settings-grid"><label><span data-i18n="cloneProvider">Servizio</span><select id="clone-provider"><option value="voxtral">Voxtral / Mistral</option><option value="elevenlabs">ElevenLabs</option><option value="fish" disabled>Fish Audio — configura Reference ID</option><option value="pocket-tts" disabled>Pocket TTS — non installato</option></select></label><label><span data-i18n="cloneName">Nome della voce</span><input id="clone-name" maxlength="100" placeholder="es. Voce mamma"></label></div><label class="file-line"><span data-i18n="cloneSample">Campione audio</span><input id="clone-file" type="file" accept="audio/*"></label><label class="consent-line"><input id="clone-consent" type="checkbox"><span data-i18n="cloneConsent">Confermo di avere il permesso di usare questa voce.</span></label><button type="submit" data-i18n="createClone">Crea voce clonata</button><p id="clone-status" class="form-status" role="status" aria-live="polite"></p></form><div id="clone-list" class="clone-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="review-area" class="review-area" hidden>
+        <section id="editor" class="panel editor" aria-labelledby="editor-title" hidden>
+          <div class="section-heading"><div><p class="eyebrow" data-i18n="reviewEyebrow">CONTROLLO FACOLTATIVO</p><h2 id="editor-title" data-i18n="reviewTitle">Controlla il testo OCR</h2></div><button id="close-editor" type="button" class="secondary" data-i18n="close">Chiudi</button></div>
+          <p class="muted" data-i18n="reviewHelp">Controlla le parole prima di creare l’audio. Le parti con confidenza bassa meritano più attenzione.</p>
+          <div class="document-settings"><label><span data-i18n="documentTitle">Titolo del documento</span><input id="document-title" maxlength="200"></label><label><span data-i18n="documentLanguage">Lingua</span><select id="document-language"><option value="it">Italiano</option><option value="en">English</option></select></label></div>
+          <div class="editor-actions"><button id="save-document" type="button" data-i18n="save">Salva correzioni</button><a id="download-html" class="button-link secondary" data-i18n="downloadHtml">Scarica HTML</a><a id="download-text" class="button-link secondary" data-i18n="downloadText">Scarica testo</a></div><p id="save-status" class="form-status" role="status" aria-live="polite"></p><p id="review-live-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+          <details class="advanced-settings review-tools"><summary data-i18n="moreActions">Altre azioni</summary><div class="settings-grid"><label><span data-i18n="speechLanguage">Lingua</span><select id="speech-language"><option value="it">Italiano</option><option value="en-us">English — Stati Uniti</option><option value="en-gb">English — Regno Unito</option></select></label><label><span data-i18n="voice">Voce</span><select id="voice"></select></label><label><span data-i18n="speed">Velocità</span><input id="speed" type="range" min="0.75" max="1.5" step="0.05" value="1"><output id="speed-value">1,00×</output></label><label><span data-i18n="device">Computer per LFM</span><select id="document-reflow-device"><option value="auto" data-i18n="deviceAuto">Automatico</option><option value="cpu" data-i18n="deviceCpu">Solo CPU</option><option value="gpu" data-i18n="deviceGpu">GPU, se disponibile</option></select></label></div><div class="editor-actions"><button id="create-speech" type="button" data-i18n="createSpeech">Crea audio</button><button id="reflow-document" type="button" class="secondary" data-i18n="reflow">Organizza con LFM</button></div></details><div id="pages" class="pages"></div>
+        </section>
+        <section id="text-editor" class="panel editor" aria-labelledby="text-editor-title" hidden><div class="section-heading"><div><p class="eyebrow" data-i18n="reviewEyebrow">CONTROLLO FACOLTATIVO</p><h2 id="text-editor-title" data-i18n="textEditorTitle">Controlla il testo</h2></div><button id="close-text-editor" type="button" class="secondary" data-i18n="close">Chiudi</button></div><p class="muted" data-i18n="textEditorHelp">Puoi correggerlo, organizzarlo con LFM oppure mandarlo direttamente alla voce.</p><textarea id="text-workspace" class="long-textarea" rows="18"></textarea><div class="editor-actions"><button id="save-text" type="button" data-i18n="saveText">Salva testo</button><button id="create-text-speech" type="button" data-i18n="createSpeech">Crea audio</button><button id="reflow-text" type="button" class="secondary" data-i18n="reflow">Organizza con LFM</button></div><p id="text-editor-status" class="form-status" role="status" aria-live="polite"></p></section>
       </section>
     </main>
-    <footer>
-      <a href="/legal">GPLv3 · Legal notices / Note legali · No warranty</a>
-    </footer>
+    <footer><a href="/legal">GPLv3 · <span data-i18n="legal">Note legali</span> · No warranty</a></footer>
+    <dialog id="help-dialog" class="help-dialog" aria-labelledby="help-dialog-title">
+      <div class="help-dialog-header"><h2 id="help-dialog-title"></h2><button id="close-help-dialog" class="info-button" type="button" data-i18n-aria-label="closeInfoLabel" aria-label="Chiudi informazioni">×</button></div>
+      <p id="help-dialog-body"></p>
+      <button id="help-dialog-ok" type="button" data-i18n="understood">Ho capito</button>
+    </dialog>
+    <dialog id="model-dialog" class="model-dialog" aria-labelledby="model-dialog-title">
+      <div class="help-dialog-header"><div><h2 id="model-dialog-title" data-i18n="browseModelsTitle">Modelli disponibili</h2><p id="model-dialog-provider" class="muted"></p></div><button id="close-model-dialog" class="info-button" type="button" data-i18n-aria-label="closeInfoLabel" aria-label="Chiudi elenco modelli">×</button></div>
+      <label class="model-search-label"><span data-i18n="searchModels">Cerca un modello</span><input id="model-search" type="search" autocomplete="off"></label>
+      <div id="model-list" class="model-list" role="listbox" aria-label="Modelli disponibili" data-i18n-aria-label="modelsListLabel"></div>
+      <p id="model-dialog-status" class="form-status" role="status" aria-live="polite"></p>
+      <div class="editor-actions"><button id="use-model" type="button" data-i18n="useModel">Usa questo modello</button><button id="cancel-model-dialog" class="secondary" type="button" data-i18n="close">Chiudi</button></div>
+    </dialog>
   </body>
 </html>

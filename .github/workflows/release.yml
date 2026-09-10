@@ -1,0 +1,58 @@
+name: Build release packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: linux-appimage
+          - os: windows-latest
+            artifact: windows-exe
+          - os: macos-14
+            artifact: macos-app
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.16"
+      - name: Install AppImage tooling
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p build
+          curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage \
+            --output build/appimagetool.AppImage
+          chmod 0755 build/appimagetool.AppImage
+      - name: Build package
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            ./packaging/build_appimage.sh
+          elif [ "$RUNNER_OS" = macOS ]; then
+            ./packaging/build_macos.sh
+          else
+            pwsh -File packaging/build_windows.ps1
+          fi
+      - name: Upload package artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/*
+          if-no-files-found: error
