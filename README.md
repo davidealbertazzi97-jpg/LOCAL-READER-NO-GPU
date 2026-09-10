@@ -63,6 +63,19 @@ Richiede Python 3.12 e `uv` (l’installer può scaricarlo):
 ./start.sh
 ```
 
+Su macOS Apple Silicon si può fare tutto con una sola riga nel Terminale:
+
+```bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/main/install-macos.sh | bash
+```
+
+La riga scarica il codice pubblico, prepara Python, OCR, sintesi vocale,
+Kokoro, LFM e FFmpeg, scarica i modelli necessari e crea `Local Accessibility
+Studio.app` sul Desktop. Il doppio clic avvia il server locale e apre la web
+app nel browser. Gemma 4 e Fish Audio, molto più pesanti, restano opzionali:
+si possono scaricare dalle Impostazioni avanzate oppure includere durante
+l’installazione impostando `LAS_INSTALL_OPTIONAL_MODELS=1`.
+
 Su Windows:
 
 ```powershell

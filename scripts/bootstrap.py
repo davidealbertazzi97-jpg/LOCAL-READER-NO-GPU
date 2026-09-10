@@ -178,6 +178,8 @@ def main() -> int:
         run(["bash", str(APP_DIR / "scripts" / "install-netguard.sh")])
     if system == "Linux" and not args.skip_desktop:
         run(["bash", str(APP_DIR / "scripts" / "install-desktop.sh")])
+    if system == "Darwin" and not args.skip_desktop:
+        run(["bash", str(APP_DIR / "scripts" / "install-macos-desktop.sh")])
     print("\nLocal Accessibility Studio installation complete.")
     return 0
 
