@@ -98,7 +98,7 @@ class ProductTests(unittest.TestCase):
     def test_product_and_engine_registry(self) -> None:
         product = load_product()
         self.assertEqual(product.slug, "local-accessibility-studio")
-        self.assertEqual(product.version, "0.3.1")
+        self.assertEqual(product.version, "0.3.2")
         self.assertEqual(TOKEN_COOKIE, "local_accessibility_studio_token")
         self.assertEqual(
             set(ENGINES),

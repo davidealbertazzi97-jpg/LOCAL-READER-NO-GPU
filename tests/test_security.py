@@ -1,12 +1,66 @@
 from __future__ import annotations
 
+import io
 import os
 import subprocess
 import sys
+import tarfile
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent.parent
+
+
+class RuntimeArchiveTests(unittest.TestCase):
+    def test_runtime_library_symlink_is_extracted_safely(self):
+        from scripts.install_lfm import safe_members
+
+        stream = io.BytesIO()
+        with tarfile.open(fileobj=stream, mode="w") as archive:
+            library = tarfile.TarInfo("bin/libggml.so.1")
+            library.size = 4
+            archive.addfile(library, io.BytesIO(b"test"))
+            link = tarfile.TarInfo("bin/libggml.so")
+            link.type = tarfile.SYMTYPE
+            link.linkname = "libggml.so.1"
+            archive.addfile(link)
+        stream.seek(0)
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            tarfile.open(fileobj=stream) as archive,
+        ):
+            safe_members(archive)
+            archive.extractall(temporary, filter="data")
+            self.assertEqual((Path(temporary) / "bin/libggml.so").read_bytes(), b"test")
+
+    def test_escaping_runtime_links_are_rejected(self):
+        from scripts.install_lfm import safe_members
+
+        for target in ("../../outside", "/etc/passwd", "C:/outside"):
+            stream = io.BytesIO()
+            with tarfile.open(fileobj=stream, mode="w") as archive:
+                link = tarfile.TarInfo("bin/link")
+                link.type = tarfile.SYMTYPE
+                link.linkname = target
+                archive.addfile(link)
+            stream.seek(0)
+            with (
+                tarfile.open(fileobj=stream) as archive,
+                self.assertRaises(RuntimeError),
+            ):
+                safe_members(archive)
+
+    def test_windows_runtime_zip_uses_filename(self):
+        from scripts.install_lfm import safe_members
+
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, "w") as archive:
+            archive.writestr("llama-cli.exe", b"test")
+        stream.seek(0)
+        with zipfile.ZipFile(stream) as archive:
+            self.assertEqual(len(safe_members(archive)), 1)
 
 
 class RuntimeNetworkGuardTests(unittest.TestCase):

@@ -35,10 +35,10 @@ python3 "${APP_DIR}/packaging/create_payload.py" \
   "${APP_DIR}/packaging/launcher.py"
 
 BUNDLE="${BUILD_DIR}/pyinstaller-dist/Local Accessibility Studio.app"
-OUTPUT="${DIST_DIR}/Local-Accessibility-Studio-0.3.1-macos-arm64.app"
+OUTPUT="${DIST_DIR}/Local-Accessibility-Studio-0.3.2-macos-arm64.app"
 rm -rf "${OUTPUT}"
 ditto "${BUNDLE}" "${OUTPUT}"
 ditto -c -k --sequesterRsrc --keepParent "${OUTPUT}" "${OUTPUT}.zip"
 hdiutil create -volname "Local Accessibility Studio" -srcfolder "${OUTPUT}" \
-  -ov -format UDZO "${DIST_DIR}/Local-Accessibility-Studio-0.3.1-macos-arm64.dmg"
+  -ov -format UDZO "${DIST_DIR}/Local-Accessibility-Studio-0.3.2-macos-arm64.dmg"
 echo "Built ${OUTPUT}"

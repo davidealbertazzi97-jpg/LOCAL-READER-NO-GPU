@@ -62,7 +62,7 @@ if [[ -z "${APPIMAGETOOL}" || ! -x "${APPIMAGETOOL}" ]]; then
   exit 1
 fi
 
-OUTPUT="${DIST_DIR}/Local-Accessibility-Studio-${LOCAL_ACCESSIBILITY_STUDIO_VERSION:-0.3.1}-linux-x86_64.AppImage"
+OUTPUT="${DIST_DIR}/Local-Accessibility-Studio-${LOCAL_ACCESSIBILITY_STUDIO_VERSION:-0.3.2}-linux-x86_64.AppImage"
 APPIMAGE_EXTRACT_AND_RUN=1 "${APPIMAGETOOL}" "${APP_ROOT}" "${OUTPUT}"
 chmod 0755 "${OUTPUT}"
 echo "Built ${OUTPUT}"

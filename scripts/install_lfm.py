@@ -6,13 +6,15 @@ from __future__ import annotations
 import hashlib
 import os
 import platform
+import posixpath
 import shutil
+import stat
 import tarfile
 import tempfile
 import urllib.parse
 import urllib.request
 import zipfile
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 APP_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = APP_DIR / "models" / "lfm"
@@ -123,12 +125,32 @@ def safe_members(archive: tarfile.TarFile | zipfile.ZipFile) -> list[object]:
     else:
         members = archive.infolist()
     for member in members:
-        name = member.name.replace("\\", "/")
+        raw_name = (
+            member.name if isinstance(member, tarfile.TarInfo) else member.filename
+        )
+        name = raw_name.replace("\\", "/")
         path = Path(name)
-        if path.is_absolute() or ".." in path.parts:
+        if path.is_absolute() or PureWindowsPath(name).drive or ".." in path.parts:
             raise RuntimeError("runtime archive contains an unsafe path")
-        if isinstance(member, tarfile.TarInfo) and (member.issym() or member.islnk()):
-            raise RuntimeError("runtime archive contains a link")
+        if isinstance(member, tarfile.TarInfo):
+            if member.issym() or member.islnk():
+                target = member.linkname.replace("\\", "/")
+                resolved = posixpath.normpath(
+                    posixpath.join(
+                        posixpath.dirname(name) if member.issym() else "", target
+                    )
+                )
+                if (
+                    target.startswith("/")
+                    or PureWindowsPath(target).drive
+                    or resolved == ".."
+                    or resolved.startswith("../")
+                ):
+                    raise RuntimeError("runtime archive contains an unsafe link")
+            elif not (member.isfile() or member.isdir()):
+                raise RuntimeError("runtime archive contains a special file")
+        elif stat.S_ISLNK(member.external_attr >> 16):
+            raise RuntimeError("runtime ZIP contains a link")
     return members
 
 
@@ -161,7 +183,7 @@ def install_llama() -> None:
         else:
             with tarfile.open(archive_path) as archive:
                 safe_members(archive)
-                archive.extractall(extract_dir)  # nosec B202
+                archive.extractall(extract_dir, filter="data")  # nosec B202
         suffix = ".exe" if os.name == "nt" else ""
         executable = next(
             (

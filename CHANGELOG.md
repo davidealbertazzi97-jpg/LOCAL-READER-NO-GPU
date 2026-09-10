@@ -2,6 +2,13 @@
 
 All notable changes to Local Accessibility Studio are documented here.
 
+## 0.3.2 - 2026-09-10
+
+- Fixed first-run installation on fresh Linux/macOS machines by accepting
+  contained library symlinks in the verified llama.cpp archive with Python's
+  safe extraction filter. Escaping links and special files remain blocked.
+- Fixed Windows runtime ZIP handling (`ZipInfo.filename`).
+
 ## 0.3.1 - 2026-09-10
 
 - Offline mode immediately stops online workers and routes speech to Kokoro.

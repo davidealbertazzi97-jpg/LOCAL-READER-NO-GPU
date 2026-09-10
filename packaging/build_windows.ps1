@@ -33,6 +33,6 @@ $PyInstallerArgs = @(
 & $Uv @PyInstallerArgs
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
-$Output = Join-Path $DistDir "Local-Accessibility-Studio-0.3.1-windows-x86_64.exe"
+$Output = Join-Path $DistDir "Local-Accessibility-Studio-0.3.2-windows-x86_64.exe"
 Copy-Item (Join-Path $BuildDir "pyinstaller-dist\local-accessibility-studio.exe") $Output -Force
 Write-Host "Built $Output"
