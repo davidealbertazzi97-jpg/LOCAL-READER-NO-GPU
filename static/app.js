@@ -293,6 +293,7 @@ const COPY = {
     keyMissing: "Chiave non configurata",
     savedSettings: "Impostazioni salvate.",
     cloneCreated: "Voce creata e pronta da scegliere.",
+    recordSample: "Registra campione", stopRecording: "Ferma registrazione", cloneRequired: "necessaria clonazione",
   },
   en: {
     skip: "Skip to content",
@@ -588,6 +589,7 @@ const COPY = {
     keyMissing: "Key not configured",
     savedSettings: "Settings saved.",
     cloneCreated: "Voice created and ready to choose.",
+    recordSample: "Record sample", stopRecording: "Stop recording", cloneRequired: "cloning required",
   },
 };
 
@@ -630,6 +632,9 @@ let providerStatus = {tts: {}, ai: {}};
 let settings = null;
 let offlineMode = false;
 let modeSaving = false;
+let cloneRecorder = null;
+let cloneRecordingChunks = [];
+let recordedCloneBlob = null;
 const busyForms = new Set();
 let pollTimer = null;
 let activeView = "complete";
@@ -878,14 +883,14 @@ function renderProviderVoiceSelects() {
   } else {
     const configured = settings?.settings?.tts?.[provider === "voxtral" ? "mistral" : provider]?.voice_id || "";
     const clones = (settings?.settings?.clones || []).filter((clone) => clone.provider === provider);
-    const entries = [["", language === "it" ? "Voce predefinita del provider" : "Provider default voice"]];
+    const entries = provider === "pocket-tts" ? [] : [["", language === "it" ? "Voce predefinita del provider" : "Provider default voice"]];
     if (configured) entries.push([configured, language === "it" ? `Voce configurata (${configured})` : `Configured voice (${configured})`]);
     clones.forEach((clone) => entries.push([clone.voice_id, clone.name]));
     select.replaceChildren(...entries.map(([value, label]) => { const option = document.createElement("option"); option.value = value; option.textContent = label; return option; }));
     if (entries.some(([value]) => value === preferred)) select.value = preferred;
   }
   const label = document.querySelector("#tts-side-provider");
-  if (label) label.textContent = ({"edge-tts": "Edge-TTS", kokoro: "Kokoro 82M", voxtral: "Voxtral", fish: "Fish Audio", "fish-local": "Fish Audio locale", elevenlabs: "ElevenLabs"})[provider] || provider;
+  if (label) label.textContent = ({"edge-tts": "Edge-TTS", kokoro: "Kokoro 82M", "pocket-tts": "Pocket TTS · voce clonata", voxtral: "Voxtral", fish: "Fish Audio", "fish-local": "Fish Audio locale", elevenlabs: "ElevenLabs"})[provider] || provider;
 }
 
 function kokoroVoiceFor(language) {
@@ -903,7 +908,10 @@ function speechVoiceForProvider(provider, language, preferred = "") {
 }
 
 function workflowSpeechProvider() {
-  if (offlineMode) return "kokoro";
+  if (offlineMode) {
+    const selectedOffline = document.querySelector("#complete-provider")?.value;
+    return selectedOffline === "pocket-tts" ? "pocket-tts" : "kokoro";
+  }
   const selected = document.querySelector("#complete-provider")?.value;
   if (["edge-tts", "kokoro"].includes(selected)) return selected;
   const configured = settings?.settings?.tts?.default_provider;
@@ -926,7 +934,7 @@ function renderOfflineMode() {
   }
   if (state) state.textContent = offlineMode ? t("offlineOn") : t("offlineOff");
   if (basic) { basic.value = offlineMode ? "kokoro" : "edge-tts"; basic.disabled = modeSaving; }
-  if (complete) { complete.value = ["kokoro", "edge-tts"].includes(targetProvider) ? targetProvider : "edge-tts"; complete.disabled = modeSaving; }
+  if (complete) { complete.value = ["kokoro", "pocket-tts", "edge-tts"].includes(targetProvider) ? targetProvider : "edge-tts"; complete.disabled = modeSaving; }
   if (tts) {
     tts.value = targetProvider;
     tts.disabled = modeSaving;
@@ -939,13 +947,13 @@ function renderOfflineMode() {
   updateCompleteAvailability();
 }
 
-async function setOfflineMode(enabled) {
+async function setOfflineMode(enabled, requestedProvider = "") {
   if (modeSaving) return;
   modeSaving = true;
   renderOfflineMode();
   setStatus(document.querySelector("#mode-status"), language === "it" ? "Cambio modalità…" : "Changing mode…");
   try {
-    const provider = enabled ? "kokoro" : "edge-tts";
+    const provider = enabled ? (requestedProvider === "pocket-tts" ? "pocket-tts" : "kokoro") : "edge-tts";
     const response = await api("/api/settings", {
       method: "PUT",
       headers: {"Content-Type": "application/json"},
@@ -975,6 +983,10 @@ function renderWorkflowVoices() {
       const entries = speechLanguage === "it" ? [["if_sara", "Sara"], ["im_nicola", "Nicola"]] : [["af_heart", "Heart"], ["am_michael", "Michael"]];
       select.replaceChildren(...entries.map(([value, label]) => new Option(label, value)));
       select.value = speechVoiceForProvider("kokoro", speechLanguage, preferred);
+    } else if (workflowSpeechProvider() === "pocket-tts") {
+      const clones = (settings?.settings?.clones || []).filter((clone) => clone.provider === "pocket-tts");
+      select.replaceChildren(...clones.map((clone) => new Option(clone.name, clone.voice_id)));
+      if (clones.some((clone) => clone.voice_id === preferred)) select.value = preferred;
     } else fillVoiceSelect(select, speechLanguage, preferred);
   }
 }
@@ -998,6 +1010,14 @@ function updateTtsAvailability() {
   if (hint && !ready) setStatus(hint, language === "it" ? "Questo motore non è pronto: controlla Impostazioni." : "This engine is not ready: check Settings.", true);
 }
 
+function updatePocketOptionState() {
+  const hasClone = (settings?.settings?.clones || []).some((clone) => clone.provider === "pocket-tts");
+  document.querySelectorAll('option[value="pocket-tts"]').forEach((option) => {
+    option.disabled = !hasClone;
+    option.textContent = hasClone ? "Pocket TTS — voce clonata offline" : "Pocket TTS — necessaria clonazione";
+  });
+}
+
 function updateCompleteAvailability() {
   const provider = workflowSpeechProvider();
   const button = document.querySelector("#complete-form button[type=submit]");
@@ -1019,8 +1039,8 @@ async function loadSettings() {
     renderAiProviderMenu();
     document.querySelector("#default-tts-provider").value = value.tts.default_provider;
     offlineMode = Boolean(value.tts.offline_mode);
-    document.querySelector("#default-audio-provider").value = offlineMode ? "kokoro" : "edge-tts";
-    if (["edge-tts", "kokoro", "voxtral", "fish", "fish-local", "elevenlabs"].includes(value.tts.default_provider)) document.querySelector("#tts-provider").value = value.tts.default_provider;
+    document.querySelector("#default-audio-provider").value = offlineMode ? value.tts.default_provider : "edge-tts";
+    if (["edge-tts", "kokoro", "pocket-tts", "voxtral", "fish", "fish-local", "elevenlabs"].includes(value.tts.default_provider)) document.querySelector("#tts-provider").value = value.tts.default_provider;
     document.querySelector("#mistral-voice-id").value = value.tts.mistral.voice_id || "";
     document.querySelector("#fish-voice-id").value = value.tts.fish.voice_id || "";
     document.querySelector("#eleven-voice-id").value = value.tts.elevenlabs.voice_id || "";
@@ -1030,6 +1050,7 @@ async function loadSettings() {
       document.querySelector(`#${provider}-status`).textContent = value.tts[provider].configured ? t("keyConfigured") : t("keyMissing");
     }
     renderOfflineMode();
+    updatePocketOptionState();
     renderClones(value.clones || []);
   } catch (error) {
     setStatus(document.querySelector("#ai-settings-status"), `${t("failed")} ${error.message}`, true);
@@ -2049,7 +2070,7 @@ async function saveTtsSettings(event) {
 async function createVoiceClone(event) {
   event.preventDefault();
   const button = event.currentTarget.querySelector("button[type=submit]");
-  const file = document.querySelector("#clone-file").files[0];
+  const file = document.querySelector("#clone-file").files[0] || (recordedCloneBlob ? new File([recordedCloneBlob], "registrazione.webm", {type: recordedCloneBlob.type}) : null);
   const status = document.querySelector("#clone-status");
   if (!file) { setStatus(status, language === "it" ? "Scegli prima un campione audio." : "Choose an audio sample first.", true); return; }
   button.disabled = true;
@@ -2067,6 +2088,28 @@ async function createVoiceClone(event) {
     await renderStatus();
   } catch (error) { setStatus(status, `${t("failed")} ${error.message}`, true); }
   finally { button.disabled = false; }
+}
+
+async function toggleCloneRecording() {
+  const record = document.querySelector("#clone-record");
+  const stop = document.querySelector("#clone-stop");
+  const preview = document.querySelector("#clone-preview");
+  if (cloneRecorder?.state === "recording") { cloneRecorder.stop(); return; }
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    setStatus(document.querySelector("#clone-status"), "Il browser non supporta la registrazione audio.", true); return;
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+  cloneRecordingChunks = [];
+  cloneRecorder = new MediaRecorder(stream, {mimeType: "audio/webm"});
+  cloneRecorder.ondataavailable = (event) => { if (event.data.size) cloneRecordingChunks.push(event.data); };
+  cloneRecorder.onstop = () => {
+    stream.getTracks().forEach((track) => track.stop());
+    recordedCloneBlob = new Blob(cloneRecordingChunks, {type: "audio/webm"});
+    preview.src = URL.createObjectURL(recordedCloneBlob); preview.hidden = false;
+    record.disabled = false; stop.disabled = true; record.textContent = t("recordSample");
+  };
+  cloneRecorder.start(); record.disabled = true; stop.disabled = false; stop.textContent = t("stopRecording");
+  setStatus(document.querySelector("#clone-status"), language === "it" ? "Registrazione in corso…" : "Recording…");
 }
 
 async function initialize() {
@@ -2095,15 +2138,15 @@ window.addEventListener("beforeunload", persistSession);
 document.querySelector("#dismiss-resume").addEventListener("click", () => { document.querySelector("#resume-banner").hidden = true; });
 document.querySelector("#language-select").addEventListener("change", (event) => { language = event.target.value; localStorage.setItem("accessibility-language", language); renderLanguage(); schedulePersist(); });
 document.querySelector("#offline-mode-toggle").addEventListener("click", () => void setOfflineMode(!offlineMode));
-document.querySelector("#default-audio-provider").addEventListener("change", (event) => void setOfflineMode(event.target.value === "kokoro"));
+document.querySelector("#default-audio-provider").addEventListener("change", (event) => void setOfflineMode(event.target.value !== "edge-tts", event.target.value));
 document.querySelector("#complete-form").addEventListener("submit", (event) => void startFullWorkflow(event));
 document.querySelector("#ocr-form").addEventListener("submit", (event) => void startOcr(event));
 document.querySelector("#organize-form").addEventListener("submit", (event) => void startOrganize(event));
 document.querySelector("#tts-form").addEventListener("submit", (event) => void startTts(event));
 document.querySelector("#complete-language").addEventListener("change", () => { renderWorkflowVoices(); schedulePersist(); });
-document.querySelector("#complete-provider").addEventListener("change", (event) => void setOfflineMode(event.target.value === "kokoro"));
+document.querySelector("#complete-provider").addEventListener("change", (event) => void setOfflineMode(event.target.value !== "edge-tts", event.target.value));
 document.querySelector("#tts-language").addEventListener("change", () => { renderProviderVoiceSelects(); schedulePersist(); });
-document.querySelector("#tts-provider").addEventListener("change", (event) => { if (["kokoro", "edge-tts"].includes(event.target.value)) void setOfflineMode(event.target.value === "kokoro"); else { renderProviderVoiceSelects(); updateTtsAvailability(); schedulePersist(); } });
+document.querySelector("#tts-provider").addEventListener("change", (event) => { if (["kokoro", "pocket-tts", "edge-tts"].includes(event.target.value)) void setOfflineMode(event.target.value !== "edge-tts", event.target.value); else { renderProviderVoiceSelects(); updateTtsAvailability(); schedulePersist(); } });
 document.querySelector("#organize-provider").addEventListener("change", () => {
   const provider = document.querySelector("#organize-provider").value;
   document.querySelector("#organize-form button[type=submit]").disabled = provider === "local" ? !reflowReady : !providerStatus.ai?.configured_by_provider?.[provider]?.configured;
@@ -2168,6 +2211,8 @@ document.querySelector("#local-text-model")?.addEventListener("change", (event) 
 document.querySelector("#install-gemma")?.addEventListener("click", () => void installGemma());
 document.querySelector("#install-fish-local")?.addEventListener("click", () => void installFishLocal());
 document.querySelector("#clone-form").addEventListener("submit", (event) => void createVoiceClone(event));
+document.querySelector("#clone-record")?.addEventListener("click", () => void toggleCloneRecording());
+document.querySelector("#clone-stop")?.addEventListener("click", () => cloneRecorder?.stop());
 
 document.querySelectorAll("[data-provider-select]").forEach((button) => {
   button.addEventListener("click", () => selectAiProvider(button.dataset.providerSelect));

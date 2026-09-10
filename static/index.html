@@ -235,6 +235,7 @@
                 ><select id="complete-provider">
                   <option value="edge-tts">Edge-TTS — online</option>
                   <option value="kokoro">Kokoro 82M — offline</option>
+                  <option value="pocket-tts" disabled>Pocket TTS — necessaria clonazione</option>
                 </select></label
               >
               <details class="advanced-settings">
@@ -660,8 +661,9 @@
                   <label
                     ><span data-i18n="ttsProvider">Motore vocale</span
                     ><select id="tts-provider">
-                      <option value="edge-tts">Edge-TTS — online</option>
-                      <option value="kokoro">Kokoro 82M — offline</option>
+                  <option value="edge-tts">Edge-TTS — online</option>
+                  <option value="kokoro">Kokoro 82M — offline</option>
+                  <option value="pocket-tts" disabled>Pocket TTS — necessaria clonazione</option>
                       <option value="voxtral">Voxtral TTS — Mistral</option>
                       <option value="fish">Fish Audio</option>
                       <option value="fish-local">Fish Audio locale — Mac Apple Silicon</option>
@@ -843,6 +845,7 @@
                 ><select id="default-audio-provider">
                   <option value="edge-tts">Edge-TTS — online</option>
                   <option value="kokoro">Kokoro 82M — offline</option>
+                  <option value="pocket-tts" disabled>Pocket TTS — necessaria clonazione</option>
                 </select></label
               >
               <div>
@@ -1634,8 +1637,8 @@
                         <option value="fish-local">
                           Fish Audio locale — solo Mac Apple Silicon
                         </option>
-                        <option value="pocket-tts" disabled>
-                          Pocket TTS — non installato
+                        <option value="pocket-tts">
+                          Pocket TTS — clonazione offline
                         </option>
                       </select></label
                     ><label
@@ -1652,6 +1655,7 @@
                       id="clone-file"
                       type="file"
                       accept="audio/*" /></label
+                  ><div class="recording-controls"><button id="clone-record" class="secondary" type="button">Registra campione</button><button id="clone-stop" class="secondary" type="button" disabled>Ferma registrazione</button><audio id="clone-preview" controls hidden></audio></div
                   ><label
                     ><span>Testo pronunciato nel campione (solo Fish locale)</span
                     ><textarea id="clone-reference-text" rows="3" maxlength="2000"></textarea></label

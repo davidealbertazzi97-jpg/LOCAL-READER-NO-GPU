@@ -247,6 +247,39 @@ class EdgeSpeechEngine(LocalEngine):
             environment["PYTHONPATH"] = str(PATHS.app / "runtime_guard")
             environment["HF_HUB_OFFLINE"] = "1"
             environment["PYTHONNOUSERSITE"] = "1"
+        elif provider == "pocket-tts":
+            clone = next(
+                (
+                    item
+                    for item in load_settings().get("clones", [])
+                    if isinstance(item, dict)
+                    and item.get("provider") == provider
+                    and item.get("voice_id") == voice
+                ),
+                None,
+            )
+            if not clone:
+                raise RuntimeError("choose a saved Pocket TTS reference voice first")
+            reference = Path(str(clone.get("reference_audio", ""))).resolve()
+            if not reference.is_file() or PATHS.data.resolve() not in reference.parents:
+                raise RuntimeError("the Pocket TTS reference voice is missing")
+            command = [
+                str(PATHS.tts_python),
+                str(PATHS.app / "workers" / "pocket_tts_worker.py"),
+                "--input",
+                str(source),
+                "--output",
+                str(output_dir),
+                "--reference-audio",
+                str(reference),
+                "--speed",
+                str(speed),
+                "--language",
+                language,
+            ]
+            environment = os.environ.copy()
+            environment["HF_HUB_OFFLINE"] = "1"
+            environment["PYTHONNOUSERSITE"] = "1"
         elif provider in {"voxtral", "fish", "elevenlabs"}:
             configured = speech_runtime_config(provider)
             configured["provider"] = provider

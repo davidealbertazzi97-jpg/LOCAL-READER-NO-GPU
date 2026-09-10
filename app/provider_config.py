@@ -63,7 +63,11 @@ TTS_PROVIDER_INFO: dict[str, dict[str, Any]] = {
         "key": None,
     },
     "elevenlabs": {"label": "ElevenLabs", "network": True, "key": "elevenlabs"},
-    "pocket-tts": {"label": "Pocket TTS (sperimentale)", "network": False, "key": None},
+    "pocket-tts": {
+        "label": "Pocket TTS (clonazione offline)",
+        "network": False,
+        "key": None,
+    },
 }
 
 

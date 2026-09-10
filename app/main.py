@@ -395,6 +395,17 @@ def status() -> dict[str, Any]:
         tts_ready and PATHS.kokoro_model.is_file() and PATHS.kokoro_voices.is_file()
     )
     offline_mode = bool(settings["tts"].get("offline_mode", False))
+    pocket_package = (
+        PATHS.tts_python.parent.parent
+        / ("Lib/site-packages" if os.name == "nt" else "lib/python3.12/site-packages")
+        / "pocket_tts"
+    )
+    pocket_clone_ready = any(
+        isinstance(item, dict)
+        and item.get("provider") == "pocket-tts"
+        and Path(str(item.get("reference_audio", ""))).is_file()
+        for item in settings.get("clones", [])
+    )
     tts_providers = {
         "edge-tts": {"ready": tts_ready, "network": True},
         "kokoro": {"ready": kokoro_ready, "network": False},
@@ -420,9 +431,9 @@ def status() -> dict[str, Any]:
             "network": True,
         },
         "pocket-tts": {
-            "ready": False,
+            "ready": pocket_package.is_dir() and pocket_clone_ready,
             "network": False,
-            "note": "optional adapter not installed",
+            "note": "richiede un campione audio e consenso esplicito",
         },
     }
     effective_speech_provider = (
@@ -610,14 +621,21 @@ async def create_voice_clone(
     file: Annotated[UploadFile, File()],
     reference_text: Annotated[str, Form()] = "",
 ) -> dict[str, Any]:
-    if load_settings()["tts"].get("offline_mode") and provider != "fish-local":
+    if load_settings()["tts"].get("offline_mode") and provider not in {
+        "fish-local",
+        "pocket-tts",
+    }:
         raise HTTPException(
             409, "Modalità offline attiva: la clonazione cloud è disabilitata."
         )
-    if provider == "fish-local":
-        if platform.system() != "Darwin" or platform.machine() != "arm64":
+    if provider in {"fish-local", "pocket-tts"}:
+        if provider == "fish-local" and (
+            platform.system() != "Darwin" or platform.machine() != "arm64"
+        ):
             raise HTTPException(400, "Fish Audio locale richiede macOS Apple Silicon")
-        if not reference_text.strip() or len(reference_text) > 2_000:
+        if provider == "fish-local" and (
+            not reference_text.strip() or len(reference_text) > 2_000
+        ):
             raise HTTPException(
                 400, "Inserisci il testo pronunciato nel campione audio"
             )
@@ -640,7 +658,7 @@ async def create_voice_clone(
     settings = load_settings()
     section_name = "mistral" if provider == "voxtral" else "elevenlabs"
     config = dict(settings["tts"].get(section_name, {}))
-    if provider != "fish-local" and not config.get("api_key"):
+    if provider not in {"fish-local", "pocket-tts"} and not config.get("api_key"):
         raise HTTPException(503, "Configure the provider API key in Settings first")
     clone_dir = PATHS.data / "voice-clones"
     clone_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -655,12 +673,12 @@ async def create_voice_clone(
                 if received > 25 * 1024 * 1024:
                     raise HTTPException(413, "The voice sample is too large")
                 handle.write(chunk)
-        if provider == "fish-local":
+        if provider in {"fish-local", "pocket-tts"}:
             sample_path.replace(reference_path)
             clone = add_clone(
                 provider=provider,
                 name=safe_title,
-                voice_id=f"fish-local-{uuid.uuid4().hex[:12]}",
+                voice_id=f"{provider}-{uuid.uuid4().hex[:12]}",
                 reference_audio=str(reference_path),
                 reference_text=reference_text.strip(),
             )
@@ -1020,7 +1038,22 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
     ):
         raise HTTPException(503, "Kokoro model or voices are not installed")
     if provider == "pocket-tts":
-        raise HTTPException(503, "Pocket TTS is not installed in this build")
+        pocket_ready = public_settings()["providers"]["tts"]["pocket-tts"]["ready"]
+        if not pocket_ready:
+            raise HTTPException(503, "Installa il componente Pocket TTS prima dell'uso")
+        voice = voice or ""
+        clone = next(
+            (
+                item
+                for item in load_settings().get("clones", [])
+                if isinstance(item, dict)
+                and item.get("provider") == provider
+                and item.get("voice_id") == voice
+            ),
+            None,
+        )
+        if not clone or not Path(str(clone.get("reference_audio", ""))).is_file():
+            raise HTTPException(400, "Scegli una voce Pocket TTS clonata")
     if provider in {"voxtral", "fish", "elevenlabs"}:
         try:
             speech_runtime_config(provider)
