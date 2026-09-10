@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from .config import PATHS
+from .provider_config import TTS_PROVIDER_INFO, load_settings
 from .store import JobStore
 from .utils import remove_work_tree
 
@@ -29,6 +30,55 @@ DEFAULT_VOICES = {
 }
 MAX_SPEECH_SOURCE_BYTES = 20 * 1024 * 1024
 COPY_CHUNK = 1024 * 1024
+KOKORO_VOICES = {
+    "it": {"if_sara", "im_nicola"},
+    "en-us": {"af_heart", "am_michael"},
+    "en-gb": {"af_heart", "am_michael"},
+}
+
+
+def resolved_options(
+    voice: Any = "",
+    speed: Any = 1.0,
+    language: Any = "it",
+    provider: Any = None,
+) -> tuple[str, str, float, str]:
+    """Resolve again at execution, so queued jobs respect the current audio mode."""
+    settings = load_settings()["tts"]
+    selected = settings["default_provider"] if provider is None else provider
+    if not isinstance(selected, str) or selected not in TTS_PROVIDER_INFO:
+        raise ValueError("unknown speech provider")
+    if not isinstance(language, str) or language not in VOICE_LANGUAGES:
+        raise ValueError("unsupported speech language")
+    selected_speed = normalized_speed(speed)
+    if not isinstance(voice, str):
+        raise ValueError("invalid speech voice")
+    if settings.get("offline_mode", False):
+        selected = "kokoro"
+    if selected == "edge-tts":
+        if not voice or voice in KOKORO_VOICES[language]:
+            voice = DEFAULT_VOICES[language]
+        voice, _, _ = normalized_options(voice, selected_speed, language)
+    elif selected == "kokoro":
+        # Switching mode must not carry an incompatible voice id into Kokoro.
+        if (
+            not voice
+            or voice in VOICE_LANGUAGES[language]
+            or provider not in {None, "kokoro", "edge-tts"}
+        ):
+            default = settings["kokoro"].get(
+                "voice_it" if language == "it" else "voice_en"
+            )
+            voice = (
+                default
+                if default in KOKORO_VOICES[language]
+                else ("if_sara" if language == "it" else "af_heart")
+            )
+        if voice not in KOKORO_VOICES[language]:
+            raise ValueError("voice does not match the selected language")
+    elif len(voice) > 240:
+        raise ValueError("invalid speech voice")
+    return selected, voice, selected_speed, language
 
 
 class SpeechQueue(Protocol):
@@ -85,19 +135,11 @@ def queue_speech_job(
     voice: Any = DEFAULT_VOICES["it"],
     speed: Any = 1.0,
     language: Any = "it",
-    provider: Any = "edge-tts",
+    provider: Any = None,
 ) -> dict[str, Any]:
-    selected_provider = str(provider)
-    if selected_provider == "edge-tts":
-        selected_voice, selected_speed, selected_language = normalized_options(
-            voice, speed, language
-        )
-    else:
-        selected_voice = str(voice or "")
-        selected_speed = normalized_speed(speed)
-        selected_language = str(language)
-        if selected_language not in {"it", "en-us", "en-gb"}:
-            raise ValueError("unsupported speech language")
+    selected_provider, selected_voice, selected_speed, selected_language = (
+        resolved_options(voice, speed, language, provider)
+    )
     if not source.is_file():
         raise FileNotFoundError("reviewed reading text is missing")
     if source.stat().st_size > MAX_SPEECH_SOURCE_BYTES:

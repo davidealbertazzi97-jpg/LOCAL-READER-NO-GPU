@@ -15,10 +15,13 @@ remote services retain their own licences and terms.
 | pypdfium2 | 5.12.1 | BSD-3-Clause / Apache-2.0 and bundled PDFium notices |
 | Edge-TTS | 7.2.8 | Upstream package terms apply; its Microsoft speech endpoint is remote |
 | kokoro-onnx | 0.6.1 | ONNX runtime adapter; package and Kokoro model terms apply |
+| imageio-ffmpeg | 0.6.0 | Bundled platform FFmpeg binary for self-contained offline audio; BSD-2-Clause wrapper and FFmpeg notices apply |
 | Kokoro 82M ONNX / voices | Local model assets | Used offline; preserve the model and voice asset terms |
 | llama.cpp | CPU build `b10886`, downloaded with SHA-256 pin | MIT upstream; the portable launcher downloads the target build when missing |
 | OpenDyslexic | Vendored WOFF2 font | Upstream font licence applies; keep its licence with distributions |
 | LFM2.5 230M GGUF | Liquid AI Q8 model, downloaded with SHA-256 pin | Do not redistribute without observing the model’s own terms |
+| Gemma 4 E4B Q4_0 GGUF | Google model, optional download with SHA-256 pin | Apache-2.0; optional 5.2 GB local text model |
+| Fish Audio S2 Pro MLX 8-bit | `mlx-community/fish-audio-s2-pro-8bit`, optional macOS download at a fixed revision | Fish Audio Research License; non-commercial/research use only unless separately licensed |
 
 Exact transitive versions and approved wheel hashes are recorded in
 `requirements-core.lock`, `requirements-ocr.lock`, `requirements-tts.lock`,

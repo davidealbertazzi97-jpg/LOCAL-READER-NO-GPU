@@ -10,8 +10,8 @@ from typing import Any
 
 from ..config import PATHS
 from ..processes import run_worker
-from ..provider_config import speech_runtime_config
-from ..speech_jobs import normalized_options
+from ..provider_config import load_settings, speech_runtime_config
+from ..speech_jobs import resolved_options
 from .base import EngineResult, LocalEngine
 
 MODEL_HASHES = {
@@ -94,18 +94,12 @@ class EdgeSpeechEngine(LocalEngine):
     ) -> EngineResult:
         if not PATHS.tts_python.is_file():
             raise RuntimeError("the isolated speech environment is not installed")
-        provider = str(options.get("provider", "edge-tts"))
-        voice = str(options.get("voice", ""))
-        speed = float(options.get("speed", 1.0))
-        language = str(options.get("language", "it"))
-        if provider == "edge-tts":
-            voice, speed, language = normalized_options(
-                voice or "it-IT-GiuseppeMultilingualNeural",
-                speed,
-                language,
-            )
-        elif not 0.75 <= speed <= 1.5 or language not in {"it", "en-us", "en-gb"}:
-            raise RuntimeError("speech options are invalid")
+        provider, voice, speed, language = resolved_options(
+            options.get("voice", ""),
+            options.get("speed", 1.0),
+            options.get("language", "it"),
+            options.get("provider"),
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
         if provider == "edge-tts":
             command = [
@@ -148,7 +142,55 @@ class EdgeSpeechEngine(LocalEngine):
                 "--language",
                 language,
             ]
-            environment = edge_environment()
+            environment = os.environ.copy()
+            environment["PYTHONPATH"] = str(PATHS.app / "runtime_guard")
+            environment["HF_HUB_OFFLINE"] = "1"
+            environment["PYTHONNOUSERSITE"] = "1"
+        elif provider == "fish-local":
+            if not PATHS.mac_voice_python.is_file():
+                raise RuntimeError(
+                    "Fish Audio locale requires the Apple Silicon voice pack"
+                )
+            if not PATHS.fish_local_model.is_dir():
+                raise RuntimeError("Fish Audio local model is not installed")
+            clone_id = voice
+            clone = next(
+                (
+                    item
+                    for item in load_settings().get("clones", [])
+                    if isinstance(item, dict)
+                    and item.get("provider") == "fish-local"
+                    and item.get("voice_id") == clone_id
+                ),
+                None,
+            )
+            if not clone:
+                raise RuntimeError("choose a saved local reference voice first")
+            reference = Path(str(clone.get("reference_audio", ""))).resolve()
+            if not reference.is_file() or PATHS.data.resolve() not in reference.parents:
+                raise RuntimeError("the local reference voice is missing")
+            command = [
+                str(PATHS.mac_voice_python),
+                str(PATHS.app / "workers" / "fish_local_worker.py"),
+                "--input",
+                str(source),
+                "--output",
+                str(output_dir),
+                "--model",
+                str(PATHS.fish_local_model),
+                "--reference-audio",
+                str(reference),
+                "--reference-text",
+                str(clone.get("reference_text", "")),
+                "--speed",
+                str(speed),
+                "--language",
+                language,
+            ]
+            environment = os.environ.copy()
+            environment["PYTHONPATH"] = str(PATHS.app / "runtime_guard")
+            environment["HF_HUB_OFFLINE"] = "1"
+            environment["PYTHONNOUSERSITE"] = "1"
         elif provider in {"voxtral", "fish", "elevenlabs"}:
             configured = speech_runtime_config(provider)
             configured["provider"] = provider
@@ -178,6 +220,7 @@ class EdgeSpeechEngine(LocalEngine):
                     cwd=PATHS.app,
                     timeout=12 * 60 * 60,
                     env=external_environment(),
+                    network=True,
                 )
             finally:
                 config_path.unlink(missing_ok=True)
@@ -187,7 +230,11 @@ class EdgeSpeechEngine(LocalEngine):
         else:
             raise RuntimeError("unknown speech provider")
         completed = run_worker(
-            command, cwd=PATHS.app, timeout=12 * 60 * 60, env=environment
+            command,
+            cwd=PATHS.app,
+            timeout=12 * 60 * 60,
+            env=environment,
+            network=provider == "edge-tts",
         )
         if completed.returncode:
             raise RuntimeError(f"{provider} speech worker failed")

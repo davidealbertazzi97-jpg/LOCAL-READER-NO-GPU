@@ -7,7 +7,12 @@ import subprocess
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
-FFMPEG = shutil.which("ffmpeg")
+try:
+    from imageio_ffmpeg import get_ffmpeg_exe
+
+    FFMPEG = get_ffmpeg_exe()
+except (ImportError, RuntimeError):
+    FFMPEG = shutil.which("ffmpeg")
 
 
 def text_chunks(text: str, maximum: int = 2_000) -> Iterator[str]:

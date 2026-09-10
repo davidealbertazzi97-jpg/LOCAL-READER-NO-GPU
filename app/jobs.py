@@ -126,14 +126,16 @@ class JobRunner:
                         language=job["options"].get("speech_language", "it"),
                         provider=job["options"].get("speech_provider", "edge-tts"),
                     )
-                    summary["audio"] = "Edge-TTS queued automatically"
+                    audio_provider = job["options"].get("speech_provider", "edge-tts")
+                    summary["audio"] = f"{audio_provider} queued automatically"
                 except (OSError, RuntimeError, ValueError) as exc:
                     LOGGER.warning(
                         "Automatic speech for job %s could not be queued: %s",
                         job_id,
                         type(exc).__name__,
                     )
-                    summary["audio"] = "Edge-TTS could not be queued"
+                    audio_provider = job["options"].get("speech_provider", "edge-tts")
+                    summary["audio"] = f"{audio_provider} could not be queued"
             STORE.update(
                 job_id,
                 status="completed",

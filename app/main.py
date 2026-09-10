@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import tempfile
 import threading
 import uuid
@@ -42,11 +43,9 @@ from .security import (
     token_matches,
 )
 from .speech_jobs import (
-    DEFAULT_VOICES,
     VOICE_LANGUAGES,
-    normalized_options,
-    normalized_speed,
     queue_speech_job,
+    resolved_options,
 )
 from .store import STORE
 from .utils import remove_output_tree, remove_work_tree, resolve_artifact, safe_name
@@ -61,6 +60,8 @@ TEXT_ENGINES = {"plain-text", "lfm-reflow"}
 SPEECH_SOURCE_ENGINES = {"accessible-document", *TEXT_ENGINES}
 SPEECH_PROVIDERS = set(TTS_PROVIDER_INFO)
 REFLOW_PROVIDERS = set(AI_PROVIDER_PRESETS)
+MODEL_INSTALL_LOCK = threading.Lock()
+MODEL_INSTALL_STATE = {"status": "idle", "message": ""}
 
 
 async def limited_body(request: Request, maximum: int, label: str) -> bytes:
@@ -126,20 +127,18 @@ def normalized_processing_options(
         and speech_language not in {"en-us", "en-gb"}
     ):
         raise HTTPException(400, "speech language does not match the document")
-    try:
-        voice, speed, speech_language = normalized_options(
-            options.get("voice", DEFAULT_VOICES[str(speech_language)]),
-            options.get("speed", 1.0),
-            speech_language,
-        )
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
     preserve_text = options.get("preserve_text", False)
     if not isinstance(preserve_text, bool):
         raise HTTPException(400, "preserve_text must be true or false")
-    speech_provider = options.get("speech_provider", "edge-tts")
-    if not isinstance(speech_provider, str) or speech_provider not in SPEECH_PROVIDERS:
-        raise HTTPException(400, "unknown speech provider")
+    try:
+        speech_provider, voice, speed, speech_language = resolved_options(
+            options.get("voice", ""),
+            options.get("speed", 1.0),
+            speech_language,
+            options.get("speech_provider"),
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     return {
         "auto_speech": auto_speech,
         "preserve_text": preserve_text,
@@ -227,6 +226,109 @@ def health() -> dict[str, str]:
     return {"app": PRODUCT.slug, "status": "ok", "version": PRODUCT.version}
 
 
+@app.get("/api/local-models")
+def local_models() -> dict[str, Any]:
+    settings = public_settings()
+    return {
+        "selected": settings["ai"].get("local_model", "lfm"),
+        "lfm": {"installed": PATHS.llama_model.is_file()},
+        "gemma4": {
+            "installed": PATHS.gemma_model.is_file(),
+            "size": "5.2 GB",
+            "license": "Apache-2.0",
+        },
+        "fish-local": {
+            "installed": PATHS.mac_voice_python.is_file()
+            and PATHS.fish_local_model.is_dir(),
+            "size": "6.7 GB",
+            "license": "Fish Audio Research License",
+        },
+        **MODEL_INSTALL_STATE,
+    }
+
+
+@app.post("/api/local-models/gemma4", status_code=202)
+def install_gemma4() -> dict[str, str]:
+    if load_settings()["tts"].get("offline_mode"):
+        raise HTTPException(
+            409, "Modalità offline attiva: riattivala per scaricare Gemma 4."
+        )
+    with MODEL_INSTALL_LOCK:
+        if MODEL_INSTALL_STATE["status"] == "running":
+            return {"status": "running", "message": "Download già in corso."}
+        MODEL_INSTALL_STATE.update(
+            status="running", message="Download Gemma 4 in corso…"
+        )
+
+    def download() -> None:
+        import subprocess
+
+        try:
+            completed = subprocess.run(
+                [
+                    str(PATHS.tts_python),
+                    str(PATHS.app / "scripts" / "install_gemma.py"),
+                ],
+                cwd=PATHS.app,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=6 * 60 * 60,
+                env=external_environment(),
+            )
+            if completed.returncode:
+                raise RuntimeError("download failed")
+            MODEL_INSTALL_STATE.update(status="ready", message="Gemma 4 è pronta.")
+        except Exception:
+            MODEL_INSTALL_STATE.update(
+                status="error", message="Download Gemma 4 non riuscito."
+            )
+
+    threading.Thread(target=download, name="gemma-model-download", daemon=True).start()
+    return {"status": "running", "message": MODEL_INSTALL_STATE["message"]}
+
+
+@app.post("/api/local-models/fish-local", status_code=202)
+def install_fish_local() -> dict[str, str]:
+    if platform.system() != "Darwin" or platform.machine() != "arm64":
+        raise HTTPException(400, "Fish Audio locale richiede macOS Apple Silicon.")
+    with MODEL_INSTALL_LOCK:
+        if MODEL_INSTALL_STATE["status"] == "running":
+            return {"status": "running", "message": "Download già in corso."}
+        MODEL_INSTALL_STATE.update(
+            status="running", message="Preparo Fish Audio locale…"
+        )
+
+    def download() -> None:
+        import subprocess
+
+        try:
+            completed = subprocess.run(
+                [
+                    str(PATHS.tts_python),
+                    str(PATHS.app / "scripts" / "install_mac_fish.py"),
+                ],
+                cwd=PATHS.app,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=12 * 60 * 60,
+                env=external_environment(),
+            )
+            if completed.returncode:
+                raise RuntimeError("download failed")
+            MODEL_INSTALL_STATE.update(
+                status="ready", message="Fish Audio locale è pronto."
+            )
+        except Exception:
+            MODEL_INSTALL_STATE.update(
+                status="error", message="Installazione Fish Audio non riuscita."
+            )
+
+    threading.Thread(target=download, name="fish-local-download", daemon=True).start()
+    return {"status": "running", "message": MODEL_INSTALL_STATE["message"]}
+
+
 @app.get("/")
 def index(token: str | None = None):
     if token_matches(token):
@@ -283,23 +385,77 @@ def engines() -> list[dict[str, Any]]:
 def status() -> dict[str, Any]:
     ocr_ready = PATHS.ocr_python.is_file()
     tts_ready = PATHS.tts_python.is_file()
-    reflow_ready = PATHS.llama_cli.is_file() and PATHS.llama_model.is_file()
     settings = public_settings()
+    local_model = settings["ai"].get("local_model", "lfm")
+    selected_reflow_model = (
+        PATHS.gemma_model if local_model == "gemma4" else PATHS.llama_model
+    )
+    reflow_ready = PATHS.llama_cli.is_file() and selected_reflow_model.is_file()
     kokoro_ready = (
         tts_ready and PATHS.kokoro_model.is_file() and PATHS.kokoro_voices.is_file()
     )
+    offline_mode = bool(settings["tts"].get("offline_mode", False))
+    tts_providers = {
+        "edge-tts": {"ready": tts_ready, "network": True},
+        "kokoro": {"ready": kokoro_ready, "network": False},
+        "voxtral": {
+            "ready": settings["tts"]["mistral"]["configured"],
+            "network": True,
+        },
+        "fish": {
+            "ready": settings["tts"]["fish"]["configured"],
+            "network": True,
+        },
+        "fish-local": {
+            "ready": (
+                platform.system() == "Darwin"
+                and platform.machine() == "arm64"
+                and PATHS.mac_voice_python.is_file()
+                and PATHS.fish_local_model.is_dir()
+            ),
+            "network": False,
+        },
+        "elevenlabs": {
+            "ready": settings["tts"]["elevenlabs"]["configured"],
+            "network": True,
+        },
+        "pocket-tts": {
+            "ready": False,
+            "network": False,
+            "note": "optional adapter not installed",
+        },
+    }
+    effective_speech_provider = (
+        "kokoro" if offline_mode else settings["tts"]["default_provider"]
+    )
+    effective_speech = tts_providers.get(
+        effective_speech_provider, tts_providers["edge-tts"]
+    )
+    speech_labels = {
+        "edge-tts": "Microsoft Edge Neural TTS",
+        "kokoro": "Kokoro 82M offline",
+        "voxtral": "Voxtral TTS (Mistral)",
+        "fish": "Fish Audio",
+        "fish-local": "Fish Audio locale (Apple Silicon)",
+        "elevenlabs": "ElevenLabs",
+        "pocket-tts": "Pocket TTS",
+    }
     return {
         "ocr": {
             "ready": ocr_ready,
             "engine": "PaddleOCR PP-OCRv6 / CPU",
         },
         "speech": {
-            "ready": tts_ready,
-            "engine": "Microsoft Edge Neural TTS",
+            "ready": bool(effective_speech["ready"]),
+            "engine": speech_labels.get(
+                effective_speech_provider, effective_speech_provider
+            ),
+            "provider": effective_speech_provider,
+            "offline": offline_mode,
             "voices": {
                 language: sorted(voices) for language, voices in VOICE_LANGUAGES.items()
             },
-            "network": "Microsoft Edge speech endpoint",
+            "network": "offline" if offline_mode else "Online providers may send text",
         },
         "providers": {
             "ai": {
@@ -309,31 +465,15 @@ def status() -> dict[str, Any]:
                 "configured_by_provider": settings["ai"].get("providers", {}),
             },
             "tts": {
-                "edge-tts": {"ready": tts_ready, "network": True},
-                "kokoro": {"ready": kokoro_ready, "network": False},
-                "voxtral": {
-                    "ready": settings["tts"]["mistral"]["configured"],
-                    "network": True,
-                },
-                "fish": {
-                    "ready": settings["tts"]["fish"]["configured"],
-                    "network": True,
-                },
-                "elevenlabs": {
-                    "ready": settings["tts"]["elevenlabs"]["configured"],
-                    "network": True,
-                },
-                "pocket-tts": {
-                    "ready": False,
-                    "network": False,
-                    "note": "optional adapter not installed",
-                },
+                **tts_providers,
             },
         },
         "reflow": {
             "ready": reflow_ready,
-            "engine": "LFM2.5 230M / llama.cpp",
-            "model": PATHS.llama_model.name,
+            "engine": "Gemma 4 E4B Q4_0 / llama.cpp"
+            if local_model == "gemma4"
+            else "LFM2.5 230M / llama.cpp",
+            "model": selected_reflow_model.name,
             "device": os.environ.get("LOCAL_ACCESSIBILITY_STUDIO_LFM_DEVICE", "auto"),
             "reasoning": "disabled",
         },
@@ -364,6 +504,11 @@ async def put_settings(request: Request) -> dict[str, Any]:
 
 @app.post("/api/provider-models")
 async def provider_models(request: Request) -> dict[str, Any]:
+    if load_settings()["tts"].get("offline_mode"):
+        raise HTTPException(
+            409,
+            "Modalità offline attiva: disattivala per contattare un servizio online.",
+        )
     body = await limited_body(request, 64 * 1024, "Provider model request")
     try:
         payload = json.loads(body or b"{}")
@@ -435,7 +580,9 @@ async def provider_models(request: Request) -> dict[str, Any]:
         environment.pop("PYTHONPATH", None)
         environment.pop("LD_PRELOAD", None)
         environment["PYTHONNOUSERSITE"] = "1"
-        completed = run_worker(command, cwd=PATHS.app, timeout=90, env=environment)
+        completed = run_worker(
+            command, cwd=PATHS.app, timeout=90, env=environment, network=True
+        )
         if completed.returncode:
             raise HTTPException(502, "The provider model list could not be retrieved")
         try:
@@ -461,8 +608,20 @@ async def create_voice_clone(
     name: Annotated[str, Form()],
     consent: Annotated[str, Form()],
     file: Annotated[UploadFile, File()],
+    reference_text: Annotated[str, Form()] = "",
 ) -> dict[str, Any]:
-    if provider not in {"voxtral", "elevenlabs"}:
+    if load_settings()["tts"].get("offline_mode") and provider != "fish-local":
+        raise HTTPException(
+            409, "Modalità offline attiva: la clonazione cloud è disabilitata."
+        )
+    if provider == "fish-local":
+        if platform.system() != "Darwin" or platform.machine() != "arm64":
+            raise HTTPException(400, "Fish Audio locale richiede macOS Apple Silicon")
+        if not reference_text.strip() or len(reference_text) > 2_000:
+            raise HTTPException(
+                400, "Inserisci il testo pronunciato nel campione audio"
+            )
+    elif provider not in {"voxtral", "elevenlabs"}:
         raise HTTPException(
             400, "Voice cloning is currently available for Voxtral and ElevenLabs"
         )
@@ -480,12 +639,13 @@ async def create_voice_clone(
         )
     settings = load_settings()
     section_name = "mistral" if provider == "voxtral" else "elevenlabs"
-    config = dict(settings["tts"][section_name])
-    if not config.get("api_key"):
+    config = dict(settings["tts"].get(section_name, {}))
+    if provider != "fish-local" and not config.get("api_key"):
         raise HTTPException(503, "Configure the provider API key in Settings first")
     clone_dir = PATHS.data / "voice-clones"
     clone_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     sample_path = clone_dir / f".sample-{uuid.uuid4().hex}{suffix}"
+    reference_path = clone_dir / f"reference-{uuid.uuid4().hex}{suffix}"
     result_path = clone_dir / f".result-{uuid.uuid4().hex}.json"
     received = 0
     try:
@@ -495,6 +655,16 @@ async def create_voice_clone(
                 if received > 25 * 1024 * 1024:
                     raise HTTPException(413, "The voice sample is too large")
                 handle.write(chunk)
+        if provider == "fish-local":
+            sample_path.replace(reference_path)
+            clone = add_clone(
+                provider=provider,
+                name=safe_title,
+                voice_id=f"fish-local-{uuid.uuid4().hex[:12]}",
+                reference_audio=str(reference_path),
+                reference_text=reference_text.strip(),
+            )
+            return {"clone": clone}
         fd, config_name = tempfile.mkstemp(
             prefix=".clone-provider-", suffix=".json", dir=PATHS.data
         )
@@ -519,7 +689,11 @@ async def create_voice_clone(
                 str(result_path),
             ]
             completed = run_worker(
-                command, cwd=PATHS.app, timeout=30 * 60, env=external_environment()
+                command,
+                cwd=PATHS.app,
+                timeout=30 * 60,
+                env=external_environment(),
+                network=True,
             )
         finally:
             config_path.unlink(missing_ok=True)
@@ -783,14 +957,21 @@ async def create_reflow(job_id: str, request: Request) -> dict[str, Any]:
     if not isinstance(device, str) or device not in {"auto", "cpu", "gpu"}:
         raise HTTPException(400, "device must be auto, cpu, or gpu")
     provider = options.get("provider", "local")
+    if load_settings()["tts"].get("offline_mode"):
+        provider = "local"
     if not isinstance(provider, str) or provider not in REFLOW_PROVIDERS:
         raise HTTPException(400, "unknown organization provider")
     if not PATHS.tts_python.is_file():
         raise HTTPException(503, "The local worker environment is not installed")
+    selected_model_name = load_settings()["ai"].get("local_model", "lfm")
+    selected_model = (
+        PATHS.gemma_model if selected_model_name == "gemma4" else PATHS.llama_model
+    )
     if provider == "local" and (
-        not PATHS.llama_cli.is_file() or not PATHS.llama_model.is_file()
+        not PATHS.llama_cli.is_file() or not selected_model.is_file()
     ):
-        raise HTTPException(503, "llama.cpp and the LFM2.5 model are not installed")
+        label = "Gemma 4" if selected_model_name == "gemma4" else "LFM2.5"
+        raise HTTPException(503, f"llama.cpp and the {label} model are not installed")
     if provider != "local":
         try:
             ai_config_for(provider)
@@ -823,32 +1004,13 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
         raise HTTPException(400, "Speech options must be valid JSON") from exc
     if not isinstance(options, dict):
         raise HTTPException(400, "Speech options must be an object")
-    provider = options.get("provider", "edge-tts")
-    if not isinstance(provider, str) or provider not in SPEECH_PROVIDERS:
-        raise HTTPException(400, "unknown speech provider")
-    speech_language = options.get("language", "it")
-    if not isinstance(speech_language, str) or speech_language not in {
-        "it",
-        "en-us",
-        "en-gb",
-    }:
-        raise HTTPException(400, "unsupported speech language")
     try:
-        if provider == "edge-tts":
-            voice, speed, language = normalized_options(
-                options.get(
-                    "voice",
-                    DEFAULT_VOICES.get(
-                        speech_language, "it-IT-GiuseppeMultilingualNeural"
-                    ),
-                ),
-                options.get("speed", 1.0),
-                speech_language,
-            )
-        else:
-            voice = str(options.get("voice", ""))
-            speed = normalized_speed(options.get("speed", 1.0))
-            language = speech_language
+        provider, voice, speed, language = resolved_options(
+            options.get("voice", ""),
+            options.get("speed", 1.0),
+            options.get("language", "it"),
+            options.get("provider"),
+        )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     if not PATHS.tts_python.is_file():

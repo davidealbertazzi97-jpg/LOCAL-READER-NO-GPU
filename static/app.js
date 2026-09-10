@@ -2,6 +2,12 @@ const COPY = {
   it: {
     skip: "Vai al contenuto",
     language: "Lingua",
+    offlineMode: "Modalità offline",
+    offlineModeLabel: "Attiva o disattiva la modalità offline",
+    offlineOn: "ON",
+    offlineOff: "OFF",
+    onlineMode: "Online · Edge-TTS",
+    offlineModeStatus: "Offline · Kokoro 82M",
     privacyTitle: "I tuoi documenti restano sul computer",
     privacyBody: "OCR e percorso completo sono locali. I provider vocali online ricevono il testo solo quando li scegli.",
     resumeTitle: "Sessione ripristinata",
@@ -52,11 +58,11 @@ const COPY = {
     modelSelected: "Modello selezionato.",
     completeEyebrow: "IL PERCORSO PIÙ SEMPLICE",
     completeTitle: "Carica un documento. Al resto pensiamo noi.",
-    completeHelp: "PaddleOCR estrae il testo e Edge-TTS lo trasforma direttamente in audio.",
+    completeHelp: "PaddleOCR estrae il testo e la voce scelta lo trasforma direttamente in audio.",
     stepOcr: "Leggiamo",
     stepOcrHelp: "PaddleOCR estrae il testo",
     stepListen: "Ascolti",
-    stepListenHelp: "Edge-TTS crea l’audio",
+    stepListenHelp: "La voce scelta crea l’audio",
     chooseDocument: "Scegli il documento",
     chooseDocumentHelp: "PDF o immagine. Anche molte pagine.",
     dropTitle: "Trascina qui il file",
@@ -180,7 +186,13 @@ const COPY = {
     legal: "Note legali",
     settingsEyebrow: "UNA VOLTA SOLA",
     settingsTitle: "Impostazioni",
-    settingsHelp: "Collega servizi esterni solo se ti servono. Senza chiavi puoi usare PaddleOCR, Edge-TTS e Kokoro offline.",
+    settingsHelp: "Le scelte semplici sono qui. Provider, modelli e chiavi API sono dentro Impostazioni avanzate.",
+    basicAudioTitle: "Audio: scegli e parti",
+    basicAudioHelp: "Edge-TTS usa internet. Kokoro 82M funziona sul computer e non invia il testo.",
+    basicAudioHint: "Usa il pulsante “Modalità offline” in alto per passare a Kokoro in un clic.",
+    audioModel: "Modello audio",
+    connectionMode: "Modalità",
+    advancedSettings: "Impostazioni avanzate",
     aiSettingsTitle: "Intelligenza per “Solo organizza”",
     aiSettingsHelp: "Scegli un provider, apri la guida con il pulsante “i” e inserisci la chiave solo se vuoi usare un servizio online.",
     apiMenuEyebrow: "PROVIDER DISPONIBILI",
@@ -278,6 +290,12 @@ const COPY = {
   en: {
     skip: "Skip to content",
     language: "Language",
+    offlineMode: "Offline mode",
+    offlineModeLabel: "Turn offline mode on or off",
+    offlineOn: "ON",
+    offlineOff: "OFF",
+    onlineMode: "Online · Edge-TTS",
+    offlineModeStatus: "Offline · Kokoro 82M",
     privacyTitle: "Your documents stay on this computer",
     privacyBody: "OCR and the full path are local. Online voice providers receive text only when you choose them.",
     resumeTitle: "Session restored",
@@ -328,11 +346,11 @@ const COPY = {
     modelSelected: "Model selected.",
     completeEyebrow: "THE SIMPLEST PATH",
     completeTitle: "Upload a document. We take care of the rest.",
-    completeHelp: "PaddleOCR extracts the text and Edge-TTS turns it directly into audio.",
+    completeHelp: "PaddleOCR extracts the text and the selected voice turns it directly into audio.",
     stepOcr: "Read",
     stepOcrHelp: "PaddleOCR extracts text",
     stepListen: "Listen",
-    stepListenHelp: "Edge-TTS creates audio",
+    stepListenHelp: "The selected voice creates audio",
     chooseDocument: "Choose the document",
     chooseDocumentHelp: "PDF or image. Many pages are fine.",
     dropTitle: "Drop the file here",
@@ -456,7 +474,13 @@ const COPY = {
     legal: "Legal notices",
     settingsEyebrow: "SET UP ONCE",
     settingsTitle: "Settings",
-    settingsHelp: "Connect external services only if you need them. Without keys you can use PaddleOCR, Edge-TTS, and Kokoro offline.",
+    settingsHelp: "Simple choices are here. Providers, models, and API keys are inside Advanced settings.",
+    basicAudioTitle: "Audio: choose and start",
+    basicAudioHelp: "Edge-TTS uses the internet. Kokoro 82M stays on this computer and does not send the text.",
+    basicAudioHint: "Use the “Offline mode” button at the top to switch to Kokoro with one click.",
+    audioModel: "Audio model",
+    connectionMode: "Mode",
+    advancedSettings: "Advanced settings",
     aiSettingsTitle: "Intelligence for “Organize only”",
     aiSettingsHelp: "Choose a provider, use the “i” button for its guide, and add a key only if you want an online service.",
     apiMenuEyebrow: "AVAILABLE PROVIDERS",
@@ -590,6 +614,9 @@ let reflowReady = false;
 let ocrReady = false;
 let providerStatus = {tts: {}, ai: {}};
 let settings = null;
+let offlineMode = false;
+let modeSaving = false;
+const busyForms = new Set();
 let pollTimer = null;
 let activeView = "complete";
 let lastOcrJob = null;
@@ -637,6 +664,7 @@ function resumeForms() {
   return {
     complete: {
       language: document.querySelector("#complete-language")?.value || "it",
+      provider: document.querySelector("#complete-provider")?.value || workflowSpeechProvider(),
       voice: document.querySelector("#complete-voice")?.value || "",
       speed: document.querySelector("#complete-speed")?.value || "1",
     },
@@ -735,6 +763,7 @@ function restoreResumeForms(forms = {}) {
   const organize = forms.organize || {};
   const tts = forms.tts || {};
   setValue("#complete-language", complete.language);
+  setValue("#complete-provider", complete.provider);
   setValue("#complete-speed", complete.speed);
   fillVoiceSelect(document.querySelector("#complete-voice"), complete.language || "it", complete.voice);
   setValue("#organize-title-input", organize.title);
@@ -842,7 +871,97 @@ function renderProviderVoiceSelects() {
     if (entries.some(([value]) => value === preferred)) select.value = preferred;
   }
   const label = document.querySelector("#tts-side-provider");
-  if (label) label.textContent = ({"edge-tts": "Edge-TTS", kokoro: "Kokoro 82M", voxtral: "Voxtral", fish: "Fish Audio", elevenlabs: "ElevenLabs"})[provider] || provider;
+  if (label) label.textContent = ({"edge-tts": "Edge-TTS", kokoro: "Kokoro 82M", voxtral: "Voxtral", fish: "Fish Audio", "fish-local": "Fish Audio locale", elevenlabs: "ElevenLabs"})[provider] || provider;
+}
+
+function kokoroVoiceFor(language) {
+  const voices = settings?.settings?.tts?.kokoro || {};
+  return language === "it" ? (voices.voice_it || "if_sara") : (voices.voice_en || "af_heart");
+}
+
+function speechVoiceForProvider(provider, language, preferred = "") {
+  if (provider === "kokoro") {
+    const allowed = language === "it" ? ["if_sara", "im_nicola"] : ["af_heart", "am_michael"];
+    return allowed.includes(preferred) ? preferred : kokoroVoiceFor(language);
+  }
+  if (provider === "edge-tts") return VOICE_PROFILES[language]?.some(([value]) => value === preferred) ? preferred : (VOICE_PROFILES[language]?.[0]?.[0] || "it-IT-GiuseppeMultilingualNeural");
+  return preferred || "";
+}
+
+function workflowSpeechProvider() {
+  if (offlineMode) return "kokoro";
+  const selected = document.querySelector("#complete-provider")?.value;
+  if (["edge-tts", "kokoro"].includes(selected)) return selected;
+  const configured = settings?.settings?.tts?.default_provider;
+  return ["edge-tts", "kokoro"].includes(configured) ? configured : "edge-tts";
+}
+
+function renderOfflineMode() {
+  const savedProvider = settings?.settings?.tts?.default_provider || "edge-tts";
+  const targetProvider = offlineMode ? "kokoro" : savedProvider;
+  const toggle = document.querySelector("#offline-mode-toggle");
+  const state = document.querySelector("#offline-mode-state");
+  const basic = document.querySelector("#default-audio-provider");
+  const complete = document.querySelector("#complete-provider");
+  const tts = document.querySelector("#tts-provider");
+  if (toggle) {
+    toggle.classList.toggle("active", offlineMode);
+    toggle.setAttribute("aria-pressed", String(offlineMode));
+    toggle.setAttribute("title", offlineMode ? t("offlineModeStatus") : t("onlineMode"));
+    toggle.disabled = modeSaving;
+  }
+  if (state) state.textContent = offlineMode ? t("offlineOn") : t("offlineOff");
+  if (basic) { basic.value = offlineMode ? "kokoro" : "edge-tts"; basic.disabled = modeSaving; }
+  if (complete) { complete.value = ["kokoro", "edge-tts"].includes(targetProvider) ? targetProvider : "edge-tts"; complete.disabled = modeSaving; }
+  if (tts) {
+    tts.value = targetProvider;
+    tts.disabled = modeSaving;
+  }
+  const mode = document.querySelector("#basic-audio-mode");
+  if (mode) mode.textContent = offlineMode ? t("offlineModeStatus") : t("onlineMode");
+  renderProviderVoiceSelects();
+  renderWorkflowVoices();
+  updateTtsAvailability();
+  updateCompleteAvailability();
+}
+
+async function setOfflineMode(enabled) {
+  if (modeSaving) return;
+  modeSaving = true;
+  renderOfflineMode();
+  setStatus(document.querySelector("#mode-status"), language === "it" ? "Cambio modalità…" : "Changing mode…");
+  try {
+    const provider = enabled ? "kokoro" : "edge-tts";
+    const response = await api("/api/settings", {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({tts: {default_provider: provider, offline_mode: Boolean(enabled)}}),
+    });
+    settings = settings ? {...settings, settings: response.settings} : {settings: response.settings};
+    offlineMode = Boolean(response.settings.tts.offline_mode);
+    document.querySelector("#default-tts-provider").value = provider;
+    setStatus(document.querySelector("#mode-status"), offlineMode ? t("offlineModeStatus") : t("onlineMode"));
+    await renderStatus();
+  } catch (error) {
+    setStatus(document.querySelector("#mode-status"), `${t("failed")} ${error.message}`, true);
+  } finally {
+    modeSaving = false;
+    renderOfflineMode();
+  }
+}
+
+function renderWorkflowVoices() {
+  for (const [voiceId, languageId] of [["#complete-voice", "#complete-language"], ["#voice", "#speech-language"]]) {
+    const select = document.querySelector(voiceId);
+    if (!select || !document.querySelector(languageId)) continue;
+    const speechLanguage = document.querySelector(languageId).value;
+    const preferred = select.value;
+    if (workflowSpeechProvider() === "kokoro") {
+      const entries = speechLanguage === "it" ? [["if_sara", "Sara"], ["im_nicola", "Nicola"]] : [["af_heart", "Heart"], ["am_michael", "Michael"]];
+      select.replaceChildren(...entries.map(([value, label]) => new Option(label, value)));
+      select.value = speechVoiceForProvider("kokoro", speechLanguage, preferred);
+    } else fillVoiceSelect(select, speechLanguage, preferred);
+  }
 }
 
 function setStatus(node, message, error = false) {
@@ -859,9 +978,15 @@ function updateTtsAvailability() {
   const provider = document.querySelector("#tts-provider")?.value || "edge-tts";
   const ready = selectedTtsReady(provider);
   const button = document.querySelector("#tts-form button[type=submit]");
-  if (button) button.disabled = !ready;
+  if (button) button.disabled = !ready || modeSaving || busyForms.has("tts");
   const hint = document.querySelector("#tts-status");
   if (hint && !ready) setStatus(hint, language === "it" ? "Questo motore non è pronto: controlla Impostazioni." : "This engine is not ready: check Settings.", true);
+}
+
+function updateCompleteAvailability() {
+  const provider = workflowSpeechProvider();
+  const button = document.querySelector("#complete-form button[type=submit]");
+  if (button) button.disabled = !ocrReady || !selectedTtsReady(provider) || modeSaving || busyForms.has("complete");
 }
 
 async function loadSettings() {
@@ -873,10 +998,14 @@ async function loadSettings() {
     document.querySelector("#ai-provider").value = ai.provider;
     document.querySelector("#ai-base-url").value = ai.base_url || "";
     document.querySelector("#ai-model").value = ai.model || "";
+    const localModel = document.querySelector("#local-text-model");
+    if (localModel) localModel.value = ai.local_model || "lfm";
     renderAiKeyStatus();
     renderAiProviderMenu();
     document.querySelector("#default-tts-provider").value = value.tts.default_provider;
-    if (["edge-tts", "kokoro", "voxtral", "fish", "elevenlabs"].includes(value.tts.default_provider)) document.querySelector("#tts-provider").value = value.tts.default_provider;
+    offlineMode = Boolean(value.tts.offline_mode);
+    document.querySelector("#default-audio-provider").value = offlineMode ? "kokoro" : "edge-tts";
+    if (["edge-tts", "kokoro", "voxtral", "fish", "fish-local", "elevenlabs"].includes(value.tts.default_provider)) document.querySelector("#tts-provider").value = value.tts.default_provider;
     document.querySelector("#mistral-voice-id").value = value.tts.mistral.voice_id || "";
     document.querySelector("#fish-voice-id").value = value.tts.fish.voice_id || "";
     document.querySelector("#eleven-voice-id").value = value.tts.elevenlabs.voice_id || "";
@@ -885,11 +1014,70 @@ async function loadSettings() {
     for (const provider of ["mistral", "fish", "elevenlabs"]) {
       document.querySelector(`#${provider}-status`).textContent = value.tts[provider].configured ? t("keyConfigured") : t("keyMissing");
     }
-    renderProviderVoiceSelects();
-    updateTtsAvailability();
+    renderOfflineMode();
     renderClones(value.clones || []);
   } catch (error) {
     setStatus(document.querySelector("#ai-settings-status"), `${t("failed")} ${error.message}`, true);
+  }
+}
+
+async function saveLocalModel(event) {
+  event.preventDefault();
+  const selected = document.querySelector("#local-text-model").value;
+  const status = document.querySelector("#local-model-status");
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    const response = await api("/api/settings", {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ai: {local_model: selected}}),
+    });
+    settings = settings ? {...settings, settings: response.settings} : {settings: response.settings};
+    await renderStatus();
+    setStatus(status, selected === "gemma4" ? "Gemma 4 selezionata." : "LFM2.5 selezionato.");
+  } catch (error) {
+    setStatus(status, `${t("failed")} ${error.message}`, true);
+  } finally { button.disabled = false; }
+}
+
+async function installGemma() {
+  const button = document.querySelector("#install-gemma");
+  const status = document.querySelector("#local-model-status");
+  button.disabled = true;
+  try {
+    const response = await api("/api/local-models/gemma4", {method: "POST"});
+    setStatus(status, response.message);
+    const poll = async () => {
+      const state = await api("/api/local-models");
+      setStatus(status, state.message);
+      if (state.status === "running") window.setTimeout(poll, 2000);
+      else { button.disabled = false; await renderStatus(); }
+    };
+    await poll();
+  } catch (error) {
+    setStatus(status, `${t("failed")} ${error.message}`, true);
+    button.disabled = false;
+  }
+}
+
+async function installFishLocal() {
+  const button = document.querySelector("#install-fish-local");
+  const status = document.querySelector("#local-model-status");
+  button.disabled = true;
+  try {
+    const response = await api("/api/local-models/fish-local", {method: "POST"});
+    setStatus(status, response.message);
+    const poll = async () => {
+      const state = await api("/api/local-models");
+      setStatus(status, state.message);
+      if (state.status === "running") window.setTimeout(poll, 2000);
+      else { button.disabled = false; await renderStatus(); }
+    };
+    await poll();
+  } catch (error) {
+    setStatus(status, `${t("failed")} ${error.message}`, true);
+    button.disabled = false;
   }
 }
 
@@ -1082,6 +1270,7 @@ function renderLanguage() {
   fillVoiceSelect(document.querySelector("#complete-voice"), document.querySelector("#complete-language").value);
   fillVoiceSelect(document.querySelector("#tts-voice"), document.querySelector("#tts-language").value);
   fillVoiceSelect(document.querySelector("#voice"), document.querySelector("#speech-language").value);
+  renderOfflineMode();
   renderProviderVoiceSelects();
   renderAiProviderMenu();
   if (documentValue) renderDocument();
@@ -1094,12 +1283,14 @@ async function renderStatus() {
   speechReady = status.speech.ready;
   reflowReady = status.reflow.ready;
   providerStatus = status.providers || {tts: {}, ai: {}};
+  const serviceName = document.querySelector("#speech-service-name");
+  if (serviceName) serviceName.textContent = status.speech.engine || "Edge-TTS";
   for (const name of ["ocr", "speech", "reflow"]) {
     const ready = status[name].ready;
     document.querySelector(`#${name}-dot`).classList.toggle("ready", ready);
     document.querySelector(`#${name}-status`).textContent = t(ready ? "ready" : "unavailable");
   }
-  document.querySelector("#complete-form button[type=submit]").disabled = !ocrReady || !speechReady;
+  updateCompleteAvailability();
   document.querySelector("#ocr-form button[type=submit]").disabled = !ocrReady;
   const organizeProvider = document.querySelector("#organize-provider")?.value || "local";
   document.querySelector("#organize-form button[type=submit]").disabled = organizeProvider === "local" ? !reflowReady : !providerStatus.ai?.configured_by_provider?.[organizeProvider]?.configured;
@@ -1325,10 +1516,12 @@ async function queueReflow(jobId, device = "auto", provider = "local") {
   return api(`/api/jobs/${encodeURIComponent(jobId)}/reflow`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({device, provider})});
 }
 
-async function queueSpeech(jobId, voice, speed, speechLanguage, provider = "edge-tts") {
-  const available = providerStatus.tts?.[provider]?.ready ?? speechReady;
+async function queueSpeech(jobId, voice, speed, speechLanguage, provider = workflowSpeechProvider()) {
+  const effectiveProvider = offlineMode ? "kokoro" : provider;
+  const effectiveVoice = speechVoiceForProvider(effectiveProvider, speechLanguage, voice);
+  const available = providerStatus.tts?.[effectiveProvider]?.ready ?? speechReady;
   if (!available) throw new Error(language === "it" ? "Questo motore vocale non è disponibile. Controlla Impostazioni." : "This voice engine is unavailable. Check Settings.");
-  return api(`/api/jobs/${encodeURIComponent(jobId)}/speech`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({voice, speed, language: speechLanguage, provider})});
+  return api(`/api/jobs/${encodeURIComponent(jobId)}/speech`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({voice: effectiveVoice, speed, language: speechLanguage, provider: effectiveProvider})});
 }
 
 function setFullStage(stage, message = "") {
@@ -1389,25 +1582,28 @@ function updateAudioProgress(audio, slot) {
 
 async function startFullWorkflow(event) {
   event.preventDefault();
+  if (modeSaving || busyForms.has("complete")) return;
   const button = event.currentTarget.querySelector("button[type=submit]");
   const file = document.querySelector("#complete-file").files[0];
   const status = document.querySelector("#complete-status");
   if (!file) return;
+  busyForms.add("complete");
   button.disabled = true;
   document.querySelector("#complete-progress").hidden = false;
   document.querySelector("#complete-result").hidden = true;
   setFullStage(0, t("completeStart"));
   try {
     const speechLanguage = document.querySelector("#complete-language").value;
-    const voice = document.querySelector("#complete-voice").value;
+    const provider = workflowSpeechProvider();
+    const voice = speechVoiceForProvider(provider, speechLanguage, document.querySelector("#complete-voice").value);
     const speed = Number(document.querySelector("#complete-speed").value);
-    const ocr = await submitDocument(file, {auto_speech: false, document_language: speechLanguage === "it" ? "it" : "en", speech_language: speechLanguage, voice, speed});
-    setWorkflow("complete", {phase: "ocr", ocrJobId: ocr.id, speechJobId: "", speechLanguage, voice, speed});
+    const ocr = await submitDocument(file, {auto_speech: false, document_language: speechLanguage === "it" ? "it" : "en", speech_language: speechLanguage, speech_provider: provider, voice, speed});
+    setWorkflow("complete", {phase: "ocr", ocrJobId: ocr.id, speechJobId: "", speechLanguage, provider, voice, speed});
     const completedOcr = await waitForJob(ocr.id, (job) => { setStatus(status, job.status === "failed" ? jobMessage(job) : t("completeStart")); });
     lastOcrJob = completedOcr;
     setFullStage(1, t("completeOcr"));
-    const speech = await queueSpeech(completedOcr.id, voice, speed, speechLanguage, "edge-tts");
-    setWorkflow("complete", {phase: "speech", ocrJobId: ocr.id, speechJobId: speech.id, speechLanguage, voice, speed});
+    const speech = await queueSpeech(completedOcr.id, voice, speed, speechLanguage, provider);
+    setWorkflow("complete", {phase: "speech", ocrJobId: ocr.id, speechJobId: speech.id, speechLanguage, provider, voice, speed});
     const completedSpeech = await waitForJob(speech.id, () => {});
     setFullStage(2, t("completeDone"));
     showAudio(completedSpeech.id, "complete-audio", "complete-download");
@@ -1417,7 +1613,8 @@ async function startFullWorkflow(event) {
   } catch (error) {
     setStatus(status, `${t("failed")} ${error.message}`, true);
   } finally {
-    button.disabled = false;
+    busyForms.delete("complete");
+    updateCompleteAvailability();
   }
 }
 
@@ -1474,17 +1671,19 @@ async function startOrganize(event) {
 
 async function startTts(event) {
   event.preventDefault();
+  if (modeSaving || busyForms.has("tts")) return;
   const button = event.currentTarget.querySelector("button[type=submit]");
   const status = document.querySelector("#tts-status");
   const input = await textFromForm("#tts-input", "#tts-file");
   if (!input.text.trim()) { setStatus(status, `${t("failed")} ${t("textRequired")}`, true); return; }
+  busyForms.add("tts");
   button.disabled = true;
   try {
     const speechLanguage = document.querySelector("#tts-language").value;
-    const voice = document.querySelector("#tts-voice").value;
+    const provider = offlineMode ? "kokoro" : document.querySelector("#tts-provider").value;
+    const voice = speechVoiceForProvider(provider, speechLanguage, document.querySelector("#tts-voice").value);
     const speed = Number(document.querySelector("#tts-speed").value);
-    const provider = document.querySelector("#tts-provider").value;
-    const plain = await submitText(document.querySelector("#tts-title-input").value || input.title, input.text, {auto_speech: false, preserve_text: true, document_language: speechLanguage === "it" ? "it" : "en", speech_language: speechLanguage, voice, speed});
+    const plain = await submitText(document.querySelector("#tts-title-input").value || input.title, input.text, {auto_speech: false, preserve_text: true, document_language: speechLanguage === "it" ? "it" : "en", speech_language: speechLanguage, speech_provider: provider, voice, speed});
     setWorkflow("tts", {phase: "plain", plainJobId: plain.id, speechJobId: "", voice, speed, speechLanguage, provider});
     setStatus(status, t("ttsQueued"));
     const completedPlain = await waitForJob(plain.id, () => {});
@@ -1496,7 +1695,7 @@ async function startTts(event) {
     clearWorkflow("tts");
     await renderJobs();
   } catch (error) { setStatus(status, `${t("failed")} ${error.message}`, true); }
-  finally { button.disabled = false; }
+  finally { busyForms.delete("tts"); updateTtsAvailability(); }
 }
 
 async function resumeFullWorkflow(workflow) {
@@ -1512,9 +1711,11 @@ async function resumeFullWorkflow(workflow) {
     lastOcrJob = completedOcr;
     let speechJobId = workflow.speechJobId;
     if (!speechJobId) {
-      const speech = await queueSpeech(completedOcr.id, workflow.voice, workflow.speed, workflow.speechLanguage, "edge-tts");
+      const provider = workflow.provider || workflowSpeechProvider();
+      const voice = speechVoiceForProvider(provider, workflow.speechLanguage, workflow.voice);
+      const speech = await queueSpeech(completedOcr.id, voice, workflow.speed, workflow.speechLanguage, provider);
       speechJobId = speech.id;
-      setWorkflow("complete", {...workflow, phase: "speech", speechJobId});
+      setWorkflow("complete", {...workflow, phase: "speech", speechJobId, provider, voice});
     }
     const completedSpeech = await waitForJob(speechJobId, () => {});
     setFullStage(2, t("completeDone"));
@@ -1787,6 +1988,7 @@ async function saveTtsSettings(event) {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({tts: {
         default_provider: document.querySelector("#default-tts-provider").value,
+        offline_mode: offlineMode,
         mistral: {api_key: document.querySelector("#mistral-key").value, voice_id: document.querySelector("#mistral-voice-id").value},
         fish: {api_key: document.querySelector("#fish-key").value, voice_id: document.querySelector("#fish-voice-id").value},
         elevenlabs: {api_key: document.querySelector("#eleven-key").value, voice_id: document.querySelector("#eleven-voice-id").value},
@@ -1812,6 +2014,7 @@ async function createVoiceClone(event) {
   data.append("provider", document.querySelector("#clone-provider").value);
   data.append("name", document.querySelector("#clone-name").value || "Voce clonata");
   data.append("consent", document.querySelector("#clone-consent").checked ? "true" : "false");
+  data.append("reference_text", document.querySelector("#clone-reference-text")?.value || "");
   data.append("file", file);
   try {
     await api("/api/voice-clones", {method: "POST", body: data});
@@ -1838,7 +2041,8 @@ async function initialize() {
   bindRange("#complete-speed", "#complete-speed-value");
   bindRange("#tts-speed", "#tts-speed-value");
   bindRange("#speed", "#speed-value");
-  await Promise.all([renderStatus(), renderJobs(), loadSettings()]);
+  await loadSettings();
+  await Promise.all([renderStatus(), renderJobs()]);
   await restoreSession();
 }
 
@@ -1847,13 +2051,16 @@ window.addEventListener("hashchange", () => showView(window.location.hash.slice(
 window.addEventListener("beforeunload", persistSession);
 document.querySelector("#dismiss-resume").addEventListener("click", () => { document.querySelector("#resume-banner").hidden = true; });
 document.querySelector("#language-select").addEventListener("change", (event) => { language = event.target.value; localStorage.setItem("accessibility-language", language); renderLanguage(); schedulePersist(); });
+document.querySelector("#offline-mode-toggle").addEventListener("click", () => void setOfflineMode(!offlineMode));
+document.querySelector("#default-audio-provider").addEventListener("change", (event) => void setOfflineMode(event.target.value === "kokoro"));
 document.querySelector("#complete-form").addEventListener("submit", (event) => void startFullWorkflow(event));
 document.querySelector("#ocr-form").addEventListener("submit", (event) => void startOcr(event));
 document.querySelector("#organize-form").addEventListener("submit", (event) => void startOrganize(event));
 document.querySelector("#tts-form").addEventListener("submit", (event) => void startTts(event));
-document.querySelector("#complete-language").addEventListener("change", (event) => { fillVoiceSelect(document.querySelector("#complete-voice"), event.target.value); schedulePersist(); });
+document.querySelector("#complete-language").addEventListener("change", () => { renderWorkflowVoices(); schedulePersist(); });
+document.querySelector("#complete-provider").addEventListener("change", (event) => void setOfflineMode(event.target.value === "kokoro"));
 document.querySelector("#tts-language").addEventListener("change", () => { renderProviderVoiceSelects(); schedulePersist(); });
-document.querySelector("#tts-provider").addEventListener("change", () => { renderProviderVoiceSelects(); updateTtsAvailability(); schedulePersist(); });
+document.querySelector("#tts-provider").addEventListener("change", (event) => { if (["kokoro", "edge-tts"].includes(event.target.value)) void setOfflineMode(event.target.value === "kokoro"); else { renderProviderVoiceSelects(); updateTtsAvailability(); schedulePersist(); } });
 document.querySelector("#organize-provider").addEventListener("change", () => {
   const provider = document.querySelector("#organize-provider").value;
   document.querySelector("#organize-form button[type=submit]").disabled = provider === "local" ? !reflowReady : !providerStatus.ai?.configured_by_provider?.[provider]?.configured;
@@ -1886,10 +2093,10 @@ document.querySelector("#organize-open-result").addEventListener("click", () => 
 document.querySelector("#close-editor").addEventListener("click", closeReview);
 document.querySelector("#close-text-editor").addEventListener("click", closeReview);
 document.querySelector("#save-document").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveDocument(); } catch (error) { setStatus(document.querySelector("#save-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
-document.querySelector("#create-speech").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveDocument(); await queueSpeech(editingJob.id, document.querySelector("#voice").value, Number(document.querySelector("#speed").value), document.querySelector("#speech-language").value); setStatus(document.querySelector("#save-status"), t("speechQueued")); await renderJobs(); } catch (error) { setStatus(document.querySelector("#save-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
+document.querySelector("#create-speech").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveDocument(); const speechLanguage = document.querySelector("#speech-language").value; const provider = workflowSpeechProvider(); const voice = speechVoiceForProvider(provider, speechLanguage, document.querySelector("#voice").value); await queueSpeech(editingJob.id, voice, Number(document.querySelector("#speed").value), speechLanguage, provider); setStatus(document.querySelector("#save-status"), t("speechQueued")); await renderJobs(); } catch (error) { setStatus(document.querySelector("#save-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
 document.querySelector("#reflow-document").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveDocument(); await queueReflow(editingJob.id, document.querySelector("#document-reflow-device").value); setStatus(document.querySelector("#save-status"), t("reflowQueued")); await renderJobs(); } catch (error) { setStatus(document.querySelector("#save-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
 document.querySelector("#save-text").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveText(); setStatus(document.querySelector("#text-editor-status"), t("saved")); } catch (error) { setStatus(document.querySelector("#text-editor-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
-document.querySelector("#create-text-speech").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveText(); await queueSpeech(editingTextJob.id, "it-IT-GiuseppeMultilingualNeural", 1, "it"); setStatus(document.querySelector("#text-editor-status"), t("speechQueued")); await renderJobs(); } catch (error) { setStatus(document.querySelector("#text-editor-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
+document.querySelector("#create-text-speech").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveText(); const provider = workflowSpeechProvider(); await queueSpeech(editingTextJob.id, speechVoiceForProvider(provider, "it"), 1, "it", provider); setStatus(document.querySelector("#text-editor-status"), t("speechQueued")); await renderJobs(); } catch (error) { setStatus(document.querySelector("#text-editor-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
 document.querySelector("#reflow-text").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveText(); await queueReflow(editingTextJob.id, "auto"); setStatus(document.querySelector("#text-editor-status"), t("reflowQueued")); await renderJobs(); } catch (error) { setStatus(document.querySelector("#text-editor-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
 document.querySelector("#ai-provider").addEventListener("change", (event) => {
   const preset = settings?.ai_presets?.[event.target.value];
@@ -1914,6 +2121,9 @@ document.querySelector("#model-dialog").addEventListener("click", (event) => {
 });
 document.querySelector("#ai-settings-form").addEventListener("submit", (event) => void saveAiSettings(event));
 document.querySelector("#tts-settings-form").addEventListener("submit", (event) => void saveTtsSettings(event));
+document.querySelector("#local-text-model")?.addEventListener("change", (event) => void saveLocalModel(event));
+document.querySelector("#install-gemma")?.addEventListener("click", () => void installGemma());
+document.querySelector("#install-fish-local")?.addEventListener("click", () => void installFishLocal());
 document.querySelector("#clone-form").addEventListener("submit", (event) => void createVoiceClone(event));
 
 document.querySelectorAll("[data-provider-select]").forEach((button) => {

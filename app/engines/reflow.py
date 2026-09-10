@@ -8,7 +8,7 @@ from typing import Any
 
 from ..config import PATHS
 from ..processes import run_worker
-from ..provider_config import ai_config_for
+from ..provider_config import ai_config_for, load_settings
 from .base import EngineResult, LocalEngine
 
 
@@ -28,6 +28,8 @@ class LfmReflowEngine(LocalEngine):
         options: dict[str, Any],
     ) -> EngineResult:
         provider = str(options.get("provider", "local"))
+        if load_settings()["tts"].get("offline_mode"):
+            provider = "local"
         if provider != "local":
             configured = ai_config_for(provider)
             fd, config_name = tempfile.mkstemp(
@@ -54,7 +56,11 @@ class LfmReflowEngine(LocalEngine):
                 environment.pop("LD_PRELOAD", None)
                 environment["PYTHONNOUSERSITE"] = "1"
                 completed = run_worker(
-                    command, cwd=PATHS.app, timeout=12 * 60 * 60, env=environment
+                    command,
+                    cwd=PATHS.app,
+                    timeout=12 * 60 * 60,
+                    env=environment,
+                    network=True,
                 )
             finally:
                 config_path.unlink(missing_ok=True)
@@ -76,8 +82,11 @@ class LfmReflowEngine(LocalEngine):
                 },
                 artifacts=(text_path, report_path),
             )
-        if not PATHS.llama_cli.is_file() or not PATHS.llama_model.is_file():
-            raise RuntimeError("llama.cpp and the LFM2.5 model are not installed")
+        local_model = load_settings()["ai"].get("local_model", "lfm")
+        model = PATHS.gemma_model if local_model == "gemma4" else PATHS.llama_model
+        if not PATHS.llama_cli.is_file() or not model.is_file():
+            label = "Gemma 4" if local_model == "gemma4" else "LFM2.5"
+            raise RuntimeError(f"llama.cpp and the {label} model are not installed")
         output_dir.mkdir(parents=True, exist_ok=True)
         command = [
             str(PATHS.tts_python),
@@ -87,7 +96,7 @@ class LfmReflowEngine(LocalEngine):
             "--output",
             str(output_dir),
             "--model",
-            str(PATHS.llama_model),
+            str(model),
             "--llama-cli",
             str(PATHS.llama_cli),
             "--device",
@@ -103,7 +112,11 @@ class LfmReflowEngine(LocalEngine):
         report = json.loads(report_path.read_text(encoding="utf-8"))
         return EngineResult(
             summary={
-                "engine": "LFM2.5 230M / llama.cpp",
+                "engine": (
+                    "Gemma 4 E4B Q4_0 / llama.cpp"
+                    if local_model == "gemma4"
+                    else "LFM2.5 230M / llama.cpp"
+                ),
                 "device": report.get("device", "auto"),
                 "reasoning": "off",
                 "fallback_chunks": report.get("fallback_chunks", 0),

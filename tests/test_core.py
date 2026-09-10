@@ -40,7 +40,11 @@ from app.processes import (  # noqa: E402
     stop_worker_processes,
 )
 from app.product import load_product  # noqa: E402
-from app.provider_config import AI_PROVIDER_PRESETS  # noqa: E402
+from app.provider_config import (  # noqa: E402
+    AI_PROVIDER_PRESETS,
+    public_settings,
+    save_settings,
+)
 from app.reflow import format_for_speech, validated_model_output  # noqa: E402
 from app.security import TOKEN_COOKIE, origin_is_allowed  # noqa: E402
 from app.speech_jobs import normalized_options, queue_speech_job  # noqa: E402
@@ -112,15 +116,21 @@ class FrontendAccessibilityContractTests(unittest.TestCase):
 
     def test_primary_landmarks_and_live_regions_are_present(self) -> None:
         self.assertIn('data-i18n-aria-label="mainNavLabel"', self.html)
-        self.assertIn(
-            'id="complete-progress" class="progress-card" hidden role="status"',
+        self.assertRegex(
             self.html,
+            r'id="complete-progress"[\s\S]*class="progress-card"[\s\S]*role="status"',
         )
-        self.assertIn(
-            'id="review-live-status" class="visually-hidden" role="status"',
+        self.assertRegex(
             self.html,
+            r'id="review-live-status"[\s\S]*class="visually-hidden"[\s\S]*role="status"',
         )
-        self.assertIn('id="model-list" class="model-list" role="listbox"', self.html)
+        self.assertRegex(
+            self.html,
+            r'id="model-list"[\s\S]*class="model-list"[\s\S]*role="listbox"',
+        )
+        self.assertIn('id="offline-mode-toggle"', self.html)
+        self.assertIn('id="complete-provider"', self.html)
+        self.assertIn('id="advanced-settings" class="settings-advanced"', self.html)
 
     def test_dynamic_navigation_and_keyboard_review_contract_is_present(self) -> None:
         self.assertIn('link.setAttribute("aria-current", "page")', self.javascript)
@@ -128,6 +138,14 @@ class FrontendAccessibilityContractTests(unittest.TestCase):
         self.assertIn('event.key === "ArrowDown"', self.javascript)
         self.assertIn('option.setAttribute("aria-posinset"', self.javascript)
         self.assertIn('t("blockMoved")', self.javascript)
+
+    def test_offline_mode_is_persisted_as_kokoro_choice(self) -> None:
+        value = save_settings(
+            {"tts": {"default_provider": "kokoro", "offline_mode": True}}
+        )
+        self.assertTrue(value["tts"]["offline_mode"])
+        self.assertEqual(public_settings()["tts"]["default_provider"], "kokoro")
+        save_settings({"tts": {"default_provider": "edge-tts", "offline_mode": False}})
 
     def test_launcher_removes_inherited_injection_paths(self) -> None:
         hostile = {

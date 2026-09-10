@@ -20,12 +20,20 @@ risultato OCR.
   confronta i caratteri non bianchi prima di accettare l’output del modello;
   se il modello modifica il contenuto, viene usata una formattazione
   deterministica solo-spazi.
-- Studio completo semplificato: PaddleOCR → Edge-TTS. LFM non viene usato nel
-  percorso principale.
+- In “Impostazioni avanzate” si può scegliere Gemma 4 E4B Q4_0 per una
+  riorganizzazione locale più potente e scaricarlo con un pulsante. Sono circa
+  5,2 GB e il download è facoltativo.
+- Studio completo semplificato: PaddleOCR → modello audio scelto. Nel workflow
+  principale puoi scegliere direttamente Edge-TTS o Kokoro 82M.
 - Kokoro 82M ONNX per una voce offline, anche con la rete disattivata.
+- Il pulsante globale “Modalità offline” passa in un clic da Edge-TTS a Kokoro
+  e impedisce al server di inviare il testo online.
 - Provider vocali opzionali Voxtral/Mistral, Fish Audio ed ElevenLabs. Le
   chiavi e gli ID voce si configurano dalla pagina Impostazioni; Fish Audio usa
   un Reference ID già creato.
+- Su macOS Apple Silicon si può preparare Fish Audio S2 Pro MLX a 8 bit (circa
+  6,7 GB) e salvare un campione con trascrizione per la clonazione locale. Il
+  modello è soggetto alla Fish Audio Research License e non è incluso nel repo.
 - Clonazione disponibile tramite Voxtral/Mistral ed ElevenLabs, con conferma
   del consenso. Il campione temporaneo viene eliminato dopo l’invio.
 
@@ -34,9 +42,9 @@ disponibile, oppure OCR → revisione → audio. La modalità “Solo organizza�
 separata e usa LFM locale per impostazione predefinita; può anche usare un
 provider configurato tra Mistral, OpenCode Zen, Google Gemini, Anthropic
 Claude, NVIDIA NIM, Kilo Gateway o un endpoint personalizzato. La pagina
-Impostazioni include una guida passo passo con i link ufficiali per creare
-ogni chiave API e il pulsante “Browse Models” per leggere e scegliere i
-modelli disponibili direttamente dal provider.
+Impostazioni mette in alto solo la scelta audio essenziale. Provider cloud,
+modelli, chiavi API, guide e clonazione sono raccolti sotto “Impostazioni
+avanzate”.
 
 La sessione viene salvata localmente nel browser: vista attiva, moduli di
 testo, bozze dell’editor e lavori in corso possono essere ripristinati dopo
@@ -64,7 +72,9 @@ Su Windows:
 
 L’installazione prepara ambienti separati per web core, PaddleOCR, Edge-TTS e
 Kokoro, pre-carica i modelli PaddleOCR e installa il modello LFM locale e il
-binario CPU di `llama.cpp` quando non sono già presenti. `--skip-models` evita
+binario CPU di `llama.cpp` quando non sono già presenti. Include anche FFmpeg
+nel pacchetto Python per rendere l’audio offline indipendente dal sistema.
+`--skip-models` evita
 il prefetch completo e lascia disponibili soltanto i componenti già in cache.
 
 ## Pacchetti plug-and-play
@@ -102,7 +112,7 @@ riusare un’installazione già presente, in:
 Per un binario llama.cpp in un’altra posizione usare
 `LOCAL_ACCESSIBILITY_STUDIO_LLAMA_CLI` e, se necessario,
 `LOCAL_ACCESSIBILITY_STUDIO_LFM_MODEL`. La dashboard mostra separatamente se
-OCR, Edge-TTS, Kokoro e LFM sono disponibili.
+OCR, Edge-TTS, Kokoro e il modello locale selezionato sono disponibili.
 
 ## Privacy
 
@@ -113,7 +123,8 @@ quando vengono scelti. Kokoro non richiede rete. Se il testo non deve uscire
 dal computer, usare Kokoro in “Solo voce”.
 
 Installazione, cache modelli e ambienti Python richiedono rete; l’elaborazione
-locale successiva non usa provider esterni salvo Edge-TTS. Il launcher portabile
+locale successiva non usa provider esterni quando è attiva la modalità offline.
+Il launcher portabile
 mostra i passaggi nel terminale e registra gli errori nella cartella dati locale
 se la prima preparazione non riesce.
 

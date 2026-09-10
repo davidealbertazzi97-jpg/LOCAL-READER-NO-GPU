@@ -52,6 +52,9 @@ class Paths:
     tts_python: Path
     llama_cli: Path
     llama_model: Path
+    gemma_model: Path
+    mac_voice_python: Path
+    fish_local_model: Path
     kokoro_model: Path
     kokoro_voices: Path
 
@@ -122,6 +125,15 @@ class Paths:
                 APP_ROOT / "models" / "lfm" / "LFM2.5-230M-Q8_0.gguf",
             )
         )
+        configured_gemma_model = os.environ.get(
+            "LOCAL_ACCESSIBILITY_STUDIO_GEMMA_MODEL"
+        )
+        gemma_candidates = []
+        if configured_gemma_model:
+            gemma_candidates.append(Path(configured_gemma_model).expanduser())
+        gemma_candidates.append(
+            APP_ROOT / "models" / "gemma4" / "gemma-4-E4B_q4_0-it.gguf"
+        )
         model_candidates.extend(
             (
                 Path.home()
@@ -184,6 +196,12 @@ class Paths:
                 (path for path in model_candidates if path.is_file()),
                 model_candidates[0],
             ),
+            gemma_model=next(
+                (path for path in gemma_candidates if path.is_file()),
+                gemma_candidates[0],
+            ),
+            mac_voice_python=APP_ROOT / ".venv-mac-voice" / scripts_dir / executable,
+            fish_local_model=APP_ROOT / "models" / "fish-local",
             kokoro_model=next(
                 (path for path in kokoro_model_candidates if path.is_file()),
                 kokoro_model_candidates[0],

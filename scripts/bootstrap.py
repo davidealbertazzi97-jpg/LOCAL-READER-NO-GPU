@@ -111,6 +111,7 @@ def main() -> int:
                     "edge-tts-neural-voices",
                     "kokoro-82m-offline-voice",
                     "lfm2.5-230m-local-model-and-llama-cli",
+                    "optional-gemma4-and-mac-fish-models-from-advanced-settings",
                 ]
             ),
             "runtime-network-guard",
@@ -163,7 +164,10 @@ def main() -> int:
             [
                 str(tts_python),
                 "-c",
-                "import edge_tts, kokoro_onnx; print('Edge-TTS and Kokoro ready')",
+                (
+                    "import edge_tts, imageio_ffmpeg, kokoro_onnx; "
+                    "print('Edge-TTS, Kokoro and bundled FFmpeg ready')"
+                ),
             ]
         )
         if not args.skip_models:

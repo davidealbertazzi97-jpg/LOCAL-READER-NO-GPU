@@ -101,6 +101,7 @@ def wait_for_job(base: str, job_id: str, timeout: float = 180.0) -> dict:
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser()
     root.add_argument("--full", action="store_true")
+    root.add_argument("--offline", action="store_true")
     return root
 
 
@@ -197,11 +198,70 @@ def main() -> int:
                 )
                 assert status == 200 and cleared["deleted"] == 0
 
+            if args.offline:
+                status, settings = request_json(
+                    f"{base}/api/settings",
+                    token=True,
+                    data=json.dumps(
+                        {"tts": {"default_provider": "kokoro", "offline_mode": True}}
+                    ).encode(),
+                    content_type="application/json",
+                    method="PUT",
+                )
+                assert status == 200 and settings["settings"]["tts"]["offline_mode"]
+                status, text_job = request_json(
+                    f"{base}/api/text",
+                    token=True,
+                    data=json.dumps(
+                        {
+                            "title": "offline-test.txt",
+                            "text": "Questo audio resta sul computer.",
+                            "options": {
+                                "auto_speech": False,
+                                "document_language": "it",
+                                "speech_language": "it",
+                                "voice": "it-IT-GiuseppeMultilingualNeural",
+                                "speed": 1.0,
+                            },
+                        }
+                    ).encode(),
+                    content_type="application/json",
+                )
+                assert status == 202, (status, text_job)
+                text_job = wait_for_job(base, text_job["id"])
+                status, queued_speech = request_json(
+                    f"{base}/api/jobs/{text_job['id']}/speech",
+                    token=True,
+                    data=json.dumps(
+                        {
+                            "provider": "edge-tts",
+                            "voice": "it-IT-GiuseppeMultilingualNeural",
+                            "speed": 1.0,
+                            "language": "it",
+                        }
+                    ).encode(),
+                    content_type="application/json",
+                )
+                assert status == 202, (status, queued_speech)
+                speech_job = wait_for_job(base, queued_speech["id"], timeout=300)
+                assert speech_job["status"] == "completed", speech_job
+                assert speech_job["summary"]["provider"] == "kokoro"
+                assert speech_job["summary"]["voice"] == "if_sara"
+                audio = root / "outputs" / speech_job["id"] / "speech.mp3"
+                assert audio.stat().st_size > 10_000
+                print("Offline Kokoro speech smoke test passed.")
+                return 0
+
             if args.full:
                 sample = root / "sample.pdf"
+                ocr_python = (
+                    APP_DIR
+                    / ".venv-ocr"
+                    / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+                )
                 subprocess.run(
                     [
-                        str(APP_DIR / ".venv-ocr" / "bin" / "python"),
+                        str(ocr_python),
                         str(APP_DIR / "tests" / "create_sample.py"),
                         str(sample),
                     ],
@@ -227,7 +287,7 @@ def main() -> int:
                 assert status == 202, (status, queued)
                 ocr_job = wait_for_job(base, queued["id"], timeout=900)
                 assert ocr_job["status"] == "completed", ocr_job
-                assert ocr_job["summary"]["audio"] == "Edge-TTS queued automatically"
+                assert ocr_job["summary"]["audio"] == "edge-tts queued automatically"
                 assert not (root / "data" / "work" / ocr_job["id"]).exists()
 
                 status, jobs = request_json(f"{base}/api/jobs", token=True)

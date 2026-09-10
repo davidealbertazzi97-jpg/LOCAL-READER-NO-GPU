@@ -6,13 +6,21 @@ import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from .provider_config import SETTINGS_LOCK, load_settings
+
 _LOCK = threading.Lock()
 _ACTIVE: set[subprocess.Popen[str]] = set()
+_NETWORK: set[subprocess.Popen[str]] = set()
 _STOPPING = False
 
 
 class WorkerStopping(RuntimeError):
     pass
+
+
+def network_busy() -> bool:
+    with _LOCK:
+        return any(process.poll() is None for process in _NETWORK)
 
 
 def allow_worker_processes() -> None:
@@ -59,10 +67,15 @@ def run_worker(
     cwd: Path,
     timeout: float,
     env: Mapping[str, str] | None = None,
+    network: bool = False,
 ) -> subprocess.CompletedProcess[str]:
-    with _LOCK:
+    with SETTINGS_LOCK, _LOCK:
         if _STOPPING:
             raise WorkerStopping("application shutdown is in progress")
+        if network and load_settings()["tts"].get("offline_mode"):
+            raise RuntimeError(
+                "Modalità offline attiva: i servizi online sono disabilitati."
+            )
         process = subprocess.Popen(
             list(command),
             cwd=cwd,
@@ -73,6 +86,8 @@ def run_worker(
             env=dict(env) if env is not None else None,
         )
         _ACTIVE.add(process)
+        if network:
+            _NETWORK.add(process)
     try:
         try:
             stdout, stderr = process.communicate(timeout=timeout)
@@ -98,3 +113,4 @@ def run_worker(
     finally:
         with _LOCK:
             _ACTIVE.discard(process)
+            _NETWORK.discard(process)

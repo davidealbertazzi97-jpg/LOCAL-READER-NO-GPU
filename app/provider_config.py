@@ -4,11 +4,14 @@ import copy
 import json
 import os
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 from .config import PATHS
+
+SETTINGS_LOCK = threading.RLock()
 
 AI_PROVIDER_PRESETS: dict[str, dict[str, str]] = {
     "local": {"label": "Solo locale", "base_url": "", "model": "LFM2.5-230M"},
@@ -54,6 +57,11 @@ TTS_PROVIDER_INFO: dict[str, dict[str, Any]] = {
     "kokoro": {"label": "Kokoro 82M", "network": False, "key": None},
     "voxtral": {"label": "Voxtral TTS (Mistral)", "network": True, "key": "mistral"},
     "fish": {"label": "Fish Audio", "network": True, "key": "fish"},
+    "fish-local": {
+        "label": "Fish Audio locale (Apple Silicon)",
+        "network": False,
+        "key": None,
+    },
     "elevenlabs": {"label": "ElevenLabs", "network": True, "key": "elevenlabs"},
     "pocket-tts": {"label": "Pocket TTS (sperimentale)", "network": False, "key": None},
 }
@@ -65,11 +73,13 @@ def _defaults() -> dict[str, Any]:
             "provider": "local",
             "base_url": "",
             "model": "LFM2.5-230M",
+            "local_model": "lfm",
             "api_key": "",
         },
         "ai_keys": {},
         "tts": {
             "default_provider": "edge-tts",
+            "offline_mode": False,
             "mistral": {
                 "api_key": "",
                 "model": "voxtral-mini-tts-2603",
@@ -80,6 +90,7 @@ def _defaults() -> dict[str, Any]:
                 "model": "s2.1",
                 "voice_id": "",
             },
+            "fish-local": {"model": "mlx-community/fish-audio-s2-pro-8bit"},
             "elevenlabs": {
                 "api_key": "",
                 "model": "eleven_multilingual_v2",
@@ -170,6 +181,11 @@ def valid_url(value: str, *, allow_empty: bool = False) -> bool:
 
 
 def save_settings(payload: dict[str, Any]) -> dict[str, Any]:
+    with SETTINGS_LOCK:
+        return _save_settings(payload)
+
+
+def _save_settings(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("settings must be an object")
     current = load_settings()
@@ -190,8 +206,14 @@ def save_settings(payload: dict[str, Any]) -> dict[str, Any]:
                 "provider": provider,
                 "base_url": base_url,
                 "model": _string(ai.get("model", current["ai"]["model"]), maximum=160),
+                "local_model": _string(
+                    ai.get("local_model", current["ai"].get("local_model", "lfm")),
+                    maximum=32,
+                ),
             }
         )
+        if current["ai"]["local_model"] not in {"lfm", "gemma4"}:
+            raise ValueError("unknown local text model")
         api_key = _string(ai.get("api_key"), maximum=1024)
         if api_key:
             current["ai_keys"][provider] = api_key
@@ -207,6 +229,16 @@ def save_settings(payload: dict[str, Any]) -> dict[str, Any]:
         if selected not in TTS_PROVIDER_INFO:
             raise ValueError("unknown speech provider")
         current["tts"]["default_provider"] = selected
+        offline_mode = tts.get(
+            "offline_mode", current["tts"].get("offline_mode", False)
+        )
+        if not isinstance(offline_mode, bool):
+            raise ValueError("offline mode must be true or false")
+        current["tts"]["offline_mode"] = offline_mode
+        if offline_mode:
+            current["tts"]["default_provider"] = "kokoro"
+        elif "offline_mode" in tts and "default_provider" not in tts:
+            current["tts"]["default_provider"] = "edge-tts"
         for name in ("mistral", "fish", "elevenlabs"):
             section = tts.get(name, {})
             if not isinstance(section, dict):
@@ -224,6 +256,13 @@ def save_settings(payload: dict[str, Any]) -> dict[str, Any]:
                     tts["kokoro"][field], maximum=maximum
                 )
 
+    if current["tts"].get("offline_mode"):
+        from .processes import network_busy
+
+        if network_busy():
+            raise ValueError(
+                "Attendi che il lavoro online finisca, poi attiva la modalità offline."
+            )
     _write_settings(current)
     return public_settings()
 
@@ -246,11 +285,13 @@ def public_settings() -> dict[str, Any]:
             "provider": settings["ai"]["provider"],
             "base_url": settings["ai"]["base_url"],
             "model": settings["ai"]["model"],
+            "local_model": settings["ai"].get("local_model", "lfm"),
             "configured": ai_provider_status[settings["ai"]["provider"]]["configured"],
             "providers": ai_provider_status,
         },
         "tts": {
             "default_provider": settings["tts"]["default_provider"],
+            "offline_mode": bool(settings["tts"].get("offline_mode", False)),
             "mistral": {
                 "model": settings["tts"]["mistral"]["model"],
                 "voice_id": settings["tts"]["mistral"]["voice_id"],
@@ -261,6 +302,7 @@ def public_settings() -> dict[str, Any]:
                 "voice_id": settings["tts"]["fish"]["voice_id"],
                 "configured": _configured(settings["tts"]["fish"].get("api_key")),
             },
+            "fish-local": copy.deepcopy(settings["tts"]["fish-local"]),
             "elevenlabs": {
                 "model": settings["tts"]["elevenlabs"]["model"],
                 "voice_id": settings["tts"]["elevenlabs"]["voice_id"],
@@ -321,7 +363,7 @@ def speech_runtime_config(provider: str) -> dict[str, Any]:
     settings = load_settings()
     if provider not in TTS_PROVIDER_INFO:
         raise ValueError("unknown speech provider")
-    if provider in {"edge-tts", "kokoro", "pocket-tts"}:
+    if provider in {"edge-tts", "kokoro", "pocket-tts", "fish-local"}:
         return {"provider": provider, **settings["tts"].get(provider, {})}
     section_name = "mistral" if provider == "voxtral" else provider
     section = settings["tts"][section_name]
@@ -330,10 +372,21 @@ def speech_runtime_config(provider: str) -> dict[str, Any]:
     return {"provider": provider, **section}
 
 
-def add_clone(*, provider: str, name: str, voice_id: str) -> dict[str, Any]:
+def add_clone(
+    *,
+    provider: str,
+    name: str,
+    voice_id: str,
+    reference_audio: str = "",
+    reference_text: str = "",
+) -> dict[str, Any]:
     settings = load_settings()
     clone_id = f"{provider}-{len(settings.get('clones', [])) + 1}"
     clone = {"id": clone_id, "name": name, "provider": provider, "voice_id": voice_id}
+    if reference_audio:
+        clone["reference_audio"] = reference_audio
+    if reference_text:
+        clone["reference_text"] = reference_text
     settings.setdefault("clones", []).append(clone)
     _write_settings(settings)
     return clone
