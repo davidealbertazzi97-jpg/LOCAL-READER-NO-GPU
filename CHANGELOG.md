@@ -8,6 +8,8 @@ All notable changes to Local Accessibility Studio are documented here.
   contained library symlinks in the verified llama.cpp archive with Python's
   safe extraction filter. Escaping links and special files remain blocked.
 - Fixed Windows runtime ZIP handling (`ZipInfo.filename`).
+- Prefer the faster FP32 Kokoro model; new installations download it by default.
+- Keep active long Edge-TTS streams alive while timing out stalled responses.
 
 ## 0.3.1 - 2026-09-10
 

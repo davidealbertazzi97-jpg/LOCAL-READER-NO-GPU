@@ -158,8 +158,8 @@ class Paths:
             kokoro_model_candidates.append(Path(configured_kokoro_model).expanduser())
         kokoro_model_candidates.extend(
             (
-                APP_ROOT / "models" / "kokoro" / "kokoro-v1.0.int8.onnx",
                 APP_ROOT / "models" / "kokoro" / "kokoro-v1.0.onnx",
+                APP_ROOT / "models" / "kokoro" / "kokoro-v1.0.int8.onnx",
             )
         )
         kokoro_voice_candidates = []

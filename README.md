@@ -87,6 +87,8 @@ L’installazione prepara ambienti separati per web core, PaddleOCR, Edge-TTS e
 Kokoro, pre-carica i modelli PaddleOCR e installa il modello LFM locale e il
 binario CPU di `llama.cpp` quando non sono già presenti. Include anche FFmpeg
 nel pacchetto Python per rendere l’audio offline indipendente dal sistema.
+Kokoro usa il modello FP32 (circa 326 MB) per privilegiare la velocità su CPU;
+un modello INT8 già installato resta utilizzabile se il modello completo manca.
 `--skip-models` evita
 il prefetch completo e lascia disponibili soltanto i componenti già in cache.
 

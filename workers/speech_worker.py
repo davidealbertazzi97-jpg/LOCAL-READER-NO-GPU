@@ -50,7 +50,8 @@ async def synthesize_chunk(
                 connect_timeout=5,
                 receive_timeout=20,
             )
-            async with asyncio.timeout(45):
+            # Keep an active long chunk alive; stalled receives still stop at 20s.
+            async with asyncio.timeout(180):
                 with destination.open("xb") as audio:
                     async for message in communicate.stream():
                         if message["type"] == "audio":

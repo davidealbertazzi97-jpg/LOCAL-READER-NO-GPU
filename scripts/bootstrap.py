@@ -171,7 +171,13 @@ def main() -> int:
             ]
         )
         if not args.skip_models:
-            run([str(tts_python), str(APP_DIR / "scripts" / "install_kokoro.py")])
+            run(
+                [
+                    str(tts_python),
+                    str(APP_DIR / "scripts" / "install_kokoro.py"),
+                    "--fast",
+                ]
+            )
             run([str(core_python), str(APP_DIR / "scripts" / "install_lfm.py")])
 
     if system == "Linux" and shutil.which("cc"):
