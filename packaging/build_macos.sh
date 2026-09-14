@@ -26,19 +26,19 @@ python3 "${APP_DIR}/packaging/create_payload.py" \
 "${UV}" run --no-project --python 3.12 \
   --with "pyinstaller==6.19.0" pyinstaller \
   --clean --noconfirm --windowed --onedir \
-  --name "Local Accessibility Studio" \
-  --osx-bundle-identifier "org.localaccessibility.studio" \
+  --name "Local Reader No GPU" \
+  --osx-bundle-identifier "org.localreadernogpu.app" \
   --distpath "${BUILD_DIR}/pyinstaller-dist" \
   --workpath "${BUILD_DIR}/pyinstaller-work" \
   --specpath "${BUILD_DIR}" \
   --add-data "${BUILD_DIR}/payload.zip:." \
   "${APP_DIR}/packaging/launcher.py"
 
-BUNDLE="${BUILD_DIR}/pyinstaller-dist/Local Accessibility Studio.app"
-OUTPUT="${DIST_DIR}/Local-Accessibility-Studio-0.3.2-macos-arm64.app"
+BUNDLE="${BUILD_DIR}/pyinstaller-dist/Local Reader No GPU.app"
+OUTPUT="${DIST_DIR}/Local-Reader-No-GPU-0.3.2-macos-arm64.app"
 rm -rf "${OUTPUT}"
 ditto "${BUNDLE}" "${OUTPUT}"
 ditto -c -k --sequesterRsrc --keepParent "${OUTPUT}" "${OUTPUT}.zip"
-hdiutil create -volname "Local Accessibility Studio" -srcfolder "${OUTPUT}" \
-  -ov -format UDZO "${DIST_DIR}/Local-Accessibility-Studio-0.3.2-macos-arm64.dmg"
+hdiutil create -volname "Local Reader No GPU" -srcfolder "${OUTPUT}" \
+  -ov -format UDZO "${DIST_DIR}/Local-Reader-No-GPU-0.3.2-macos-arm64.dmg"
 echo "Built ${OUTPUT}"

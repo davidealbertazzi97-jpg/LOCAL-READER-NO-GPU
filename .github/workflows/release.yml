@@ -81,4 +81,4 @@ jobs:
           cd dist
           sha256sum * > SHA256SUMS.txt
           gh release create "$RELEASE_TAG" ./* --verify-tag \
-            --title "Local Accessibility Studio $RELEASE_TAG" --generate-notes
+            --title "Local Reader No GPU $RELEASE_TAG" --generate-notes

@@ -64,7 +64,7 @@ def download(name: str, expected_size: int, expected_hash: str) -> None:
     temporary = destination.with_suffix(destination.suffix + ".download")
     temporary.unlink(missing_ok=True)
     request = urllib.request.Request(
-        url, headers={"User-Agent": "Local-Accessibility-Studio/0.3"}
+        url, headers={"User-Agent": "Local-Reader-No-GPU/0.3"}
     )
     try:
         # HTTPS host, expected size, and SHA-256 are fixed and checked here.

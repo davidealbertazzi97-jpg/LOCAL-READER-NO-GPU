@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""First-run launcher for the portable Local Accessibility Studio packages."""
+"""First-run launcher for the portable Local Reader No GPU packages."""
 
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-APP_NAME = "Local Accessibility Studio"
-APP_SLUG = "local-accessibility-studio"
+APP_NAME = "Local Reader No GPU"
+APP_SLUG = "local-reader-no-gpu"
 PYTHON_VERSION = "3.12"
 UV_VERSION = "0.11.16"
 UV_BUILDS = {
@@ -118,7 +118,7 @@ def download_uv(root: Path) -> Path:
     print("Downloading the verified Python runtime manager (uv)...", flush=True)
     request = urllib.request.Request(
         urllib.parse.urljoin(UV_URL, asset_name),
-        headers={"User-Agent": "Local-Accessibility-Studio/0.3"},
+        headers={"User-Agent": "Local-Reader-No-GPU/0.3"},
     )
     with (
         urllib.request.urlopen(  # nosec B310
@@ -159,7 +159,7 @@ def download_uv(root: Path) -> Path:
 
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(
-        description="Install local models and start Local Accessibility Studio."
+        description="Install local models and start Local Reader No GPU."
     )
     root.add_argument("--no-browser", action="store_true")
     root.add_argument("--version", action="store_true")

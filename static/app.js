@@ -254,7 +254,7 @@ const COPY = {
     guideCustomStep3: "Inserisci il nome esatto del modello e la chiave API.",
     guideCustomStep4: "Salva e prova “Solo organizza”.",
     helpCompleteTitle: "Studio completo",
-    helpCompleteBody: "Carica un PDF o un’immagine. Local Accessibility Studio estrae il testo con OCR e crea un audio. Tu devi solo scegliere il file e, se vuoi, la voce.",
+    helpCompleteBody: "Carica un PDF o un’immagine. Local Reader No GPU estrae il testo con OCR e crea un audio. Tu devi solo scegliere il file e, se vuoi, la voce.",
     helpOcrTitle: "Solo OCR",
     helpOcrBody: "Usa questa modalità quando vuoi soltanto estrarre il testo. Il documento originale non viene modificato e il risultato resta nella cronologia locale.",
     helpOrganizeTitle: "Solo organizza",
@@ -550,7 +550,7 @@ const COPY = {
     guideCustomStep3: "Enter the exact model name and API key.",
     guideCustomStep4: "Save and try “Organize only”.",
     helpCompleteTitle: "Full studio",
-    helpCompleteBody: "Upload a PDF or image. Local Accessibility Studio extracts the text with OCR and creates audio. You only need to choose the file and, if you want, the voice.",
+    helpCompleteBody: "Upload a PDF or image. Local Reader No GPU extracts the text with OCR and creates audio. You only need to choose the file and, if you want, the voice.",
     helpOcrTitle: "OCR only",
     helpOcrBody: "Use this mode when you only need the extracted text. The original document is not changed and the result stays in local history.",
     helpOrganizeTitle: "Organize only",
@@ -646,7 +646,7 @@ let editingTextJob = null;
 let textValue = null;
 let browsedModels = [];
 let selectedBrowseModel = "";
-const RESUME_STORAGE_KEY = "local-accessibility-studio-session-v1";
+const RESUME_STORAGE_KEY = "local-reader-no-gpu-session-v1";
 const MAX_RESUME_TEXT = 512 * 1024;
 let sessionReady = false;
 let resumeTimer = null;

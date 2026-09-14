@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="Local Accessibility Studio"
+APP_NAME="Local Reader No GPU"
 DEFAULT_ARCHIVE_URL="https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/archive/refs/heads/main.tar.gz"
 ARCHIVE_URL="${LAS_ARCHIVE_URL:-${DEFAULT_ARCHIVE_URL}}"
 INSTALL_ROOT="${LAS_INSTALL_ROOT:-${HOME}/Library/Application Support/${APP_NAME}}"
@@ -9,7 +9,7 @@ SOURCE_DIR="${INSTALL_ROOT}/source"
 DRY_RUN="${LAS_INSTALLER_DRY_RUN:-0}"
 
 die() {
-  echo "Local Accessibility Studio: $*" >&2
+  echo "Local Reader No GPU: $*" >&2
   exit 1
 }
 
@@ -34,14 +34,14 @@ done
 
 mkdir -p "${INSTALL_ROOT}"
 chmod 0700 "${INSTALL_ROOT}"
-temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/local-accessibility-studio.XXXXXX")"
+temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/local-reader-no-gpu.XXXXXX")"
 cleanup() {
   rm -rf "${temporary_root}"
 }
 trap cleanup EXIT
 
 archive="${temporary_root}/source.tar.gz"
-echo "Scarico Local Accessibility Studio…"
+echo "Scarico Local Reader No GPU…"
 curl --fail --silent --show-error --location \
   --proto '=https' --proto-redir '=https' --tlsv1.2 \
   "${ARCHIVE_URL}" --output "${archive}"

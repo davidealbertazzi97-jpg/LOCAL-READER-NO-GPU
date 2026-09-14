@@ -77,7 +77,7 @@ wheels = [
 ]
 
 [[package]]
-name = "local-accessibility-studio"
+name = "local-reader-no-gpu"
 version = "0.3.0"
 source = { virtual = "." }
 dependencies = [

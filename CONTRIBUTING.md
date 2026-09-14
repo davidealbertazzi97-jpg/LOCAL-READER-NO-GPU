@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping improve Local Accessibility Studio.
+Thank you for helping improve Local Reader No GPU.
 
 ## Development setup
 

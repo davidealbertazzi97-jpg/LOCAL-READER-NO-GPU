@@ -1,5 +1,5 @@
 [project]
-name = "local-accessibility-studio"
+name = "local-reader-no-gpu"
 version = "0.3.2"
 requires-python = ">=3.12,<3.13"
 license = "GPL-3.0-only"

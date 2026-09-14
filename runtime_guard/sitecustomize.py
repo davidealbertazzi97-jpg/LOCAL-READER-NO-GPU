@@ -39,7 +39,7 @@ def _address_is_local(address: Any) -> bool:
 def _deny(address: Any) -> None:
     if not _address_is_local(address):
         raise PermissionError(
-            "Local Accessibility Studio blocked a non-loopback network connection."
+            "Local Reader No GPU blocked a non-loopback network connection."
         )
 
 

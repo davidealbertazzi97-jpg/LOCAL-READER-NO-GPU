@@ -1,6 +1,6 @@
 # Third-party notices
 
-Local Accessibility Studio’s original code and documentation are licensed
+Local Reader No GPU’s original code and documentation are licensed
 under GNU GPL version 3 only. Dependencies, fonts, runtimes, model files, and
 remote services retain their own licences and terms.
 

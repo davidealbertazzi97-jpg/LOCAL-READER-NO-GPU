@@ -5,9 +5,9 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LAUNCHER_DIR="${HOME}/.local/bin"
 APPLICATION_DIR="${HOME}/.local/share/applications"
 ICON_DIR="${HOME}/.local/share/icons/hicolor/scalable/apps"
-LAUNCHER="${LAUNCHER_DIR}/local-accessibility-studio"
-DESKTOP_FILE="${APPLICATION_DIR}/local-accessibility-studio.desktop"
-ICON="${ICON_DIR}/local-accessibility-studio.svg"
+LAUNCHER="${LAUNCHER_DIR}/local-reader-no-gpu"
+DESKTOP_FILE="${APPLICATION_DIR}/local-reader-no-gpu.desktop"
+ICON="${ICON_DIR}/local-reader-no-gpu.svg"
 
 mkdir -p "${LAUNCHER_DIR}" "${APPLICATION_DIR}" "${ICON_DIR}"
 escaped_start="$(printf '%q' "${APP_DIR}/start.sh")"
@@ -22,7 +22,7 @@ install -m 0644 "${APP_DIR}/static/icon.svg" "${ICON}"
 {
   echo '[Desktop Entry]'
   echo 'Type=Application'
-  echo 'Name=Local Accessibility Studio'
+  echo 'Name=Local Reader No GPU'
   echo 'Comment=OCR accessibile e sintesi vocale italiana completamente in locale'
   echo "Exec=${LAUNCHER}"
   echo "Icon=${ICON}"

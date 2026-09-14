@@ -1,6 +1,6 @@
-# Local Accessibility Studio
+# Local Reader No GPU
 
-Local Accessibility Studio è un lettore assistivo local-first, pensato anche
+Local Reader No GPU è un lettore assistivo local-first, pensato anche
 per studenti con dislessia e difficoltà grafiche. L’interfaccia usa
 OpenDyslexic, ha testi grandi e contrastati, e mantiene modificabile ogni
 risultato OCR.
@@ -144,8 +144,8 @@ riusare un’installazione già presente, in:
 ```
 
 Per un binario llama.cpp in un’altra posizione usare
-`LOCAL_ACCESSIBILITY_STUDIO_LLAMA_CLI` e, se necessario,
-`LOCAL_ACCESSIBILITY_STUDIO_LFM_MODEL`. La dashboard mostra separatamente se
+`LOCAL_READER_NO_GPU_LLAMA_CLI` e, se necessario,
+`LOCAL_READER_NO_GPU_LFM_MODEL`. La dashboard mostra separatamente se
 OCR, Edge-TTS, Kokoro e il modello locale selezionato sono disponibili.
 
 ## Privacy
@@ -166,9 +166,9 @@ se la prima preparazione non riesce.
 
 | Sistema | Dati applicativi | Risultati persistenti |
 | --- | --- | --- |
-| Linux | `~/.local/share/local-accessibility-studio` | `~/Documents/Local Accessibility Studio - Results` |
-| macOS | `~/Library/Application Support/Local Accessibility Studio` | `~/Documents/Local Accessibility Studio - Results` |
-| Windows | `%LOCALAPPDATA%\\Local Accessibility Studio` | `%USERPROFILE%\\Documents\\Local Accessibility Studio - Results` |
+| Linux | `~/.local/share/local-reader-no-gpu` | `~/Documents/Local Reader No GPU - Results` |
+| macOS | `~/Library/Application Support/Local Reader No GPU` | `~/Documents/Local Reader No GPU - Results` |
+| Windows | `%LOCALAPPDATA%\\Local Reader No GPU` | `%USERPROFILE%\\Documents\\Local Reader No GPU - Results` |
 
 La cancellazione dalla cronologia rimuove anche i risultati locali. L’originale
 non viene modificato.

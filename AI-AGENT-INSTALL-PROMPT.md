@@ -9,7 +9,7 @@ to the agent. Installation and verification do not require one.
 ## English prompt
 
 ```text
-Install and start Local Accessibility Studio from this official repository:
+Install and start Local Reader No GPU from this official repository:
 
 https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU
 
@@ -54,7 +54,7 @@ Work only on this computer and follow these rules:
 ## Prompt italiano
 
 ```text
-Installa e avvia Local Accessibility Studio da questo repository ufficiale:
+Installa e avvia Local Reader No GPU da questo repository ufficiale:
 
 https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU
 

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Local Accessibility Studio are documented here.
+All notable changes to Local Reader No GPU are documented here.
 
 ## 0.3.2 - 2026-09-10
 

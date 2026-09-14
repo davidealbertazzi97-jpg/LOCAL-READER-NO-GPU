@@ -2,7 +2,7 @@
 
 ## English
 
-The original Local Accessibility Studio code, tests, scripts, interface, and
+The original Local Reader No GPU code, tests, scripts, interface, and
 documentation are distributed under **GNU GPL version 3 only**
 (`GPL-3.0-only`). The authoritative terms are in [LICENSE](LICENSE).
 
@@ -32,7 +32,7 @@ advice.
 ## Italiano
 
 Il codice, i test, gli script, l’interfaccia e la documentazione originali di
-Local Accessibility Studio sono distribuiti sotto **GNU General Public
+Local Reader No GPU sono distribuiti sotto **GNU General Public
 License versione 3 soltanto** (`GPL-3.0-only`). I termini autorevoli sono in
 [LICENSE](LICENSE).
 

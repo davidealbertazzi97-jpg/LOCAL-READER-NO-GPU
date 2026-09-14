@@ -1,6 +1,6 @@
 [product]
-name = "Local Accessibility Studio"
-slug = "local-accessibility-studio"
+name = "Local Reader No GPU"
+slug = "local-reader-no-gpu"
 version = "0.3.2"
 description_en = "Accessible OCR, direct long-form reading, offline Kokoro, and optional provider voices."
 description_it = "OCR accessibile, lettura diretta lunga, Kokoro offline e provider vocali opzionali."

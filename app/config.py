@@ -71,7 +71,7 @@ class Paths:
         scripts_dir = "Scripts" if os.name == "nt" else "bin"
         executable_suffix = ".exe" if os.name == "nt" else ""
         llama_candidates = []
-        configured_cli = os.environ.get("LOCAL_ACCESSIBILITY_STUDIO_LLAMA_CLI")
+        configured_cli = os.environ.get("LOCAL_READER_NO_GPU_LLAMA_CLI")
         if configured_cli:
             llama_candidates.append(Path(configured_cli).expanduser())
         llama_candidates.extend(
@@ -115,7 +115,7 @@ class Paths:
                 / f"llama-cli{executable_suffix}",
             ]
         )
-        configured_model = os.environ.get("LOCAL_ACCESSIBILITY_STUDIO_LFM_MODEL")
+        configured_model = os.environ.get("LOCAL_READER_NO_GPU_LFM_MODEL")
         model_candidates = []
         if configured_model:
             model_candidates.append(Path(configured_model).expanduser())
@@ -125,9 +125,7 @@ class Paths:
                 APP_ROOT / "models" / "lfm" / "LFM2.5-230M-Q8_0.gguf",
             )
         )
-        configured_gemma_model = os.environ.get(
-            "LOCAL_ACCESSIBILITY_STUDIO_GEMMA_MODEL"
-        )
+        configured_gemma_model = os.environ.get("LOCAL_READER_NO_GPU_GEMMA_MODEL")
         gemma_candidates = []
         if configured_gemma_model:
             gemma_candidates.append(Path(configured_gemma_model).expanduser())
@@ -151,9 +149,7 @@ class Paths:
             )
         )
         kokoro_model_candidates = []
-        configured_kokoro_model = os.environ.get(
-            "LOCAL_ACCESSIBILITY_STUDIO_KOKORO_MODEL"
-        )
+        configured_kokoro_model = os.environ.get("LOCAL_READER_NO_GPU_KOKORO_MODEL")
         if configured_kokoro_model:
             kokoro_model_candidates.append(Path(configured_kokoro_model).expanduser())
         kokoro_model_candidates.extend(
@@ -163,9 +159,7 @@ class Paths:
             )
         )
         kokoro_voice_candidates = []
-        configured_kokoro_voices = os.environ.get(
-            "LOCAL_ACCESSIBILITY_STUDIO_KOKORO_VOICES"
-        )
+        configured_kokoro_voices = os.environ.get("LOCAL_READER_NO_GPU_KOKORO_VOICES")
         if configured_kokoro_voices:
             kokoro_voice_candidates.append(Path(configured_kokoro_voices).expanduser())
         kokoro_voice_candidates.extend(

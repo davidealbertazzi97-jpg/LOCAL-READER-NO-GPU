@@ -109,16 +109,16 @@ def parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = parser().parse_args()
     port = free_port()
-    with tempfile.TemporaryDirectory(prefix="local-accessibility-smoke-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="local-reader-no-gpu-smoke-") as temporary:
         root = Path(temporary)
         environment = os.environ.copy()
         environment.update(
             {
                 "LOCAL_AI_APP_TOKEN": TOKEN,
                 "LOCAL_AI_APP_PORT": str(port),
-                "LOCAL_ACCESSIBILITY_STUDIO_DATA": str(root / "data"),
-                "LOCAL_ACCESSIBILITY_STUDIO_STATE": str(root / "state"),
-                "LOCAL_ACCESSIBILITY_STUDIO_OUTPUTS": str(root / "outputs"),
+                "LOCAL_READER_NO_GPU_DATA": str(root / "data"),
+                "LOCAL_READER_NO_GPU_STATE": str(root / "state"),
+                "LOCAL_READER_NO_GPU_OUTPUTS": str(root / "outputs"),
                 "PYTHONPATH": str(APP_DIR / "runtime_guard"),
                 "HF_HUB_OFFLINE": "1",
                 "TRANSFORMERS_OFFLINE": "1",
@@ -169,7 +169,7 @@ def main() -> int:
             assert status == 401
             status, product = request_json(f"{base}/api/product", token=True)
             assert status == 200
-            assert product["slug"] == "local-accessibility-studio"
+            assert product["slug"] == "local-reader-no-gpu"
             header_request = urllib.request.Request(
                 f"{base}/api/product",
                 headers={"X-Local-AI-Token": TOKEN},

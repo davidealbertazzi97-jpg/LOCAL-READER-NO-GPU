@@ -43,7 +43,7 @@ def main() -> int:
     temporary = destination.with_suffix(destination.suffix + ".download")
     temporary.unlink(missing_ok=True)
     request = urllib.request.Request(
-        URL, headers={"User-Agent": "Local-Accessibility-Studio/0.3"}
+        URL, headers={"User-Agent": "Local-Reader-No-GPU/0.3"}
     )
     try:
         # The host, URL, expected size and SHA-256 are fixed above.

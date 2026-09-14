@@ -2,7 +2,7 @@
 
 **English** · [Italiano](#italiano)
 
-Local Accessibility Studio is personal, experimental open-source software. It
+Local Reader No GPU is personal, experimental open-source software. It
 is not a managed service and does not provide legal, regulatory,
 accessibility-conformance, medical, financial, cybersecurity, or professional
 advice.
@@ -78,7 +78,7 @@ limitation of liability in the GNU GPL. It is not legal advice.
 
 [English](#disclaimer-and-limitations) · **Italiano**
 
-Local Accessibility Studio è un software open source personale e sperimentale.
+Local Reader No GPU è un software open source personale e sperimentale.
 Non è un servizio gestito e non fornisce consulenza legale, normativa, di
 conformità dell'accessibilità, medica, finanziaria, cybersecurity o
 professionale.

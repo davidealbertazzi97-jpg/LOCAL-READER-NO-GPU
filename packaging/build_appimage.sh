@@ -29,7 +29,7 @@ python3 "${APP_DIR}/packaging/create_payload.py" \
 "${UV}" run --no-project --python 3.12 \
   --with "pyinstaller==6.19.0" pyinstaller \
   --clean --noconfirm --onefile \
-  --name local-accessibility-studio \
+  --name local-reader-no-gpu \
   --distpath "${BUILD_DIR}/pyinstaller-dist" \
   --workpath "${BUILD_DIR}/pyinstaller-work" \
   --specpath "${BUILD_DIR}" \
@@ -41,17 +41,17 @@ rm -rf "${APP_ROOT}"
 mkdir -p "${APP_ROOT}/usr/bin" \
   "${APP_ROOT}/usr/share/applications" \
   "${APP_ROOT}/usr/share/icons/hicolor/scalable/apps"
-install -m 0755 "${BUILD_DIR}/pyinstaller-dist/local-accessibility-studio" \
-  "${APP_ROOT}/usr/bin/local-accessibility-studio"
+install -m 0755 "${BUILD_DIR}/pyinstaller-dist/local-reader-no-gpu" \
+  "${APP_ROOT}/usr/bin/local-reader-no-gpu"
 install -m 0755 "${APP_DIR}/packaging/AppRun" "${APP_ROOT}/AppRun"
-install -m 0644 "${APP_DIR}/packaging/local-accessibility-studio.desktop" \
-  "${APP_ROOT}/local-accessibility-studio.desktop"
-install -m 0644 "${APP_DIR}/packaging/local-accessibility-studio.desktop" \
-  "${APP_ROOT}/usr/share/applications/local-accessibility-studio.desktop"
+install -m 0644 "${APP_DIR}/packaging/local-reader-no-gpu.desktop" \
+  "${APP_ROOT}/local-reader-no-gpu.desktop"
+install -m 0644 "${APP_DIR}/packaging/local-reader-no-gpu.desktop" \
+  "${APP_ROOT}/usr/share/applications/local-reader-no-gpu.desktop"
 install -m 0644 "${APP_DIR}/static/icon.svg" \
-  "${APP_ROOT}/local-accessibility-studio.svg"
+  "${APP_ROOT}/local-reader-no-gpu.svg"
 install -m 0644 "${APP_DIR}/static/icon.svg" \
-  "${APP_ROOT}/usr/share/icons/hicolor/scalable/apps/local-accessibility-studio.svg"
+  "${APP_ROOT}/usr/share/icons/hicolor/scalable/apps/local-reader-no-gpu.svg"
 
 APPIMAGETOOL="${APPIMAGETOOL:-}"
 if [[ -z "${APPIMAGETOOL}" ]]; then
@@ -62,7 +62,7 @@ if [[ -z "${APPIMAGETOOL}" || ! -x "${APPIMAGETOOL}" ]]; then
   exit 1
 fi
 
-OUTPUT="${DIST_DIR}/Local-Accessibility-Studio-${LOCAL_ACCESSIBILITY_STUDIO_VERSION:-0.3.2}-linux-x86_64.AppImage"
+OUTPUT="${DIST_DIR}/Local-Reader-No-GPU-${LOCAL_READER_NO_GPU_VERSION:-0.3.2}-linux-x86_64.AppImage"
 APPIMAGE_EXTRACT_AND_RUN=1 "${APPIMAGETOOL}" "${APP_ROOT}" "${OUTPUT}"
 chmod 0755 "${OUTPUT}"
 echo "Built ${OUTPUT}"

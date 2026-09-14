@@ -26,7 +26,7 @@ def request_json(request: urllib.request.Request) -> dict[str, object]:
 
 
 def multipart(fields: dict[str, str], file_path: Path) -> tuple[bytes, str]:
-    boundary = "----LocalAccessibilityStudioVoiceClone"
+    boundary = "----LocalReaderNoGPUVoiceClone"
     parts: list[bytes] = []
     for name, value in fields.items():
         parts.append(
