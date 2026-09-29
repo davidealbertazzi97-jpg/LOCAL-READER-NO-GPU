@@ -33,10 +33,11 @@ run_tool "bandit==1.9.4" bandit -q -c pyproject.toml \
 while IFS= read -r -d '' script; do
   bash -n "$script"
 done < <(find scripts packaging -type f -name '*.sh' -print0)
-bash -n install.sh start.sh packaging/AppRun
+bash -n install.sh install-release.sh install-macos.sh start.sh packaging/AppRun
 
 if command -v node >/dev/null 2>&1; then
   node --check static/app.js
+  node tests/voice_clones_ui.cjs
 fi
 
 .venv/bin/python -m compileall -q app packaging runtime_guard scripts tests workers

@@ -20,8 +20,12 @@ fi
 
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}" "${DIST_DIR}"
+"${UV}" run --no-project --python 3.12 --with "pyinstaller==6.19.0" \
+  python "${APP_DIR}/packaging/collect_licenses.py" --output "${BUILD_DIR}/licenses"
 python3 "${APP_DIR}/packaging/create_payload.py" \
-  --output "${BUILD_DIR}/payload.zip"
+  --licenses "${BUILD_DIR}/licenses" --output "${BUILD_DIR}/payload.zip"
+VERSION="$(python3 -c 'import pathlib,tomllib; print(tomllib.loads(pathlib.Path("product.toml").read_text())["product"]["version"])')"
+
 
 "${UV}" run --no-project --python 3.12 \
   --with "pyinstaller==6.19.0" pyinstaller \
@@ -35,10 +39,14 @@ python3 "${APP_DIR}/packaging/create_payload.py" \
   "${APP_DIR}/packaging/launcher.py"
 
 BUNDLE="${BUILD_DIR}/pyinstaller-dist/Local Reader No GPU.app"
-OUTPUT="${DIST_DIR}/Local-Reader-No-GPU-0.3.2-macos-arm64.app"
+OUTPUT="${DIST_DIR}/Local-Reader-No-GPU-${VERSION}-macos-arm64.app"
 rm -rf "${OUTPUT}"
 ditto "${BUNDLE}" "${OUTPUT}"
 ditto -c -k --sequesterRsrc --keepParent "${OUTPUT}" "${OUTPUT}.zip"
-hdiutil create -volname "Local Reader No GPU" -srcfolder "${OUTPUT}" \
-  -ov -format UDZO "${DIST_DIR}/Local-Reader-No-GPU-0.3.2-macos-arm64.dmg"
+"${OUTPUT}/Contents/MacOS/Local Reader No GPU" --verify-payload
+mkdir -p "${BUILD_DIR}/dmg"
+ditto "${OUTPUT}" "${BUILD_DIR}/dmg/Local Reader No GPU.app"
+ln -s /Applications "${BUILD_DIR}/dmg/Applications"
+hdiutil create -volname "Local Reader No GPU" -srcfolder "${BUILD_DIR}/dmg" \
+  -ov -format UDZO "${DIST_DIR}/Local-Reader-No-GPU-${VERSION}-macos-arm64.dmg"
 echo "Built ${OUTPUT}"

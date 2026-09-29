@@ -1,0 +1,32 @@
+[
+  {
+    "name": "appimage-runtime-20251108.tar.gz",
+    "url": "https://github.com/AppImage/type2-runtime/archive/refs/tags/20251108.tar.gz",
+    "size": 31045,
+    "sha256": "4c4f6df4647c9f01f871d7edd3716d8aeeffda9d22ffbebe3fccd95a6ab52c95"
+  },
+  {
+    "name": "fuse-3.15.0.tar.xz",
+    "url": "https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15.0.tar.xz",
+    "size": 4589124,
+    "sha256": "70589cfd5e1cff7ccd6ac91c86c01be340b227285c5e200baa284e401eea2ca0"
+  },
+  {
+    "name": "squashfuse-0.5.2.tar.gz",
+    "url": "https://github.com/vasi/squashfuse/archive/0.5.2.tar.gz",
+    "size": 75404,
+    "sha256": "db0238c5981dabbd80ee09ae15387f390091668ca060a7bc38047912491443d3"
+  },
+  {
+    "name": "Python-3.12.13.tar.xz",
+    "url": "https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tar.xz",
+    "size": 20801708,
+    "sha256": "c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+  },
+  {
+    "name": "pyinstaller-6.19.0.tar.gz",
+    "url": "https://github.com/pyinstaller/pyinstaller/archive/refs/tags/v6.19.0.tar.gz",
+    "size": 3579365,
+    "sha256": "caf7e26b0043d221df5c8c968b58be5046765c84c6ad16e7e35d9d26a63aa1bb"
+  }
+]

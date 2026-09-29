@@ -46,6 +46,9 @@ def resolved_options(
     """Resolve again at execution, so queued jobs respect the current audio mode."""
     settings = load_settings()["tts"]
     selected = settings["default_provider"] if provider is None else provider
+    # Resume old queued jobs locally after retiring Pocket, without sending text online.
+    if selected == "pocket-tts":
+        selected = "kokoro"
     if not isinstance(selected, str) or selected not in TTS_PROVIDER_INFO:
         raise ValueError("unknown speech provider")
     if not isinstance(language, str) or language not in VOICE_LANGUAGES:
@@ -53,10 +56,7 @@ def resolved_options(
     selected_speed = normalized_speed(speed)
     if not isinstance(voice, str):
         raise ValueError("invalid speech voice")
-    if settings.get("offline_mode", False) and selected not in {
-        "pocket-tts",
-        "fish-local",
-    }:
+    if settings.get("offline_mode", False) and selected != "fish-local":
         selected = "kokoro"
     if selected == "edge-tts":
         if not voice or voice in KOKORO_VOICES[language]:
@@ -67,6 +67,7 @@ def resolved_options(
         if (
             not voice
             or voice in VOICE_LANGUAGES[language]
+            or voice.startswith("pocket-tts-")
             or provider not in {None, "kokoro", "edge-tts"}
         ):
             default = settings["kokoro"].get(
@@ -79,14 +80,6 @@ def resolved_options(
             )
         if voice not in KOKORO_VOICES[language]:
             raise ValueError("voice does not match the selected language")
-    elif selected == "pocket-tts":
-        if not voice or not any(
-            isinstance(item, dict)
-            and item.get("provider") == "pocket-tts"
-            and item.get("voice_id") == voice
-            for item in load_settings().get("clones", [])
-        ):
-            raise ValueError("choose a saved Pocket TTS cloned voice")
     elif len(voice) > 240:
         raise ValueError("invalid speech voice")
     return selected, voice, selected_speed, language

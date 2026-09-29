@@ -13,6 +13,7 @@ from typing import Annotated, Any
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware import Middleware
 
 from .body_limit import RequestBodyLimitMiddleware
@@ -29,7 +30,9 @@ from .provider_config import (
     add_clone,
     ai_config_for,
     load_settings,
+    private_voice_file,
     public_settings,
+    remove_clone,
     save_settings,
     speech_runtime_config,
     valid_url,
@@ -201,7 +204,7 @@ async def local_security(request: Request, call_next):
         "connect-src 'self'; "
         "font-src 'self'; "
         "img-src 'self' data:; "
-        "media-src 'self'; "
+        "media-src 'self' blob:; "
         "worker-src 'none'; "
         "manifest-src 'none'; "
         "object-src 'none'; "
@@ -211,7 +214,7 @@ async def local_security(request: Request, call_next):
     )
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = (
-        "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+        "camera=(), geolocation=(), microphone=(self), payment=(), usb=()"
     )
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
     response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
@@ -395,17 +398,6 @@ def status() -> dict[str, Any]:
         tts_ready and PATHS.kokoro_model.is_file() and PATHS.kokoro_voices.is_file()
     )
     offline_mode = bool(settings["tts"].get("offline_mode", False))
-    pocket_package = (
-        PATHS.tts_python.parent.parent
-        / ("Lib/site-packages" if os.name == "nt" else "lib/python3.12/site-packages")
-        / "pocket_tts"
-    )
-    pocket_clone_ready = any(
-        isinstance(item, dict)
-        and item.get("provider") == "pocket-tts"
-        and Path(str(item.get("reference_audio", ""))).is_file()
-        for item in settings.get("clones", [])
-    )
     tts_providers = {
         "edge-tts": {"ready": tts_ready, "network": True},
         "kokoro": {"ready": kokoro_ready, "network": False},
@@ -430,15 +422,10 @@ def status() -> dict[str, Any]:
             "ready": settings["tts"]["elevenlabs"]["configured"],
             "network": True,
         },
-        "pocket-tts": {
-            "ready": pocket_package.is_dir() and pocket_clone_ready,
-            "network": False,
-            "note": "richiede un campione audio e consenso esplicito",
-        },
     }
-    effective_speech_provider = (
-        "kokoro" if offline_mode else settings["tts"]["default_provider"]
-    )
+    effective_speech_provider = settings["tts"]["default_provider"]
+    if offline_mode and TTS_PROVIDER_INFO[effective_speech_provider]["network"]:
+        effective_speech_provider = settings["tts"].get("offline_provider", "kokoro")
     effective_speech = tts_providers.get(
         effective_speech_provider, tts_providers["edge-tts"]
     )
@@ -449,7 +436,6 @@ def status() -> dict[str, Any]:
         "fish": "Fish Audio",
         "fish-local": "Fish Audio locale (Apple Silicon)",
         "elevenlabs": "ElevenLabs",
-        "pocket-tts": "Pocket TTS",
     }
     return {
         "ocr": {
@@ -621,14 +607,11 @@ async def create_voice_clone(
     file: Annotated[UploadFile, File()],
     reference_text: Annotated[str, Form()] = "",
 ) -> dict[str, Any]:
-    if load_settings()["tts"].get("offline_mode") and provider not in {
-        "fish-local",
-        "pocket-tts",
-    }:
+    if load_settings()["tts"].get("offline_mode") and provider != "fish-local":
         raise HTTPException(
             409, "Modalità offline attiva: la clonazione cloud è disabilitata."
         )
-    if provider in {"fish-local", "pocket-tts"}:
+    if provider == "fish-local":
         if provider == "fish-local" and (
             platform.system() != "Darwin" or platform.machine() != "arm64"
         ):
@@ -651,14 +634,14 @@ async def create_voice_clone(
     if not safe_title:
         raise HTTPException(400, "Voice name is empty")
     suffix = Path(file.filename or "sample.wav").suffix.casefold()
-    if suffix not in {".wav", ".mp3", ".m4a", ".ogg", ".flac", ".webm"}:
+    if suffix not in {".wav", ".mp3", ".m4a", ".mp4", ".ogg", ".flac", ".webm"}:
         raise HTTPException(
             415, "Choose an audio sample: WAV, MP3, M4A, OGG, FLAC or WEBM"
         )
     settings = load_settings()
     section_name = "mistral" if provider == "voxtral" else "elevenlabs"
     config = dict(settings["tts"].get(section_name, {}))
-    if provider not in {"fish-local", "pocket-tts"} and not config.get("api_key"):
+    if provider != "fish-local" and not config.get("api_key"):
         raise HTTPException(503, "Configure the provider API key in Settings first")
     clone_dir = PATHS.data / "voice-clones"
     clone_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -673,7 +656,9 @@ async def create_voice_clone(
                 if received > 25 * 1024 * 1024:
                     raise HTTPException(413, "The voice sample is too large")
                 handle.write(chunk)
-        if provider in {"fish-local", "pocket-tts"}:
+        if not received:
+            raise HTTPException(400, "Il campione audio è vuoto")
+        if provider == "fish-local":
             sample_path.replace(reference_path)
             clone = add_clone(
                 provider=provider,
@@ -682,7 +667,11 @@ async def create_voice_clone(
                 reference_audio=str(reference_path),
                 reference_text=reference_text.strip(),
             )
-            return {"clone": clone}
+            return {
+                "clone": next(
+                    c for c in public_settings()["clones"] if c["id"] == clone["id"]
+                )
+            }
         fd, config_name = tempfile.mkstemp(
             prefix=".clone-provider-", suffix=".json", dir=PATHS.data
         )
@@ -706,7 +695,8 @@ async def create_voice_clone(
                 "--output",
                 str(result_path),
             ]
-            completed = run_worker(
+            completed = await run_in_threadpool(
+                run_worker,
                 command,
                 cwd=PATHS.app,
                 timeout=30 * 60,
@@ -734,6 +724,25 @@ async def create_voice_clone(
         sample_path.unlink(missing_ok=True)
         result_path.unlink(missing_ok=True)
         await file.close()
+
+
+@app.delete("/api/voice-clones/{clone_id}")
+def archive_voice_clone(clone_id: str) -> dict[str, Any]:
+    if not remove_clone(clone_id):
+        raise HTTPException(404, "Voce non trovata")
+    return {
+        "settings": public_settings(),
+        "message": "Voce rimossa dal menu; campione locale conservato.",
+    }
+
+
+@app.get("/api/voice-clones/{clone_id}/sample")
+def voice_sample(clone_id: str):
+    clone = next((c for c in load_settings()["clones"] if c.get("id") == clone_id), {})
+    path = private_voice_file(str(clone.get("reference_audio", "")))
+    if path is None:
+        raise HTTPException(404, "Campione locale non disponibile")
+    return FileResponse(path, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/jobs")
@@ -1037,23 +1046,6 @@ async def create_speech(job_id: str, request: Request) -> dict[str, Any]:
         not PATHS.kokoro_model.is_file() or not PATHS.kokoro_voices.is_file()
     ):
         raise HTTPException(503, "Kokoro model or voices are not installed")
-    if provider == "pocket-tts":
-        pocket_ready = public_settings()["providers"]["tts"]["pocket-tts"]["ready"]
-        if not pocket_ready:
-            raise HTTPException(503, "Installa il componente Pocket TTS prima dell'uso")
-        voice = voice or ""
-        clone = next(
-            (
-                item
-                for item in load_settings().get("clones", [])
-                if isinstance(item, dict)
-                and item.get("provider") == provider
-                and item.get("voice_id") == voice
-            ),
-            None,
-        )
-        if not clone or not Path(str(clone.get("reference_audio", ""))).is_file():
-            raise HTTPException(400, "Scegli una voce Pocket TTS clonata")
     if provider in {"voxtral", "fish", "elevenlabs"}:
         try:
             speech_runtime_config(provider)

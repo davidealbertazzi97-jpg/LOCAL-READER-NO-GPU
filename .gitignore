@@ -34,6 +34,11 @@ htmlcov/
 /dist/
 *.egg-info/
 
+# Verbatim runtime-source notices are distributed inside Third-party-runtime-sources.zip.
+# Keep direct upstream maintainer emails out of the repository and app payload.
+/licenses/squashfuse-LICENSE.txt
+/licenses/zlib-LICENSE.txt
+
 # Downloaded models and generated media
 *.gguf
 *.onnx

@@ -16,10 +16,11 @@ that demonstrates the problem.
 
 ## Supported version
 
-Security fixes target the latest source on `main`. Version 0.3.0 is the current
-prepared source release. The Linux AppImage can be built and verified locally;
-Windows and macOS packages must be built and tested on their native target
-systems before distribution.
+Security fixes target the latest source on `main` and the latest release.
+The 0.3.3 release removes Pocket TTS. Native release automation builds and
+runs first-install, OCR and speech smoke tests on Linux x86-64, Windows x86-64
+and macOS Apple Silicon before publishing. Packages are not commercially
+signed; the macOS app is not notarized. Tests are not a security certification.
 
 ## Scope and deployment boundary
 
@@ -34,7 +35,8 @@ The launcher:
 - checks the exact browser origin on state-changing API requests;
 - rejects oversized uploads before multipart parsing;
 - injects a Python outbound-network guard into web, OCR, and local reflow
-  processes; the Edge-TTS child is the documented remote-network exception;
+  processes; explicitly selected cloud speech/AI children are documented
+  remote-network exceptions, disabled by offline mode;
 - adds a native `LD_PRELOAD` network guard on Linux when compilation is
   available.
 
@@ -49,6 +51,16 @@ terminated during an orderly application shutdown. Page previews, reviewed
 text, HTML, reports, and MP3 files are intentional durable results and can contain confidential
 information. They are stored in the user's results directory with private
 permissions where the operating system supports them.
+
+API keys and voice samples are local private files, not encrypted storage.
+Do not publish user runtime directories, browser state, results, model caches
+or real voice samples. Release payloads exclude these directories. SHA-256
+pins cover uv, Kokoro, LFM, llama.cpp and AppImage tooling/runtime; pip uses
+hash-locked wheels. Paddle model prefetch uses upstream download/cache
+controls rather than a project-maintained model hash manifest. A compromised
+upstream model host or wheel publisher is outside this audit\'s guarantee.
+Release checksum files share the repository trust boundary; they are not
+independent signatures. Install scripts must be reviewed/trusted before use.
 
 ## Known non-security limitations
 

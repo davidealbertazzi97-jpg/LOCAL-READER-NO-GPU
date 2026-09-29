@@ -16,8 +16,12 @@ if (-not $Uv) { throw "uv is required to build the package." }
 
 Remove-Item -LiteralPath $BuildDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $BuildDir, $DistDir | Out-Null
+& $Uv run --no-project --python 3.12 --with "pyinstaller==6.19.0" python (Join-Path $AppDir "packaging\collect_licenses.py") --output (Join-Path $BuildDir "licenses")
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+$Version = (& $Uv run --no-project --python 3.12 python -c 'import pathlib,tomllib; print(tomllib.loads(pathlib.Path("product.toml").read_text())["product"]["version"]').Trim()
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
 & $Uv run --no-project --python 3.12 python (Join-Path $AppDir "packaging\create_payload.py") `
-    --output (Join-Path $BuildDir "payload.zip")
+    --licenses (Join-Path $BuildDir "licenses") --output (Join-Path $BuildDir "payload.zip")
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
 $PyInstallerArgs = @(
@@ -33,6 +37,8 @@ $PyInstallerArgs = @(
 & $Uv @PyInstallerArgs
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
-$Output = Join-Path $DistDir "Local-Reader-No-GPU-0.3.2-windows-x86_64.exe"
+$Output = Join-Path $DistDir "Local-Reader-No-GPU-$Version-windows-x86_64.exe"
 Copy-Item (Join-Path $BuildDir "pyinstaller-dist\local-reader-no-gpu.exe") $Output -Force
+& $Output --verify-payload
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
 Write-Host "Built $Output"

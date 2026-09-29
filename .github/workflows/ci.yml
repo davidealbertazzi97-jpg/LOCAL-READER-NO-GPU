@@ -44,6 +44,8 @@ jobs:
             xargs -0 -n1 bash -n
           bash -n install.sh start.sh packaging/AppRun
           node --check static/app.js
+          node tests/voice_clones_ui.cjs
+          bash -n install-release.sh install-macos.sh
           test -z "$(git ls-files models .venv .venv-ocr .venv-tts bin data outputs)"
           private_marker='-----BEGIN '"(RSA |EC |OPENSSH )?PRIVATE KEY-----"
           github_fine_grained='github'_'pat_[[:alnum:]_]{20,}'
@@ -90,7 +92,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          foreach ($file in @("install.ps1", "start.ps1", "packaging/build_windows.ps1")) {
+          foreach ($file in @("install.ps1", "install-release.ps1", "start.ps1", "packaging/build_windows.ps1")) {
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(
               "$PWD\$file", [ref]$null, [ref]$errors
@@ -116,3 +118,4 @@ jobs:
         run: |
           python scripts/bootstrap.py --skip-desktop
           .venv/bin/python tests/smoke_local.py --full
+          .venv/bin/python tests/smoke_local.py --offline

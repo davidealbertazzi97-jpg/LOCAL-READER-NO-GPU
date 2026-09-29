@@ -19,6 +19,8 @@ Implemented in the current MVP:
   source geometry suggests a multi-column layout.
 - keyboard-friendly view navigation, model-list browsing, translated live
   regions, and static frontend accessibility regression checks;
+- startup, periodic and manual GitHub release checks, with OS-specific download
+  links and immediate MP3 download actions for generated speech;
 
 Next validation work:
 

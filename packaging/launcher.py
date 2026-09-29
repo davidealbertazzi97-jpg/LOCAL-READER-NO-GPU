@@ -5,17 +5,21 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import platform
+import re
+import shlex
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import tomllib
 import urllib.parse
 import urllib.request
 import zipfile
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 APP_NAME = "Local Reader No GPU"
 APP_SLUG = "local-reader-no-gpu"
@@ -49,6 +53,184 @@ def platform_root() -> Path:
     return base / APP_SLUG
 
 
+def refresh_windows_start_menu_shortcut(executable: Path) -> None:
+    """Create a Start menu link using the Windows Shell COM interfaces."""
+    if os.name != "nt":
+        return
+
+    import ctypes
+
+    class GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", ctypes.c_ulong),
+            ("Data2", ctypes.c_ushort),
+            ("Data3", ctypes.c_ushort),
+            ("Data4", ctypes.c_ubyte * 8),
+        ]
+
+    hresult = ctypes.c_long
+    ole32 = ctypes.OleDLL("ole32")
+    ole32.CLSIDFromString.argtypes = [ctypes.c_wchar_p, ctypes.POINTER(GUID)]
+    ole32.CLSIDFromString.restype = hresult
+    ole32.CoInitialize.argtypes = [ctypes.c_void_p]
+    ole32.CoInitialize.restype = hresult
+    ole32.CoCreateInstance.argtypes = [
+        ctypes.POINTER(GUID),
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.POINTER(GUID),
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    ole32.CoCreateInstance.restype = hresult
+    ole32.CoUninitialize.argtypes = []
+    ole32.CoUninitialize.restype = None
+
+    def parse_guid(value: str) -> GUID:
+        result = GUID()
+        status = ole32.CLSIDFromString(value, ctypes.byref(result))
+        if status < 0:
+            raise OSError(
+                f"Could not parse Windows Shell identifier: 0x{status & 0xFFFFFFFF:08x}"
+            )
+        return result
+
+    def method(pointer, index: int, *arguments):
+        vtable = ctypes.cast(
+            pointer, ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))
+        ).contents
+        return ctypes.WINFUNCTYPE(hresult, ctypes.c_void_p, *arguments)(vtable[index])
+
+    initialized = ole32.CoInitialize(None)
+    if initialized < 0 and (initialized & 0xFFFFFFFF) != 0x80010106:
+        raise OSError(
+            f"Could not initialize Windows Shell COM: 0x{initialized & 0xFFFFFFFF:08x}"
+        )
+
+    shell_link = ctypes.c_void_p()
+    persist_file = ctypes.c_void_p()
+    try:
+        status = ole32.CoCreateInstance(
+            ctypes.byref(parse_guid("{00021401-0000-0000-C000-000000000046}")),
+            None,
+            1,  # CLSCTX_INPROC_SERVER
+            ctypes.byref(parse_guid("{000214F9-0000-0000-C000-000000000046}")),
+            ctypes.byref(shell_link),
+        )
+        if status < 0:
+            raise OSError(
+                f"Could not create Windows Shell link: 0x{status & 0xFFFFFFFF:08x}"
+            )
+
+        status = method(shell_link, 20, ctypes.c_wchar_p)(shell_link, str(executable))
+        if status < 0:
+            raise OSError(
+                f"Could not set Windows Shell link target: 0x{status & 0xFFFFFFFF:08x}"
+            )
+        status = method(shell_link, 7, ctypes.c_wchar_p)(shell_link, APP_NAME)
+        if status < 0:
+            raise OSError(
+                f"Could not set Windows Shell link description: 0x{status & 0xFFFFFFFF:08x}"
+            )
+
+        status = method(
+            shell_link,
+            0,
+            ctypes.POINTER(GUID),
+            ctypes.POINTER(ctypes.c_void_p),
+        )(
+            shell_link,
+            ctypes.byref(parse_guid("{0000010b-0000-0000-C000-000000000046}")),
+            ctypes.byref(persist_file),
+        )
+        if status < 0:
+            raise OSError(
+                f"Could not save Windows Shell link: 0x{status & 0xFFFFFFFF:08x}"
+            )
+
+        app_data = Path(
+            os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming")
+        )
+        menu = app_data / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+        menu.mkdir(parents=True, exist_ok=True)
+        shortcut = menu / f"{APP_NAME}.lnk"
+        temporary = shortcut.with_suffix(".lnk.tmp")
+        try:
+            status = method(
+                persist_file, 6, ctypes.c_wchar_p, ctypes.c_int
+            )(persist_file, str(temporary), True)
+            if status < 0:
+                raise OSError(
+                    f"Could not write Windows Shell link: 0x{status & 0xFFFFFFFF:08x}"
+                )
+            temporary.replace(shortcut)
+        finally:
+            temporary.unlink(missing_ok=True)
+    finally:
+        if persist_file:
+            method(persist_file, 2)(persist_file)
+        if shell_link:
+            method(shell_link, 2)(shell_link)
+        if initialized >= 0:
+            ole32.CoUninitialize()
+
+
+def register_windows_package(root: Path, version: str) -> None:
+    """Install this EXE and refresh the package targeted by the Start shortcut."""
+    if os.name != "nt" or not getattr(sys, "frozen", False):
+        return
+    version_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?", version)
+    if not version_match:
+        return
+
+    source = Path(sys.executable).resolve()
+    packages_dir = root / "packages"
+    package_dir = packages_dir / version
+    installed_executable = package_dir / (
+        f"Local-Reader-No-GPU-{version}-windows-x86_64.exe"
+    )
+    try:
+        package_dir.mkdir(parents=True, exist_ok=True)
+        if source != installed_executable.resolve():
+            temporary = installed_executable.with_suffix(".exe.tmp")
+            try:
+                shutil.copy2(source, temporary)
+                temporary.replace(installed_executable)
+            finally:
+                temporary.unlink(missing_ok=True)
+    except OSError:
+        return
+
+    try:
+        old_packages = []
+        for candidate in packages_dir.glob("*/*-windows-x86_64.exe"):
+            if candidate.resolve() in {source, installed_executable.resolve()}:
+                continue
+            candidate_version = re.fullmatch(
+                r"(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?",
+                candidate.parent.name,
+            )
+            if candidate_version:
+                old_packages.append(
+                    (tuple(map(int, candidate_version.groups())), candidate)
+                )
+        if old_packages:
+            _, previous_executable = max(old_packages, key=lambda item: item[0])
+            temporary = previous_executable.with_suffix(".exe.tmp")
+            try:
+                shutil.copy2(installed_executable, temporary)
+                temporary.replace(previous_executable)
+            finally:
+                temporary.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+    try:
+        refresh_windows_start_menu_shortcut(installed_executable)
+    except OSError:
+        # The app remains usable if Windows cannot create its Start menu link.
+        pass
+
+
 def payload_path() -> Path:
     if getattr(sys, "frozen", False):
         bundle_root = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
@@ -73,10 +255,14 @@ def safe_zip_extract(archive: zipfile.ZipFile, destination: Path) -> None:
     for member in archive.infolist():
         name = member.filename.replace("\\", "/")
         relative = Path(name)
-        if relative.is_absolute() or ".." in relative.parts:
+        if (
+            relative.is_absolute()
+            or PureWindowsPath(name).drive
+            or ".." in relative.parts
+        ):
             raise RuntimeError("application payload contains an unsafe path")
         mode = member.external_attr >> 16
-        if mode and (mode & 0o170000) == 0o120000:
+        if mode and (mode & 0o170000) not in (0, 0o040000, 0o100000):
             raise RuntimeError("application payload contains a link")
     archive.extractall(destination)  # nosec B202
 
@@ -130,8 +316,7 @@ def download_uv(root: Path) -> Path:
     if sha256(archive_path) != expected_hash:
         archive_path.unlink(missing_ok=True)
         raise RuntimeError("uv archive checksum verification failed")
-    extract = tools / "uv-extracted"
-    extract.mkdir()
+    extract = Path(tempfile.mkdtemp(prefix="uv-extracted-", dir=tools))
     try:
         if asset_name.endswith(".zip"):
             with zipfile.ZipFile(archive_path) as archive:
@@ -139,12 +324,16 @@ def download_uv(root: Path) -> Path:
         else:
             with tarfile.open(archive_path) as archive:
                 for member in archive.getmembers():
-                    relative = Path(member.name)
-                    if relative.is_absolute() or ".." in relative.parts:
+                    relative = Path(member.name.replace("\\", "/"))
+                    if (
+                        relative.is_absolute()
+                        or PureWindowsPath(member.name).drive
+                        or ".." in relative.parts
+                    ):
                         raise RuntimeError("uv archive contains an unsafe path")
-                    if member.issym() or member.islnk():
-                        raise RuntimeError("uv archive contains a link")
-            archive.extractall(extract)  # nosec B202
+                    if not (member.isfile() or member.isdir()):
+                        raise RuntimeError("uv archive contains a special file")
+                archive.extractall(extract, filter="data")  # nosec B202
         candidate = next(extract.rglob("uv.exe" if os.name == "nt" else "uv"), None)
         if candidate is None or not candidate.is_file():
             raise RuntimeError("uv archive did not contain its executable")
@@ -162,32 +351,89 @@ def parser() -> argparse.ArgumentParser:
         description="Install local models and start Local Reader No GPU."
     )
     root.add_argument("--no-browser", action="store_true")
+    root.add_argument("--console", action="store_true", help=argparse.SUPPRESS)
+    root.add_argument("--install-only", action="store_true", help=argparse.SUPPRESS)
     root.add_argument("--version", action="store_true")
     root.add_argument("--verify-payload", action="store_true", help=argparse.SUPPRESS)
     return root
 
 
+def terminal_command(arguments: list[str]) -> list[str] | None:
+    """Show first-run progress on double-click without interpolating shell input."""
+    if not getattr(sys, "frozen", False):
+        return None
+    command = [os.environ.get("APPIMAGE") or sys.executable, "--console", *arguments]
+    if sys.platform == "darwin":
+        script = 'tell application "Terminal" to do script ' + json.dumps(
+            shlex.join(["env", "PYINSTALLER_RESET_ENVIRONMENT=1", *command]),
+            ensure_ascii=False,
+        )
+        return ["/usr/bin/osascript", "-e", script]
+    if sys.platform.startswith("linux") and os.environ.get("DISPLAY"):
+        for name in ("x-terminal-emulator", "gnome-terminal", "konsole", "xterm"):
+            terminal = shutil.which(name)
+            if terminal:
+                separator = "--" if name == "gnome-terminal" else "-e"
+                return [terminal, separator, *command]
+    return None
+
+
+def verify_payload(payload: Path) -> str:
+    with zipfile.ZipFile(payload) as archive:
+        names = set(archive.namelist())
+        required = {
+            "app/main.py",
+            "static/index.html",
+            "product.toml",
+            "LICENSE",
+            "THIRD_PARTY_NOTICES.md",
+            "licenses/Inter-OFL.txt",
+            "licenses/OpenDyslexic-LICENSE.txt",
+        }
+        if not required.issubset(names) or any("pocket" in n.lower() for n in names):
+            raise RuntimeError(
+                "the application payload is incomplete or contains Pocket TTS"
+            )
+        if archive.testzip() is not None:
+            raise RuntimeError("the application payload is corrupt")
+        version = tomllib.loads(archive.read("product.toml").decode())["product"][
+            "version"
+        ]
+    return version
+
+
 def main() -> int:
     args = parser().parse_args()
     if args.version:
-        print(f"{APP_NAME} portable launcher")
+        print(f"{APP_NAME} {verify_payload(payload_path())}")
         return 0
     if args.verify_payload:
-        with zipfile.ZipFile(payload_path()) as archive:
-            names = archive.namelist()
-        if "app/main.py" not in names or "static/index.html" not in names:
-            raise RuntimeError("the application payload is incomplete")
-        print(f"Embedded application payload verified ({len(names)} files).")
+        version = verify_payload(payload_path())
+        print(f"Embedded application payload verified: {version}; no Pocket TTS.")
         return 0
+    if (
+        not args.console
+        and not args.no_browser
+        and not args.install_only
+        and (sys.stdout is None or not sys.stdout.isatty())
+    ):
+        terminal = terminal_command(sys.argv[1:])
+        if terminal:
+            subprocess.Popen(terminal, start_new_session=True)
+            return 0
+    version = verify_payload(payload_path())
     root = platform_root()
     root.mkdir(parents=True, exist_ok=True)
     if os.name != "nt":
         root.chmod(0o700)
+    register_windows_package(root, version)
     install = install_payload(payload_path(), root)
     uv = download_uv(root)
     environment = os.environ.copy()
     for variable in tuple(environment):
-        if variable.startswith(("DYLD_", "LD_", "PIP_", "PYTHON", "UV_")):
+        if variable.startswith(
+            ("DYLD_", "LD_", "PIP_", "PYTHON", "UV_")
+        ) or variable in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
             environment.pop(variable, None)
     environment["LOCAL_AI_APP_UV"] = str(uv)
     bootstrap = [
@@ -202,15 +448,19 @@ def main() -> int:
     core_python = (
         install / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     )
-    if not core_python.is_file():
+    ready = install / ".bootstrap-complete"
+    if not core_python.is_file() or not ready.is_file():
         print(
             "Prima esecuzione: preparo Python, OCR, voci e modelli locali. "
             "Può richiedere qualche minuto e spazio su disco.",
             flush=True,
         )
         run(bootstrap, install, environment)
+        ready.write_text("complete\n", encoding="ascii")
     if not core_python.is_file():
         raise RuntimeError("the core environment was not created")
+    if args.install_only:
+        return 0
     command = [str(core_python), str(install / "scripts" / "start.py")]
     if args.no_browser:
         command.append("--no-browser")

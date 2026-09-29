@@ -23,8 +23,12 @@ fi
 
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}" "${DIST_DIR}"
+"${UV}" run --no-project --python 3.12 --with "pyinstaller==6.19.0" \
+  python "${APP_DIR}/packaging/collect_licenses.py" --output "${BUILD_DIR}/licenses"
 python3 "${APP_DIR}/packaging/create_payload.py" \
-  --output "${BUILD_DIR}/payload.zip"
+  --licenses "${BUILD_DIR}/licenses" --output "${BUILD_DIR}/payload.zip"
+VERSION="$(python3 -c 'import pathlib,tomllib; print(tomllib.loads(pathlib.Path("product.toml").read_text())["product"]["version"])')"
+
 
 "${UV}" run --no-project --python 3.12 \
   --with "pyinstaller==6.19.0" pyinstaller \
@@ -55,14 +59,15 @@ install -m 0644 "${APP_DIR}/static/icon.svg" \
 
 APPIMAGETOOL="${APPIMAGETOOL:-}"
 if [[ -z "${APPIMAGETOOL}" ]]; then
-  APPIMAGETOOL="$(find "${APP_DIR}/.." -type f -name appimagetool.AppImage -print -quit 2>/dev/null || true)"
+  APPIMAGETOOL="${APP_DIR}/build/appimagetool.AppImage"
 fi
 if [[ -z "${APPIMAGETOOL}" || ! -x "${APPIMAGETOOL}" ]]; then
   echo "Set APPIMAGETOOL to an executable appimagetool.AppImage." >&2
   exit 1
 fi
 
-OUTPUT="${DIST_DIR}/Local-Reader-No-GPU-${LOCAL_READER_NO_GPU_VERSION:-0.3.2}-linux-x86_64.AppImage"
-APPIMAGE_EXTRACT_AND_RUN=1 "${APPIMAGETOOL}" "${APP_ROOT}" "${OUTPUT}"
+OUTPUT="${DIST_DIR}/Local-Reader-No-GPU-${VERSION}-linux-x86_64.AppImage"
+APPIMAGE_EXTRACT_AND_RUN=1 "${APPIMAGETOOL}" --runtime-file "${APP_DIR}/build/appimage-runtime-x86_64" "${APP_ROOT}" "${OUTPUT}"
 chmod 0755 "${OUTPUT}"
+APPIMAGE_EXTRACT_AND_RUN=1 "${OUTPUT}" --verify-payload
 echo "Built ${OUTPUT}"

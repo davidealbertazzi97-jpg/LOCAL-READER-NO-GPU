@@ -30,6 +30,8 @@ def project_files() -> list[Path]:
 
     excluded_directories = {
         ".git",
+        ".tools",
+        "__pycache__",
         ".pytest_cache",
         ".ruff_cache",
         "bin",
@@ -39,15 +41,29 @@ def project_files() -> list[Path]:
         "models",
         "outputs",
     }
+    excluded_files = {
+        "licenses/squashfuse-LICENSE.txt",
+        "licenses/zlib-LICENSE.txt",
+    }
     files: list[Path] = []
     for path in candidates:
+        relative_path = path.relative_to(ROOT).as_posix()
         relative_parts = path.relative_to(ROOT).parts
         if any(
             part in excluded_directories or part.startswith(".venv")
             for part in relative_parts
         ):
             continue
-        if path.is_file() and not path.name.endswith((".pyc", ".download")):
+        if relative_path in excluded_files:
+            continue
+        if (
+            path.is_file()
+            and not path.is_symlink()
+            and not path.name.startswith(".env")
+            and not path.name.endswith(
+                (".pyc", ".download", ".log", ".sqlite", ".sqlite3")
+            )
+        ):
             files.append(path)
     return sorted(files, key=lambda path: path.relative_to(ROOT).as_posix())
 
@@ -55,6 +71,7 @@ def project_files() -> list[Path]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--licenses", type=Path)
     args = parser.parse_args()
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -68,6 +85,14 @@ def main() -> int:
         for path in files:
             relative = path.relative_to(ROOT).as_posix()
             archive.write(path, relative)
+        if args.licenses:
+            for path in sorted(args.licenses.rglob("*")):
+                if path.is_file() and not path.is_symlink():
+                    archive.write(
+                        path,
+                        "licenses/launcher/"
+                        + path.relative_to(args.licenses).as_posix(),
+                    )
     digest = hashlib.sha256(output.read_bytes()).hexdigest()
     print(f"Created {output} ({len(files)} files, sha256={digest})")
     return 0

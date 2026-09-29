@@ -19,6 +19,17 @@ const COPY = {
     services: "Servizi pronti",
     ready: "pronto",
     unavailable: "non disponibile",
+    updatesLabel: "Aggiornamenti dell’app",
+    updateCheckHelp: "Il controllo consulta le release pubbliche su GitHub; non invia documenti o impostazioni.",
+    checkUpdates: "Verifica aggiornamenti",
+    checkingUpdates: "Controllo gli aggiornamenti…",
+    updatesAvailable: "È disponibile la versione {version}: scarica il pacchetto, chiudi l’app e aprilo per aggiornare.",
+    windowsUpdateAvailable: "È disponibile la versione {version}: scarica l’EXE, chiudi l’app e aprilo. Il collegamento nel menu Start avvierà la nuova versione.",
+    updatePageHelp: "Pacchetto per questo sistema non trovato: apri la pagina della release.",
+    latestVersion: "Hai già la versione più recente ({version}).",
+    updateCheckFailed: "Non riesco a controllare gli aggiornamenti. Verifica la connessione e riprova.",
+    downloadUpdate: "Scarica {version}",
+    openRelease: "Apri la release",
     navComplete: "Studio completo",
     navOcr: "Solo OCR",
     navOrganize: "Solo organizza",
@@ -89,7 +100,7 @@ const COPY = {
     completeDoneFallback: "Audio pronto. Edge-TTS non rispondeva, quindi ho usato Kokoro offline.",
     audioReady: "Audio pronto",
     audioReadyHelp: "Puoi ascoltarlo qui oppure scaricarlo.",
-    downloadAudio: "Scarica audio",
+    downloadAudio: "Scarica subito l’audio MP3",
     howItWorks: "COME FUNZIONA",
     completeSideTitle: "Due passaggi, uno solo per te",
     guideOne: "Leggiamo",
@@ -270,7 +281,7 @@ const COPY = {
     helpTtsSettingsTitle: "Voci e audio",
     helpTtsSettingsBody: "Scegli il motore vocale. Edge-TTS e i provider premium funzionano online; Kokoro resta sul computer e non richiede una chiave.",
     helpCloneSettingsTitle: "Clonazione della voce",
-    helpCloneSettingsBody: "Carica un breve campione solo se hai il consenso della persona. Il file temporaneo viene eliminato dopo l’invio al servizio scelto.",
+    helpCloneSettingsBody: "Registra o carica un campione con il consenso della persona. Fish Audio locale conserva il campione sul computer; i servizi cloud ricevono il campione.",
     organizationProvider: "Provider",
     model: "Modello",
     baseUrl: "Indirizzo del provider",
@@ -283,7 +294,7 @@ const COPY = {
     kokoroItalianVoice: "Voce Kokoro italiana",
     kokoroEnglishVoice: "Voce Kokoro inglese",
     cloneTitle: "Clonazione della voce",
-    cloneHelp: "Usa un campione solo con il consenso della persona. Il campione viene eliminato dal computer dopo l’invio.",
+    cloneHelp: "Usa campioni con consenso. Fish Audio locale conserva il campione sul computer; i servizi cloud lo ricevono online.",
     cloneProvider: "Servizio",
     cloneName: "Nome della voce",
     cloneSample: "Campione audio",
@@ -293,7 +304,13 @@ const COPY = {
     keyMissing: "Chiave non configurata",
     savedSettings: "Impostazioni salvate.",
     cloneCreated: "Voce creata e pronta da scegliere.",
-    recordSample: "Registra campione", stopRecording: "Ferma registrazione", cloneRequired: "necessaria clonazione",
+    recordSample: "Registra campione",
+    stopRecording: "Ferma registrazione",
+    cloneRequired: "necessaria clonazione",
+    recordHelp: "Registra 3–30 secondi in un luogo silenzioso (consigliati 10–20). Riascolta prima di creare la voce.",
+    clonedVoices: "Voci clonate salvate",
+    useClone: "Usa questa voce",
+    removeClone: "Rimuovi dal menu",
   },
   en: {
     skip: "Skip to content",
@@ -315,6 +332,17 @@ const COPY = {
     services: "Services ready",
     ready: "ready",
     unavailable: "unavailable",
+    updatesLabel: "App updates",
+    updateCheckHelp: "This check reads public GitHub releases; it does not send documents or settings.",
+    checkUpdates: "Check for updates",
+    checkingUpdates: "Checking for updates…",
+    updatesAvailable: "Version {version} is available. Download the package, close the app, and open it to update.",
+    windowsUpdateAvailable: "Version {version} is available. Download the EXE, close the app, and open it; the Start menu shortcut will launch the new version.",
+    updatePageHelp: "No package for this system was found; open the release page.",
+    latestVersion: "You already have the latest version ({version}).",
+    updateCheckFailed: "Could not check for updates. Check your connection and try again.",
+    downloadUpdate: "Download {version}",
+    openRelease: "Open release",
     navComplete: "Full studio",
     navOcr: "OCR only",
     navOrganize: "Organize only",
@@ -385,7 +413,7 @@ const COPY = {
     completeDoneFallback: "Audio ready. Edge-TTS was unavailable, so I used offline Kokoro.",
     audioReady: "Audio ready",
     audioReadyHelp: "Listen here or download it.",
-    downloadAudio: "Download audio",
+    downloadAudio: "Download the MP3 now",
     howItWorks: "HOW IT WORKS",
     completeSideTitle: "Two steps, one action for you",
     guideOne: "Read",
@@ -566,7 +594,7 @@ const COPY = {
     helpTtsSettingsTitle: "Voices and audio",
     helpTtsSettingsBody: "Choose the voice engine. Edge-TTS and premium providers work online; Kokoro stays on this computer and needs no key.",
     helpCloneSettingsTitle: "Voice cloning",
-    helpCloneSettingsBody: "Upload a short sample only if you have the person’s consent. The temporary file is deleted after it is sent to the selected service.",
+    helpCloneSettingsBody: "Record or upload a sample with consent. Local Fish Audio keeps samples on your computer; cloud services receive the sample.",
     organizationProvider: "Provider",
     model: "Model",
     baseUrl: "Provider address",
@@ -579,7 +607,7 @@ const COPY = {
     kokoroItalianVoice: "Italian Kokoro voice",
     kokoroEnglishVoice: "English Kokoro voice",
     cloneTitle: "Voice cloning",
-    cloneHelp: "Use a sample only with the person’s consent. The sample is deleted from the computer after upload.",
+    cloneHelp: "Use samples with consent. Local Fish Audio keeps samples on your computer; cloud services receive them online.",
     cloneProvider: "Service",
     cloneName: "Voice name",
     cloneSample: "Audio sample",
@@ -589,7 +617,13 @@ const COPY = {
     keyMissing: "Key not configured",
     savedSettings: "Settings saved.",
     cloneCreated: "Voice created and ready to choose.",
-    recordSample: "Record sample", stopRecording: "Stop recording", cloneRequired: "cloning required",
+    recordSample: "Record sample",
+    stopRecording: "Stop recording",
+    cloneRequired: "cloning required",
+    recordHelp: "Record 3–30 seconds in a quiet place (10–20 recommended). Listen before creating the voice.",
+    clonedVoices: "Saved cloned voices",
+    useClone: "Use this voice",
+    removeClone: "Remove from menu",
   },
 };
 
@@ -625,6 +659,8 @@ const HELP_COPY_KEYS = {
 let language = localStorage.getItem("accessibility-language") || "it";
 let product = null;
 let engines = [];
+let updateCheckInProgress = false;
+let updateUiState = {key: "updateCheckHelp", values: {}, kind: "idle", linkUrl: "", linkKey: ""};
 let speechReady = false;
 let reflowReady = false;
 let ocrReady = false;
@@ -633,6 +669,9 @@ let settings = null;
 let offlineMode = false;
 let modeSaving = false;
 let cloneRecorder = null;
+let cloneRecordingTimer = null;
+let clonePreviewUrl = "";
+let cloneBusy = false;
 let cloneRecordingChunks = [];
 let recordedCloneBlob = null;
 const busyForms = new Set();
@@ -658,6 +697,123 @@ let lastAudioCheckpoint = 0;
 
 function t(key) {
   return COPY[language]?.[key] ?? COPY.en[key] ?? key;
+}
+
+const RELEASES_API_URL = "https://api.github.com/repos/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/latest";
+const RELEASE_PAGE_PREFIX = "/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/";
+const RELEASE_DOWNLOAD_PREFIX = `${RELEASE_PAGE_PREFIX}download/`;
+const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
+
+function renderUpdateMessage() {
+  const panel = document.querySelector("#updates-panel");
+  const status = document.querySelector("#update-status");
+  const link = document.querySelector("#download-update");
+  if (!panel || !status || !link) return;
+  let message = t(updateUiState.key);
+  for (const [key, value] of Object.entries(updateUiState.values)) {
+    message = message.replaceAll(`{${key}}`, String(value));
+  }
+  panel.dataset.state = updateUiState.kind;
+  status.textContent = message;
+  link.hidden = !updateUiState.linkUrl;
+  if (updateUiState.linkUrl) {
+    link.href = updateUiState.linkUrl;
+    link.textContent = t(updateUiState.linkKey || "openRelease");
+    for (const [key, value] of Object.entries(updateUiState.values)) {
+      link.textContent = link.textContent.replaceAll(`{${key}}`, String(value));
+    }
+  }
+}
+
+function setUpdateMessage(key, {values = {}, kind = "idle", linkUrl = "", linkKey = ""} = {}) {
+  updateUiState = {key, values, kind, linkUrl, linkKey};
+  renderUpdateMessage();
+}
+
+function parseReleaseVersion(value) {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?$/.exec(String(value || "").trim());
+  return match ? match.slice(1, 4).map(Number) : null;
+}
+
+function compareReleaseVersions(left, right) {
+  for (let index = 0; index < 3; index += 1) {
+    if (left[index] !== right[index]) return left[index] > right[index] ? 1 : -1;
+  }
+  return 0;
+}
+
+function officialReleaseUrl(value, prefix) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "github.com" && url.pathname.startsWith(prefix)
+      ? url.href
+      : "";
+  } catch (_error) {
+    return "";
+  }
+}
+
+function updateAssetForCurrentPlatform(release) {
+  const platformName = `${navigator.userAgentData?.platform || ""} ${navigator.platform || ""} ${navigator.userAgent || ""}`.toLowerCase();
+  const assets = Array.isArray(release.assets) ? release.assets : [];
+  let asset;
+  if (platformName.includes("win")) {
+    asset = assets.find(({name}) => /windows-x86_64\.exe$/i.test(name));
+  } else if (platformName.includes("mac") || platformName.includes("darwin")) {
+    asset = assets.find(({name}) => /macos-arm64\.dmg$/i.test(name))
+      || assets.find(({name}) => /macos-arm64\.app\.zip$/i.test(name));
+  } else if (platformName.includes("linux")) {
+    asset = assets.find(({name}) => /linux-x86_64\.appimage$/i.test(name));
+  }
+  if (!asset) return "";
+  return officialReleaseUrl(asset.browser_download_url, RELEASE_DOWNLOAD_PREFIX);
+}
+
+async function checkForUpdates() {
+  if (updateCheckInProgress) return;
+  const button = document.querySelector("#check-updates");
+  updateCheckInProgress = true;
+  button.disabled = true;
+  setUpdateMessage("checkingUpdates", {kind: "checking"});
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 12000);
+  try {
+    const installed = parseReleaseVersion(product?.version);
+    if (!installed) throw new Error("Installed version is unavailable");
+    const response = await fetch(RELEASES_API_URL, {
+      headers: {Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"},
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+    const release = await response.json();
+    const latest = parseReleaseVersion(release.tag_name);
+    const releaseUrl = officialReleaseUrl(release.html_url, RELEASE_PAGE_PREFIX);
+    if (!latest || !releaseUrl) throw new Error("GitHub returned an invalid release");
+    if (compareReleaseVersions(latest, installed) <= 0) {
+      setUpdateMessage("latestVersion", {values: {version: product.version}, kind: "current"});
+      return;
+    }
+    const downloadUrl = updateAssetForCurrentPlatform(release);
+    const isWindows = `${navigator.userAgentData?.platform || ""} ${navigator.platform || ""} ${navigator.userAgent || ""}`.toLowerCase().includes("win");
+    setUpdateMessage(downloadUrl ? (isWindows ? "windowsUpdateAvailable" : "updatesAvailable") : "updatePageHelp", {
+      values: {version: release.tag_name.replace(/^v/, "")},
+      kind: "available",
+      linkUrl: downloadUrl || releaseUrl,
+      linkKey: downloadUrl ? "downloadUpdate" : "openRelease",
+    });
+  } catch (_error) {
+    setUpdateMessage("updateCheckFailed", {kind: "error"});
+  } finally {
+    window.clearTimeout(timeout);
+    button.disabled = false;
+    updateCheckInProgress = false;
+  }
+}
+
+function audioDownloadFilename(jobId) {
+  const suffix = String(jobId || "").replace(/[^a-z0-9]/gi, "").slice(0, 8);
+  return `local-reader-audio${suffix ? `-${suffix}` : ""}.mp3`;
 }
 
 function sleep(milliseconds) {
@@ -776,7 +932,11 @@ function showResumeBanner(message = t("resumeBody")) {
 
 function restoreResumeForms(forms = {}) {
   const setValue = (selector, value) => {
-    if (value !== undefined && document.querySelector(selector)) document.querySelector(selector).value = value;
+    const field = document.querySelector(selector);
+    if (value === undefined || !field) return;
+    // Keep the current valid selection when an old session names a removed option.
+    if (field.tagName === "SELECT" && !Array.from(field.options).some(option => option.value === String(value) && !option.disabled)) return;
+    field.value = value;
   };
   const complete = forms.complete || {};
   const organize = forms.organize || {};
@@ -795,6 +955,7 @@ function restoreResumeForms(forms = {}) {
   setValue("#tts-provider", tts.provider);
   setValue("#tts-speed", tts.speed);
   renderProviderVoiceSelects();
+  renderWorkflowVoices();
   if (tts.voice) setValue("#tts-voice", tts.voice);
   document.querySelector("#complete-speed-value").textContent = `${Number(document.querySelector("#complete-speed").value).toFixed(2).replace(".", ",")}×`;
   document.querySelector("#tts-speed-value").textContent = `${Number(document.querySelector("#tts-speed").value).toFixed(2).replace(".", ",")}×`;
@@ -882,15 +1043,16 @@ function renderProviderVoiceSelects() {
     if (voices.some(([value]) => value === preferred)) select.value = preferred;
   } else {
     const configured = settings?.settings?.tts?.[provider === "voxtral" ? "mistral" : provider]?.voice_id || "";
-    const clones = (settings?.settings?.clones || []).filter((clone) => clone.provider === provider);
-    const entries = provider === "pocket-tts" ? [] : [["", language === "it" ? "Voce predefinita del provider" : "Provider default voice"]];
+    const clones = (settings?.settings?.clones || []).filter((clone) => clone.provider === provider && clone.ready);
+    const entries = [["", language === "it" ? "Voce predefinita del provider" : "Provider default voice"]];
     if (configured) entries.push([configured, language === "it" ? `Voce configurata (${configured})` : `Configured voice (${configured})`]);
     clones.forEach((clone) => entries.push([clone.voice_id, clone.name]));
     select.replaceChildren(...entries.map(([value, label]) => { const option = document.createElement("option"); option.value = value; option.textContent = label; return option; }));
     if (entries.some(([value]) => value === preferred)) select.value = preferred;
+    else if (entries.some(([value]) => value === configured)) select.value = configured;
   }
   const label = document.querySelector("#tts-side-provider");
-  if (label) label.textContent = ({"edge-tts": "Edge-TTS", kokoro: "Kokoro 82M", "pocket-tts": "Pocket TTS · voce clonata", voxtral: "Voxtral", fish: "Fish Audio", "fish-local": "Fish Audio locale", elevenlabs: "ElevenLabs"})[provider] || provider;
+  if (label) label.textContent = ({"edge-tts": "Edge-TTS", kokoro: "Kokoro 82M", voxtral: "Voxtral", fish: "Fish Audio", "fish-local": "Fish Audio locale", elevenlabs: "ElevenLabs"})[provider] || provider;
 }
 
 function kokoroVoiceFor(language) {
@@ -908,10 +1070,7 @@ function speechVoiceForProvider(provider, language, preferred = "") {
 }
 
 function workflowSpeechProvider() {
-  if (offlineMode) {
-    const selectedOffline = document.querySelector("#complete-provider")?.value;
-    return selectedOffline === "pocket-tts" ? "pocket-tts" : "kokoro";
-  }
+  if (offlineMode) return "kokoro";
   const selected = document.querySelector("#complete-provider")?.value;
   if (["edge-tts", "kokoro"].includes(selected)) return selected;
   const configured = settings?.settings?.tts?.default_provider;
@@ -920,7 +1079,7 @@ function workflowSpeechProvider() {
 
 function renderOfflineMode() {
   const savedProvider = settings?.settings?.tts?.default_provider || "edge-tts";
-  const targetProvider = offlineMode ? "kokoro" : savedProvider;
+  const targetProvider = offlineMode && !["kokoro", "fish-local"].includes(savedProvider) ? (settings?.settings?.tts?.offline_provider || "kokoro") : savedProvider;
   const toggle = document.querySelector("#offline-mode-toggle");
   const state = document.querySelector("#offline-mode-state");
   const basic = document.querySelector("#default-audio-provider");
@@ -933,8 +1092,8 @@ function renderOfflineMode() {
     toggle.disabled = modeSaving;
   }
   if (state) state.textContent = offlineMode ? t("offlineOn") : t("offlineOff");
-  if (basic) { basic.value = offlineMode ? "kokoro" : "edge-tts"; basic.disabled = modeSaving; }
-  if (complete) { complete.value = ["kokoro", "pocket-tts", "edge-tts"].includes(targetProvider) ? targetProvider : "edge-tts"; complete.disabled = modeSaving; }
+  if (basic) { basic.value = ["kokoro", "edge-tts"].includes(targetProvider) ? targetProvider : "edge-tts"; basic.disabled = modeSaving; }
+  if (complete) { complete.value = ["kokoro", "edge-tts"].includes(targetProvider) ? targetProvider : "edge-tts"; complete.disabled = modeSaving; }
   if (tts) {
     tts.value = targetProvider;
     tts.disabled = modeSaving;
@@ -947,13 +1106,13 @@ function renderOfflineMode() {
   updateCompleteAvailability();
 }
 
-async function setOfflineMode(enabled, requestedProvider = "") {
+async function setOfflineMode(enabled) {
   if (modeSaving) return;
   modeSaving = true;
   renderOfflineMode();
   setStatus(document.querySelector("#mode-status"), language === "it" ? "Cambio modalità…" : "Changing mode…");
   try {
-    const provider = enabled ? (requestedProvider === "pocket-tts" ? "pocket-tts" : "kokoro") : "edge-tts";
+    const provider = enabled ? "kokoro" : "edge-tts";
     const response = await api("/api/settings", {
       method: "PUT",
       headers: {"Content-Type": "application/json"},
@@ -983,10 +1142,6 @@ function renderWorkflowVoices() {
       const entries = speechLanguage === "it" ? [["if_sara", "Sara"], ["im_nicola", "Nicola"]] : [["af_heart", "Heart"], ["am_michael", "Michael"]];
       select.replaceChildren(...entries.map(([value, label]) => new Option(label, value)));
       select.value = speechVoiceForProvider("kokoro", speechLanguage, preferred);
-    } else if (workflowSpeechProvider() === "pocket-tts") {
-      const clones = (settings?.settings?.clones || []).filter((clone) => clone.provider === "pocket-tts");
-      select.replaceChildren(...clones.map((clone) => new Option(clone.name, clone.voice_id)));
-      if (clones.some((clone) => clone.voice_id === preferred)) select.value = preferred;
     } else fillVoiceSelect(select, speechLanguage, preferred);
   }
 }
@@ -1008,14 +1163,6 @@ function updateTtsAvailability() {
   if (button) button.disabled = !ready || modeSaving || busyForms.has("tts");
   const hint = document.querySelector("#tts-status");
   if (hint && !ready) setStatus(hint, language === "it" ? "Questo motore non è pronto: controlla Impostazioni." : "This engine is not ready: check Settings.", true);
-}
-
-function updatePocketOptionState() {
-  const hasClone = (settings?.settings?.clones || []).some((clone) => clone.provider === "pocket-tts");
-  document.querySelectorAll('option[value="pocket-tts"]').forEach((option) => {
-    option.disabled = !hasClone;
-    option.textContent = hasClone ? "Pocket TTS — voce clonata offline" : "Pocket TTS — necessaria clonazione";
-  });
 }
 
 function updateCompleteAvailability() {
@@ -1040,7 +1187,7 @@ async function loadSettings() {
     document.querySelector("#default-tts-provider").value = value.tts.default_provider;
     offlineMode = Boolean(value.tts.offline_mode);
     document.querySelector("#default-audio-provider").value = offlineMode ? value.tts.default_provider : "edge-tts";
-    if (["edge-tts", "kokoro", "pocket-tts", "voxtral", "fish", "fish-local", "elevenlabs"].includes(value.tts.default_provider)) document.querySelector("#tts-provider").value = value.tts.default_provider;
+    if (["edge-tts", "kokoro", "voxtral", "fish", "fish-local", "elevenlabs"].includes(value.tts.default_provider)) document.querySelector("#tts-provider").value = value.tts.default_provider;
     document.querySelector("#mistral-voice-id").value = value.tts.mistral.voice_id || "";
     document.querySelector("#fish-voice-id").value = value.tts.fish.voice_id || "";
     document.querySelector("#eleven-voice-id").value = value.tts.elevenlabs.voice_id || "";
@@ -1050,7 +1197,6 @@ async function loadSettings() {
       document.querySelector(`#${provider}-status`).textContent = value.tts[provider].configured ? t("keyConfigured") : t("keyMissing");
     }
     renderOfflineMode();
-    updatePocketOptionState();
     renderClones(value.clones || []);
   } catch (error) {
     setStatus(document.querySelector("#ai-settings-status"), `${t("failed")} ${error.message}`, true);
@@ -1118,15 +1264,55 @@ async function installFishLocal() {
 }
 
 function renderClones(clones) {
-  const container = document.querySelector("#clone-list");
-  if (!container) return;
-  container.replaceChildren();
-  clones.forEach((clone) => {
-    const item = document.createElement("p");
-    item.className = "clone-item";
-    item.textContent = `${clone.name} · ${clone.provider} · ${clone.voice_id}`;
-    container.append(item);
-  });
+  const select = document.querySelector("#cloned-voices");
+  const preferred = select.value;
+  select.replaceChildren(...clones.map(c => new Option(`${c.name} · ${c.provider}${c.ready ? "" : (language === "it" ? " · campione mancante" : " · sample missing")}`, c.id)));
+  if (!clones.length) select.add(new Option(language === "it" ? "Nessuna voce clonata" : "No cloned voices", ""));
+  if (clones.some(c => c.id === preferred)) select.value = preferred;
+  select.disabled = !clones.length || cloneBusy;
+  renderSelectedClone();
+}
+
+function selectedClone() {
+  return (settings?.settings?.clones || []).find(c => c.id === document.querySelector("#cloned-voices").value);
+}
+
+function renderSelectedClone() {
+  const clone = selectedClone();
+  document.querySelector("#clone-use").disabled = cloneBusy || !clone?.ready || !selectedTtsReady(clone?.provider);
+  document.querySelector("#clone-remove").disabled = cloneBusy || !clone;
+  document.querySelector("#cloned-voice-details").textContent = clone ? `${clone.name} · ${clone.ready ? t("ready") : t("cloneRequired")}` : "";
+  const preview = document.querySelector("#cloned-voice-preview");
+  const source = clone && clone.provider === "fish-local" ? `/api/voice-clones/${encodeURIComponent(clone.id)}/sample` : "";
+  if ((preview.getAttribute("src") || "") !== source) {
+    preview.pause();
+    if (source) preview.src = source;
+    else preview.removeAttribute("src");
+  }
+  preview.hidden = !source;
+}
+
+async function manageClone(action) {
+  const clone = selectedClone();
+  if (!clone || cloneBusy) return;
+  if (action === "remove" && !window.confirm(language === "it" ? `Rimuovere ${clone.name} dal menu? Il campione locale resta conservato; la voce cloud non viene eliminata.` : `Remove ${clone.name} from the menu? Local samples are retained; cloud voices are not deleted.`)) return;
+  cloneBusy = true;
+  renderSelectedClone();
+  try {
+    if (action === "use") {
+      const section = clone.provider === "voxtral" ? "mistral" : clone.provider;
+      await api("/api/settings", {method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify({tts: {default_provider: clone.provider, offline_mode: clone.provider === "fish-local", [section]: {voice_id: clone.voice_id}}})});
+    } else if (action === "remove") {
+      await api(`/api/voice-clones/${encodeURIComponent(clone.id)}`, {method: "DELETE"});
+    }
+    await loadSettings(); await renderStatus();
+    if (action === "use") {
+      for (const id of ["#tts-voice", "#complete-voice", "#voice"]) document.querySelector(id).value = clone.voice_id;
+      schedulePersist();
+    }
+    setStatus(document.querySelector("#clone-status"), action === "remove" ? (language === "it" ? "Voce rimossa dal menu. Campione locale conservato." : "Voice removed from menu. Local sample retained.") : t("savedSettings"));
+  } catch (error) { setStatus(document.querySelector("#clone-status"), error.message, true); }
+  finally { cloneBusy = false; renderClones(settings?.settings?.clones || []); }
 }
 
 function renderAiKeyStatus() {
@@ -1302,6 +1488,7 @@ function renderLanguage() {
   document.querySelector("#language-select").value = language;
   document.querySelectorAll("[data-i18n]").forEach((node) => { node.textContent = t(node.dataset.i18n); });
   document.querySelectorAll("[data-i18n-aria-label]").forEach((node) => { node.setAttribute("aria-label", t(node.dataset.i18nAriaLabel)); });
+  renderUpdateMessage();
   if (product) document.querySelector("#product-description").textContent = product[`description_${language}`];
   fillVoiceSelect(document.querySelector("#complete-voice"), document.querySelector("#complete-language").value);
   fillVoiceSelect(document.querySelector("#tts-voice"), document.querySelector("#tts-language").value);
@@ -1319,6 +1506,7 @@ async function renderStatus() {
   speechReady = status.speech.ready;
   reflowReady = status.reflow.ready;
   providerStatus = status.providers || {tts: {}, ai: {}};
+  renderSelectedClone();
   const serviceName = document.querySelector("#speech-service-name");
   if (serviceName) serviceName.textContent = status.speech.engine || "Edge-TTS";
   for (const name of ["ocr", "speech", "reflow"]) {
@@ -1483,8 +1671,8 @@ function jobCard(job) {
     card.append(audio);
     const download = document.createElement("a");
     download.href = artifactUrl(job.id, "speech.mp3");
-    download.download = "audio.mp3";
-    download.className = "button-link secondary";
+    download.download = audioDownloadFilename(job.id);
+    download.className = "button-link";
     download.textContent = t("downloadAudio");
     actions.append(download);
   }
@@ -1595,7 +1783,9 @@ function showAudio(resultId, audioId, downloadId) {
   audioProgress[slot] = {jobId: resultId, time: 0};
   audio.dataset.jobId = resultId;
   audio.src = source;
-  document.querySelector(`#${downloadId}`).href = source;
+  const download = document.querySelector(`#${downloadId}`);
+  download.href = source;
+  download.download = audioDownloadFilename(resultId);
   document.querySelector(`#${audioId.replace("audio", "result")}`).hidden = false;
   audio.load();
 }
@@ -1608,7 +1798,9 @@ function restoreAudioState() {
     const source = artifactUrl(saved.jobId, "speech.mp3");
     audio.dataset.jobId = saved.jobId;
     audio.src = source;
-    document.querySelector(downloadSelector).href = source;
+    const download = document.querySelector(downloadSelector);
+    download.href = source;
+    download.download = audioDownloadFilename(saved.jobId);
     document.querySelector(resultSelector).hidden = false;
     audio.addEventListener("loadedmetadata", () => {
       const position = Number(saved.time);
@@ -2069,11 +2261,17 @@ async function saveTtsSettings(event) {
 
 async function createVoiceClone(event) {
   event.preventDefault();
+  if (cloneBusy || cloneRecorder?.state === "recording") return;
   const button = event.currentTarget.querySelector("button[type=submit]");
-  const file = document.querySelector("#clone-file").files[0] || (recordedCloneBlob ? new File([recordedCloneBlob], "registrazione.webm", {type: recordedCloneBlob.type}) : null);
+  const extension = recordedCloneBlob?.type.includes("mp4") ? "m4a" : recordedCloneBlob?.type.includes("ogg") ? "ogg" : "webm";
+  const file = document.querySelector("#clone-file").files[0] || (recordedCloneBlob ? new File([recordedCloneBlob], `registrazione.${extension}`, {type: recordedCloneBlob.type}) : null);
   const status = document.querySelector("#clone-status");
   if (!file) { setStatus(status, language === "it" ? "Scegli prima un campione audio." : "Choose an audio sample first.", true); return; }
   button.disabled = true;
+  cloneBusy = true;
+  document.querySelector("#clone-record").disabled = true;
+  renderSelectedClone();
+  setStatus(status, language === "it" ? "Creazione della voce in corso con il servizio selezionato…" : "Creating the voice with the selected service…");
   const data = new FormData();
   data.append("provider", document.querySelector("#clone-provider").value);
   data.append("name", document.querySelector("#clone-name").value || "Voce clonata");
@@ -2084,32 +2282,66 @@ async function createVoiceClone(event) {
     await api("/api/voice-clones", {method: "POST", body: data});
     setStatus(status, t("cloneCreated"));
     document.querySelector("#clone-form").reset();
+    clearCloneRecording();
     await loadSettings();
     await renderStatus();
   } catch (error) { setStatus(status, `${t("failed")} ${error.message}`, true); }
-  finally { button.disabled = false; }
+  finally { button.disabled = false; cloneBusy = false; document.querySelector("#clone-record").disabled = false; renderSelectedClone(); }
+}
+
+function clearCloneRecording() {
+  recordedCloneBlob = null;
+  if (clonePreviewUrl) URL.revokeObjectURL(clonePreviewUrl);
+  clonePreviewUrl = "";
+  const preview = document.querySelector("#clone-preview");
+  preview.pause(); preview.removeAttribute("src"); preview.hidden = true;
 }
 
 async function toggleCloneRecording() {
+  if (cloneBusy) return;
   const record = document.querySelector("#clone-record");
   const stop = document.querySelector("#clone-stop");
   const preview = document.querySelector("#clone-preview");
+  const status = document.querySelector("#clone-status");
+  const submit = document.querySelector("#clone-form button[type=submit]");
   if (cloneRecorder?.state === "recording") { cloneRecorder.stop(); return; }
   if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-    setStatus(document.querySelector("#clone-status"), "Il browser non supporta la registrazione audio.", true); return;
+    setStatus(status, language === "it" ? "Il browser non supporta la registrazione: carica un file audio." : "Recording is unsupported: upload an audio file.", true); return;
   }
-  const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-  cloneRecordingChunks = [];
-  cloneRecorder = new MediaRecorder(stream, {mimeType: "audio/webm"});
-  cloneRecorder.ondataavailable = (event) => { if (event.data.size) cloneRecordingChunks.push(event.data); };
-  cloneRecorder.onstop = () => {
-    stream.getTracks().forEach((track) => track.stop());
-    recordedCloneBlob = new Blob(cloneRecordingChunks, {type: "audio/webm"});
-    preview.src = URL.createObjectURL(recordedCloneBlob); preview.hidden = false;
-    record.disabled = false; stop.disabled = true; record.textContent = t("recordSample");
-  };
-  cloneRecorder.start(); record.disabled = true; stop.disabled = false; stop.textContent = t("stopRecording");
-  setStatus(document.querySelector("#clone-status"), language === "it" ? "Registrazione in corso…" : "Recording…");
+  let stream;
+  record.disabled = true; submit.disabled = true;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    clearCloneRecording();
+    document.querySelector("#clone-file").value = "";
+    const mimeType = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"].find(type => MediaRecorder.isTypeSupported(type));
+    cloneRecorder = mimeType ? new MediaRecorder(stream, {mimeType}) : new MediaRecorder(stream);
+    cloneRecordingChunks = [];
+    let failed = false;
+    const cleanup = () => {
+      window.clearTimeout(cloneRecordingTimer);
+      stream.getTracks().forEach(track => track.stop());
+      record.disabled = false; stop.disabled = true; submit.disabled = false;
+    };
+    cloneRecorder.ondataavailable = event => { if (event.data.size) cloneRecordingChunks.push(event.data); };
+    cloneRecorder.onerror = () => { failed = true; cleanup(); setStatus(status, language === "it" ? "Registrazione fallita. Controlla il microfono e riprova." : "Recording failed. Check the microphone and retry.", true); };
+    cloneRecorder.onstop = () => {
+      cleanup();
+      if (failed) return;
+      recordedCloneBlob = new Blob(cloneRecordingChunks, {type: cloneRecorder.mimeType || cloneRecordingChunks[0]?.type || "audio/webm"});
+      clonePreviewUrl = URL.createObjectURL(recordedCloneBlob);
+      preview.src = clonePreviewUrl; preview.hidden = false;
+      setStatus(status, language === "it" ? "Campione registrato. Riascoltalo, conferma il consenso e premi Crea voce clonata." : "Sample recorded. Listen, confirm consent and create the cloned voice.");
+    };
+    cloneRecorder.start(); stop.disabled = false;
+    cloneRecordingTimer = window.setTimeout(() => { if (cloneRecorder?.state === "recording") cloneRecorder.stop(); }, 29000);
+    setStatus(status, language === "it" ? "Registrazione in corso… arresto automatico entro 30 secondi." : "Recording… automatically stops within 30 seconds.");
+  } catch (error) {
+    stream?.getTracks().forEach(track => track.stop());
+    record.disabled = false; stop.disabled = true; submit.disabled = false;
+    const denied = error.name === "NotAllowedError";
+    setStatus(status, language === "it" ? (denied ? "Consenti il microfono nelle autorizzazioni del browser, oppure carica un file audio." : "Microfono non disponibile. Collegalo e riprova, oppure carica un file audio.") : "Microphone unavailable. Check browser permissions or upload an audio file.", true);
+  }
 }
 
 async function initialize() {
@@ -2122,6 +2354,10 @@ async function initialize() {
   document.querySelector("#tts-language").value = language === "en" ? "en-us" : "it";
   document.querySelector("#speech-language").value = language === "en" ? "en-us" : "it";
   renderLanguage();
+  void checkForUpdates();
+  window.setInterval(() => {
+    if (!document.hidden && navigator.onLine) void checkForUpdates();
+  }, UPDATE_CHECK_INTERVAL_MS);
   showView(activeView, false);
   bindFileInputs();
   bindRange("#complete-speed", "#complete-speed-value");
@@ -2135,7 +2371,9 @@ async function initialize() {
 document.querySelectorAll("[data-view-link]").forEach((link) => link.addEventListener("click", (event) => { event.preventDefault(); closeReview(); showView(link.dataset.viewLink); }));
 window.addEventListener("hashchange", () => showView(window.location.hash.slice(1), false));
 window.addEventListener("beforeunload", persistSession);
+window.addEventListener("online", () => void checkForUpdates());
 document.querySelector("#dismiss-resume").addEventListener("click", () => { document.querySelector("#resume-banner").hidden = true; });
+document.querySelector("#check-updates").addEventListener("click", () => void checkForUpdates());
 document.querySelector("#language-select").addEventListener("change", (event) => { language = event.target.value; localStorage.setItem("accessibility-language", language); renderLanguage(); schedulePersist(); });
 document.querySelector("#offline-mode-toggle").addEventListener("click", () => void setOfflineMode(!offlineMode));
 document.querySelector("#default-audio-provider").addEventListener("change", (event) => void setOfflineMode(event.target.value !== "edge-tts", event.target.value));
@@ -2146,7 +2384,7 @@ document.querySelector("#tts-form").addEventListener("submit", (event) => void s
 document.querySelector("#complete-language").addEventListener("change", () => { renderWorkflowVoices(); schedulePersist(); });
 document.querySelector("#complete-provider").addEventListener("change", (event) => void setOfflineMode(event.target.value !== "edge-tts", event.target.value));
 document.querySelector("#tts-language").addEventListener("change", () => { renderProviderVoiceSelects(); schedulePersist(); });
-document.querySelector("#tts-provider").addEventListener("change", (event) => { if (["kokoro", "pocket-tts", "edge-tts"].includes(event.target.value)) void setOfflineMode(event.target.value !== "edge-tts", event.target.value); else { renderProviderVoiceSelects(); updateTtsAvailability(); schedulePersist(); } });
+document.querySelector("#tts-provider").addEventListener("change", (event) => { if (["kokoro", "edge-tts"].includes(event.target.value)) void setOfflineMode(event.target.value !== "edge-tts", event.target.value); else { renderProviderVoiceSelects(); updateTtsAvailability(); schedulePersist(); } });
 document.querySelector("#organize-provider").addEventListener("change", () => {
   const provider = document.querySelector("#organize-provider").value;
   document.querySelector("#organize-form button[type=submit]").disabled = provider === "local" ? !reflowReady : !providerStatus.ai?.configured_by_provider?.[provider]?.configured;
@@ -2212,7 +2450,12 @@ document.querySelector("#install-gemma")?.addEventListener("click", () => void i
 document.querySelector("#install-fish-local")?.addEventListener("click", () => void installFishLocal());
 document.querySelector("#clone-form").addEventListener("submit", (event) => void createVoiceClone(event));
 document.querySelector("#clone-record")?.addEventListener("click", () => void toggleCloneRecording());
-document.querySelector("#clone-stop")?.addEventListener("click", () => cloneRecorder?.stop());
+document.querySelector("#clone-stop")?.addEventListener("click", () => { if (cloneRecorder?.state === "recording") cloneRecorder.stop(); });
+document.querySelector("#clone-file").addEventListener("change", clearCloneRecording);
+document.querySelector("#cloned-voices").addEventListener("change", renderSelectedClone);
+document.querySelector("#clone-use").addEventListener("click", () => void manageClone("use"));
+document.querySelector("#clone-remove").addEventListener("click", () => void manageClone("remove"));
+window.addEventListener("pagehide", () => { if (cloneRecorder?.state === "recording") cloneRecorder.stop(); });
 
 document.querySelectorAll("[data-provider-select]").forEach((button) => {
   button.addEventListener("click", () => selectAiProvider(button.dataset.providerSelect));

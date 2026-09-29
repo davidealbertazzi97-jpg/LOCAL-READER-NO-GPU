@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.3 — 2026-09-11
+
+- Remove Pocket TTS, its worker and heavyweight dependencies; migrate legacy
+  offline preferences to Kokoro without deleting private samples.
+- Keep direct recording, consent and a saved cloned-voice menu for supported
+  optional providers.
+- Fix first-run uv extraction and retry incomplete portable installations.
+- Add checksum-verified one-command native installers and native first-run
+  release tests for Windows, Linux and Apple Silicon macOS.
+- Pin AppImage build tooling/runtime; include font/runtime licenses,
+  dependency inventories and corresponding source archives.
+- Rewrite the usage manual in Italian first, followed by English.
+- Add GitHub release checks at startup and every 12 hours, with a manual check
+  button and a platform-specific download link on Windows, Linux and macOS.
+- Put a prominent MP3 download action beside each generated track and give each
+  file a distinct name.
+
+
 All notable changes to Local Reader No GPU are documented here.
 
 ## 0.3.2 - 2026-09-10

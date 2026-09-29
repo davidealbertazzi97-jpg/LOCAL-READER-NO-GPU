@@ -30,7 +30,9 @@ def run(command: list[str]) -> None:
     print(f"\n-> {' '.join(command)}", flush=True)
     environment = os.environ.copy()
     for variable in tuple(environment):
-        if variable.startswith(("PIP_", "UV_", "PYTHON")):
+        if variable.startswith(
+            ("PIP_", "UV_", "PYTHON", "LD_", "DYLD_")
+        ) or variable in ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"):
             environment.pop(variable, None)
     subprocess.run(command, cwd=APP_DIR, env=environment, check=True)
 
@@ -75,7 +77,7 @@ def parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "kept for installer compatibility; the default Kokoro model is "
-            "already quantized for CPU"
+            "already optimized for CPU"
         ),
     )
     root.add_argument(
@@ -129,6 +131,9 @@ def main() -> int:
         raise SystemExit(
             "uv is unavailable. Run install.sh or install.ps1 from the project root."
         )
+    if not args.core_only and not args.skip_models:
+        print("Models have separate terms: see THIRD_PARTY_NOTICES.md and licenses/.")
+        print("LFM Open License v1.0: commercial revenue limitation; see its license.")
     core_python = install_requirements(uv, ".venv", "requirements-core.lock")
     run(
         [

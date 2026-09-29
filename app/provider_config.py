@@ -5,6 +5,7 @@ import json
 import os
 import tempfile
 import threading
+import uuid
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -63,11 +64,6 @@ TTS_PROVIDER_INFO: dict[str, dict[str, Any]] = {
         "key": None,
     },
     "elevenlabs": {"label": "ElevenLabs", "network": True, "key": "elevenlabs"},
-    "pocket-tts": {
-        "label": "Pocket TTS (clonazione offline)",
-        "network": False,
-        "key": None,
-    },
 }
 
 
@@ -84,6 +80,7 @@ def _defaults() -> dict[str, Any]:
         "tts": {
             "default_provider": "edge-tts",
             "offline_mode": False,
+            "offline_provider": "kokoro",
             "mistral": {
                 "api_key": "",
                 "model": "voxtral-mini-tts-2603",
@@ -101,7 +98,6 @@ def _defaults() -> dict[str, Any]:
                 "voice_id": "",
             },
             "kokoro": {"voice_it": "if_sara", "voice_en": "af_heart"},
-            "pocket-tts": {"voice_file": ""},
         },
         "clones": [],
     }
@@ -130,6 +126,10 @@ def load_settings() -> dict[str, Any]:
     except (FileNotFoundError, OSError, ValueError):
         return _defaults()
     result = _merge(_defaults(), saved)
+    # Retired provider: keep private clone records and files, but use Kokoro.
+    if result["tts"].get("default_provider") == "pocket-tts":
+        result["tts"]["default_provider"] = "kokoro"
+    result["tts"]["offline_provider"] = "kokoro"
     # Older builds called this provider OpenCode Go and stored its old
     # endpoint. Keep the provider id stable, but move existing installations
     # to the current OpenCode Zen endpoint automatically.
@@ -239,9 +239,12 @@ def _save_settings(payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(offline_mode, bool):
             raise ValueError("offline mode must be true or false")
         current["tts"]["offline_mode"] = offline_mode
-        if offline_mode:
-            current["tts"]["default_provider"] = "kokoro"
-        elif "offline_mode" in tts and "default_provider" not in tts:
+        current["tts"]["offline_provider"] = "kokoro"
+        if offline_mode and TTS_PROVIDER_INFO[selected]["network"]:
+            current["tts"]["default_provider"] = current["tts"]["offline_provider"]
+        elif (
+            "offline_mode" in tts and "default_provider" not in tts and not offline_mode
+        ):
             current["tts"]["default_provider"] = "edge-tts"
         for name in ("mistral", "fish", "elevenlabs"):
             section = tts.get(name, {})
@@ -293,6 +296,7 @@ def public_settings() -> dict[str, Any]:
         "tts": {
             "default_provider": settings["tts"]["default_provider"],
             "offline_mode": bool(settings["tts"].get("offline_mode", False)),
+            "offline_provider": settings["tts"].get("offline_provider", "kokoro"),
             "mistral": {
                 "model": settings["tts"]["mistral"]["model"],
                 "voice_id": settings["tts"]["mistral"]["voice_id"],
@@ -310,18 +314,23 @@ def public_settings() -> dict[str, Any]:
                 "configured": _configured(settings["tts"]["elevenlabs"].get("api_key")),
             },
             "kokoro": copy.deepcopy(settings["tts"]["kokoro"]),
-            "pocket-tts": {
-                "voice_file": settings["tts"]["pocket-tts"].get("voice_file", "")
-            },
         },
         "clones": [
             {
-                key: clone[key]
-                for key in ("id", "name", "provider", "voice_id")
-                if key in clone
+                **{
+                    key: clone[key]
+                    for key in ("id", "name", "provider", "voice_id")
+                    if key in clone
+                },
+                "ready": (
+                    private_voice_file(str(clone.get("reference_audio", "")))
+                    is not None
+                )
+                if clone.get("provider") == "fish-local"
+                else True,
             }
             for clone in settings.get("clones", [])
-            if isinstance(clone, dict)
+            if isinstance(clone, dict) and clone.get("provider") in TTS_PROVIDER_INFO
         ],
     }
 
@@ -364,13 +373,21 @@ def speech_runtime_config(provider: str) -> dict[str, Any]:
     settings = load_settings()
     if provider not in TTS_PROVIDER_INFO:
         raise ValueError("unknown speech provider")
-    if provider in {"edge-tts", "kokoro", "pocket-tts", "fish-local"}:
+    if provider in {"edge-tts", "kokoro", "fish-local"}:
         return {"provider": provider, **settings["tts"].get(provider, {})}
     section_name = "mistral" if provider == "voxtral" else provider
     section = settings["tts"][section_name]
     if not section.get("api_key"):
         raise ValueError("this speech provider has no API key configured")
     return {"provider": provider, **section}
+
+
+def private_voice_file(value: str) -> Path | None:
+    if not value:
+        return None
+    path = Path(value).resolve()
+    root = (PATHS.data / "voice-clones").resolve()
+    return path if root in path.parents and path.is_file() else None
 
 
 def add_clone(
@@ -381,13 +398,30 @@ def add_clone(
     reference_audio: str = "",
     reference_text: str = "",
 ) -> dict[str, Any]:
-    settings = load_settings()
-    clone_id = f"{provider}-{len(settings.get('clones', [])) + 1}"
+    clone_id = f"{provider}-{uuid.uuid4().hex}"
     clone = {"id": clone_id, "name": name, "provider": provider, "voice_id": voice_id}
     if reference_audio:
         clone["reference_audio"] = reference_audio
     if reference_text:
         clone["reference_text"] = reference_text
-    settings.setdefault("clones", []).append(clone)
-    _write_settings(settings)
+    with SETTINGS_LOCK:
+        settings = load_settings()
+        settings.setdefault("clones", []).append(clone)
+        _write_settings(settings)
     return clone
+
+
+def remove_clone(clone_id: str) -> bool:
+    """Remove from the menu, retaining local samples for recovery."""
+    with SETTINGS_LOCK:
+        settings = load_settings()
+        clone = next((c for c in settings["clones"] if c.get("id") == clone_id), None)
+        if clone is None:
+            return False
+        settings["clones"].remove(clone)
+        section = "mistral" if clone["provider"] == "voxtral" else clone["provider"]
+        config = settings["tts"].get(section, {})
+        if config.get("voice_id") == clone["voice_id"]:
+            config["voice_id"] = ""
+        _write_settings(settings)
+        return True

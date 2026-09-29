@@ -22,6 +22,7 @@ jobs:
           - os: macos-14
             artifact: macos-app
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -35,11 +36,7 @@ jobs:
       - name: Install AppImage tooling
         if: runner.os == 'Linux'
         run: |
-          mkdir -p build
-          curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 \
-            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage \
-            --output build/appimagetool.AppImage
-          chmod 0755 build/appimagetool.AppImage
+          python packaging/install_appimage_tools.py
       - name: Build package
         shell: bash
         run: |
@@ -50,6 +47,22 @@ jobs:
           else
             pwsh -File packaging/build_windows.ps1
           fi
+      - name: Test native first-run install, OCR and offline speech
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            python packaging/test_native_package.py dist/*.AppImage
+          elif [ "$RUNNER_OS" = macOS ]; then
+            python packaging/test_native_package.py dist/*.app/Contents/MacOS/"Local Reader No GPU"
+          else
+            python packaging/test_native_package.py dist/*.exe
+          fi
+          python -c 'import os,shutil; shutil.make_archive("dist/Installed-dependency-notices-"+os.environ["RUNNER_OS"],"zip","build/installed-licenses")'
+      - name: Include source and third-party corresponding source
+        if: runner.os == 'Linux'
+        run: |
+          python packaging/create_payload.py --output dist/Local-Reader-No-GPU-source.zip
+          python packaging/collect_sources.py
       - name: Upload package artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -68,6 +81,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: dist
@@ -81,4 +97,4 @@ jobs:
           cd dist
           sha256sum * > SHA256SUMS.txt
           gh release create "$RELEASE_TAG" ./* --verify-tag \
-            --title "Local Reader No GPU $RELEASE_TAG" --generate-notes
+            --title "Local Reader No GPU $RELEASE_TAG" --notes-file "../docs/releases/$RELEASE_TAG.md"

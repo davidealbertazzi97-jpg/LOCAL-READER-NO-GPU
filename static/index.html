@@ -103,6 +103,20 @@
     </header>
 
     <main id="main">
+      <section id="updates-panel" class="updates-panel" aria-label="Aggiornamenti" data-i18n-aria-label="updatesLabel">
+        <p id="update-status" role="status" aria-live="polite">
+          Il controllo cerca le nuove release pubbliche su GitHub.
+        </p>
+        <div class="updates-actions">
+          <button id="check-updates" class="secondary" type="button" data-i18n="checkUpdates">
+            Verifica aggiornamenti
+          </button>
+          <a id="download-update" class="button-link" href="https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/latest" target="_blank" rel="noopener noreferrer" hidden>
+            Scarica aggiornamento
+          </a>
+        </div>
+      </section>
+
       <section class="privacy-note" aria-labelledby="privacy-title">
         <span class="privacy-mark" aria-hidden="true">✓</span>
         <div>
@@ -235,7 +249,6 @@
                 ><select id="complete-provider">
                   <option value="edge-tts">Edge-TTS — online</option>
                   <option value="kokoro">Kokoro 82M — offline</option>
-                  <option value="pocket-tts" disabled>Pocket TTS — necessaria clonazione</option>
                 </select></label
               >
               <details class="advanced-settings">
@@ -325,10 +338,10 @@
                 <audio id="complete-audio" controls preload="metadata"></audio
                 ><a
                   id="complete-download"
-                  class="button-link secondary"
-                  download="audio.mp3"
+                  class="button-link"
+                  download="local-reader-audio.mp3"
                   data-i18n="downloadAudio"
-                  >Scarica audio</a
+                  >Scarica subito l’audio MP3</a
                 >
               </div>
             </div>
@@ -663,7 +676,6 @@
                     ><select id="tts-provider">
                   <option value="edge-tts">Edge-TTS — online</option>
                   <option value="kokoro">Kokoro 82M — offline</option>
-                  <option value="pocket-tts" disabled>Pocket TTS — necessaria clonazione</option>
                       <option value="voxtral">Voxtral TTS — Mistral</option>
                       <option value="fish">Fish Audio</option>
                       <option value="fish-local">Fish Audio locale — Mac Apple Silicon</option>
@@ -716,10 +728,10 @@
                 <audio id="tts-audio" controls preload="metadata"></audio
                 ><a
                   id="tts-download"
-                  class="button-link secondary"
-                  download="audio.mp3"
+                  class="button-link"
+                  download="local-reader-audio.mp3"
                   data-i18n="downloadAudio"
-                  >Scarica audio</a
+                  >Scarica subito l’audio MP3</a
                 >
               </div>
             </div>
@@ -845,7 +857,6 @@
                 ><select id="default-audio-provider">
                   <option value="edge-tts">Edge-TTS — online</option>
                   <option value="kokoro">Kokoro 82M — offline</option>
-                  <option value="pocket-tts" disabled>Pocket TTS — necessaria clonazione</option>
                 </select></label
               >
               <div>
@@ -1637,9 +1648,6 @@
                         <option value="fish-local">
                           Fish Audio locale — solo Mac Apple Silicon
                         </option>
-                        <option value="pocket-tts">
-                          Pocket TTS — clonazione offline
-                        </option>
                       </select></label
                     ><label
                       ><span data-i18n="cloneName">Nome della voce</span
@@ -1655,12 +1663,13 @@
                       id="clone-file"
                       type="file"
                       accept="audio/*" /></label
-                  ><div class="recording-controls"><button id="clone-record" class="secondary" type="button">Registra campione</button><button id="clone-stop" class="secondary" type="button" disabled>Ferma registrazione</button><audio id="clone-preview" controls hidden></audio></div
+                  ><p data-i18n="recordHelp">Registra 3–30 secondi in un luogo silenzioso (consigliati 10–20). Puoi riascoltare prima di creare la voce.</p>
+                  <div class="recording-controls"><button id="clone-record" data-i18n="recordSample" class="secondary" type="button">Registra campione</button><button id="clone-stop" data-i18n="stopRecording" class="secondary" type="button" disabled>Ferma registrazione</button><audio id="clone-preview" controls hidden></audio></div
                   ><label
                     ><span>Testo pronunciato nel campione (solo Fish locale)</span
                     ><textarea id="clone-reference-text" rows="3" maxlength="2000"></textarea></label
                   ><label class="consent-line"
-                    ><input id="clone-consent" type="checkbox" /><span
+                    ><input id="clone-consent" type="checkbox" required /><span
                       data-i18n="cloneConsent"
                       >Confermo di avere il permesso di usare questa voce.</span
                     ></label
@@ -1674,7 +1683,15 @@
                     aria-live="polite"
                   ></p>
                 </form>
-                <div id="clone-list" class="clone-list"></div>
+                <div id="clone-list" class="clone-list">
+                  <label><span data-i18n="clonedVoices">Voci clonate salvate</span><select id="cloned-voices"></select></label>
+                  <p id="cloned-voice-details" role="status"></p>
+                  <audio id="cloned-voice-preview" controls hidden></audio>
+                  <div class="recording-controls">
+                    <button id="clone-use" type="button" data-i18n="useClone">Usa questa voce</button>
+                    <button id="clone-remove" type="button" class="secondary" data-i18n="removeClone">Rimuovi dal menu</button>
+                  </div>
+                </div>
               </section>
             </div>
           </details>
