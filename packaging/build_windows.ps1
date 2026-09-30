@@ -18,8 +18,9 @@ Remove-Item -LiteralPath $BuildDir -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $BuildDir, $DistDir | Out-Null
 & $Uv run --no-project --python 3.12 --with "pyinstaller==6.19.0" python (Join-Path $AppDir "packaging\collect_licenses.py") --output (Join-Path $BuildDir "licenses")
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
-$Version = (& $Uv run --no-project --python 3.12 python -c 'import pathlib,tomllib; print(tomllib.loads(pathlib.Path("product.toml").read_text())["product"]["version"]').Trim()
-if ($LASTEXITCODE) { exit $LASTEXITCODE }
+$VersionLine = Select-String -LiteralPath (Join-Path $AppDir "product.toml") -Pattern '^\s*version\s*=\s*"([^"]+)"\s*$' | Select-Object -First 1
+if (-not $VersionLine) { throw "Could not read the package version from product.toml." }
+$Version = $VersionLine.Matches[0].Groups[1].Value
 & $Uv run --no-project --python 3.12 python (Join-Path $AppDir "packaging\create_payload.py") `
     --licenses (Join-Path $BuildDir "licenses") --output (Join-Path $BuildDir "payload.zip")
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
