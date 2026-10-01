@@ -40,6 +40,7 @@ UV_BUILDS = {
     ),
 }
 UV_URL = f"https://github.com/astral-sh/uv/releases/download/{UV_VERSION}/"
+VC_REDIST_URL = "https://aka.ms/vc14/vc_redist.x64.exe"
 
 
 def platform_root() -> Path:
@@ -53,7 +54,7 @@ def platform_root() -> Path:
     return base / APP_SLUG
 
 
-def refresh_windows_start_menu_shortcut(executable: Path) -> None:
+def refresh_windows_start_menu_shortcut(executable: Path, version: str) -> None:
     """Create a Start menu link using the Windows Shell COM interfaces."""
     if os.name != "nt":
         return
@@ -126,7 +127,8 @@ def refresh_windows_start_menu_shortcut(executable: Path) -> None:
             raise OSError(
                 f"Could not set Windows Shell link target: 0x{status & 0xFFFFFFFF:08x}"
             )
-        status = method(shell_link, 7, ctypes.c_wchar_p)(shell_link, APP_NAME)
+        label = f"{APP_NAME} {version}"
+        status = method(shell_link, 7, ctypes.c_wchar_p)(shell_link, label)
         if status < 0:
             raise OSError(
                 f"Could not set Windows Shell link description: 0x{status & 0xFFFFFFFF:08x}"
@@ -152,7 +154,7 @@ def refresh_windows_start_menu_shortcut(executable: Path) -> None:
         )
         menu = app_data / "Microsoft" / "Windows" / "Start Menu" / "Programs"
         menu.mkdir(parents=True, exist_ok=True)
-        shortcut = menu / f"{APP_NAME}.lnk"
+        shortcut = menu / f"{label}.lnk"
         temporary = shortcut.with_suffix(".lnk.tmp")
         try:
             status = method(
@@ -175,7 +177,7 @@ def refresh_windows_start_menu_shortcut(executable: Path) -> None:
 
 
 def register_windows_package(root: Path, version: str) -> None:
-    """Install this EXE and refresh the package targeted by the Start shortcut."""
+    """Install this version without replacing another version's package or link."""
     if os.name != "nt" or not getattr(sys, "frozen", False):
         return
     version_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?", version)
@@ -201,31 +203,7 @@ def register_windows_package(root: Path, version: str) -> None:
         return
 
     try:
-        old_packages = []
-        for candidate in packages_dir.glob("*/*-windows-x86_64.exe"):
-            if candidate.resolve() in {source, installed_executable.resolve()}:
-                continue
-            candidate_version = re.fullmatch(
-                r"(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?",
-                candidate.parent.name,
-            )
-            if candidate_version:
-                old_packages.append(
-                    (tuple(map(int, candidate_version.groups())), candidate)
-                )
-        if old_packages:
-            _, previous_executable = max(old_packages, key=lambda item: item[0])
-            temporary = previous_executable.with_suffix(".exe.tmp")
-            try:
-                shutil.copy2(installed_executable, temporary)
-                temporary.replace(previous_executable)
-            finally:
-                temporary.unlink(missing_ok=True)
-    except OSError:
-        pass
-
-    try:
-        refresh_windows_start_menu_shortcut(installed_executable)
+        refresh_windows_start_menu_shortcut(installed_executable, version)
     except OSError:
         # The app remains usable if Windows cannot create its Start menu link.
         pass
@@ -296,23 +274,57 @@ def download_uv(root: Path) -> Path:
     asset_name, expected_hash = asset
     tools = root / ".tools"
     tools.mkdir(parents=True, exist_ok=True)
-    executable = tools / ("uv.exe" if os.name == "nt" else "uv")
+    is_windows = platform.system() == "Windows"
+    executable = tools / ("uv.exe" if is_windows else "uv")
     if executable.is_file():
         return executable
     archive_path = tools / asset_name
     archive_path.unlink(missing_ok=True)
     print("Downloading the verified Python runtime manager (uv)...", flush=True)
-    request = urllib.request.Request(
-        urllib.parse.urljoin(UV_URL, asset_name),
-        headers={"User-Agent": "Local-Reader-No-GPU/0.3"},
-    )
-    with (
-        urllib.request.urlopen(  # nosec B310
-            request, timeout=120
-        ) as response,
-        archive_path.open("xb") as output,
-    ):
-        shutil.copyfileobj(response, output)
+    download_url = urllib.parse.urljoin(UV_URL, asset_name)
+    if is_windows:
+        # The frozen launcher has no Python CA bundle. Use Windows' Schannel
+        # trust store for HTTPS, then verify the pinned archive before use.
+        download_env = os.environ.copy()
+        download_env["LOCAL_READER_UV_URL"] = download_url
+        download_env["LOCAL_READER_UV_ARCHIVE"] = str(archive_path)
+        powershell = (
+            "$ErrorActionPreference = 'Stop'; "
+            "[Net.ServicePointManager]::SecurityProtocol = "
+            "[Net.SecurityProtocolType]::Tls12; "
+            "Invoke-WebRequest -UseBasicParsing -Uri $env:LOCAL_READER_UV_URL "
+            "-OutFile $env:LOCAL_READER_UV_ARCHIVE"
+        )
+        try:
+            subprocess.run(
+                [
+                    "powershell.exe",
+                    "-NoLogo",
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-Command",
+                    powershell,
+                ],
+                check=True,
+                env=download_env,
+            )
+        except Exception:
+            archive_path.unlink(missing_ok=True)
+            raise
+    else:
+        request = urllib.request.Request(
+            download_url,
+            headers={"User-Agent": "Local-Reader-No-GPU/0.3"},
+        )
+        with (
+            urllib.request.urlopen(  # nosec B310
+                request, timeout=120
+            ) as response,
+            archive_path.open("xb") as output,
+        ):
+            shutil.copyfileobj(response, output)
     if sha256(archive_path) != expected_hash:
         archive_path.unlink(missing_ok=True)
         raise RuntimeError("uv archive checksum verification failed")
@@ -334,16 +346,82 @@ def download_uv(root: Path) -> Path:
                     if not (member.isfile() or member.isdir()):
                         raise RuntimeError("uv archive contains a special file")
                 archive.extractall(extract, filter="data")  # nosec B202
-        candidate = next(extract.rglob("uv.exe" if os.name == "nt" else "uv"), None)
+        candidate = next(extract.rglob("uv.exe" if is_windows else "uv"), None)
         if candidate is None or not candidate.is_file():
             raise RuntimeError("uv archive did not contain its executable")
         shutil.copy2(candidate, executable)
-        if os.name != "nt":
+        if not is_windows:
             executable.chmod(0o755)
     finally:
         archive_path.unlink(missing_ok=True)
         shutil.rmtree(extract, ignore_errors=True)
     return executable
+
+
+def windows_vc_runtime_installed() -> bool:
+    """Return whether the machine-wide x64 Visual C++ 14 runtime is installed."""
+    if platform.system() != "Windows":
+        return True
+    import winreg
+
+    try:
+        with winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64",
+        ) as key:
+            installed, _ = winreg.QueryValueEx(key, "Installed")
+    except OSError:
+        return False
+    return installed == 1
+
+
+def ensure_windows_vc_runtime(root: Path) -> None:
+    """Install Microsoft's signed x64 runtime when PaddleOCR needs it."""
+    if platform.system() != "Windows" or windows_vc_runtime_installed():
+        return
+
+    tools = root / ".tools"
+    tools.mkdir(parents=True, exist_ok=True)
+    installer = tools / "vc_redist.x64.exe"
+    environment = os.environ.copy()
+    environment["LOCAL_READER_VC_URL"] = VC_REDIST_URL
+    environment["LOCAL_READER_VC_INSTALLER"] = str(installer)
+    powershell = (
+        "$ErrorActionPreference = 'Stop'; "
+        "Invoke-WebRequest -UseBasicParsing -TimeoutSec 240 "
+        "-Uri $env:LOCAL_READER_VC_URL -OutFile $env:LOCAL_READER_VC_INSTALLER; "
+        "$signature = Get-AuthenticodeSignature -LiteralPath "
+        "$env:LOCAL_READER_VC_INSTALLER; "
+        "if ($signature.Status -ne 'Valid' -or "
+        "$signature.SignerCertificate.Subject -notlike '*Microsoft Corporation*') "
+        "{ throw 'Microsoft Visual C++ installer signature is invalid.' }; "
+        "$process = Start-Process -FilePath $env:LOCAL_READER_VC_INSTALLER "
+        "-ArgumentList @('/install', '/quiet', '/norestart') "
+        "-PassThru -Wait -Verb RunAs; "
+        "if ($process.ExitCode -notin @(0, 1638, 3010)) "
+        "{ throw \"Visual C++ Redistributable returned exit code $($process.ExitCode).\" }"
+    )
+    print(
+        "Installing the Microsoft Visual C++ x64 runtime required by Windows OCR...",
+        flush=True,
+    )
+    try:
+        subprocess.run(
+            [
+                "powershell.exe",
+                "-NoLogo",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                powershell,
+            ],
+            check=True,
+            env=environment,
+        )
+    finally:
+        installer.unlink(missing_ok=True)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -429,6 +507,7 @@ def main() -> int:
     register_windows_package(root, version)
     install = install_payload(payload_path(), root)
     uv = download_uv(root)
+    ensure_windows_vc_runtime(root)
     environment = os.environ.copy()
     for variable in tuple(environment):
         if variable.startswith(

@@ -201,7 +201,7 @@ async def local_security(request: Request, call_next):
         "default-src 'self'; "
         "script-src 'self'; "
         "style-src 'self'; "
-        "connect-src 'self'; "
+        "connect-src 'self' https://api.github.com; "
         "font-src 'self'; "
         "img-src 'self' data:; "
         "media-src 'self' blob:; "

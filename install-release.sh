@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Download a versioned native package, verify SHA-256, then launch it.
 set -euo pipefail
-LAS_VERSION="0.3.3"
+LAS_VERSION="0.3.4"
 LAS_BASE="https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/download/v${LAS_VERSION}"
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64) LAS_ASSET="Local-Reader-No-GPU-${LAS_VERSION}-linux-x86_64.AppImage" ;;

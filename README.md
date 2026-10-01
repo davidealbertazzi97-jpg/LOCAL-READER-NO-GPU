@@ -33,6 +33,9 @@ leggero LFM. Richiede Internet e alcuni minuti; non è un pacchetto completament
 offline prima di questa preparazione. Poi apre il browser sull'app locale.
 Se il download si interrompe, riapri lo stesso pacchetto: la preparazione
 incompleta viene ritentata. Non chiudere il terminale mentre usi l'app.
+Su Windows, se manca il runtime Microsoft Visual C++ x64, il primo avvio chiede
+la normale approvazione UAC per installare il runtime firmato da Microsoft;
+Local Reader continua a funzionare come utente standard.
 
 Come margine pratico, consigliamo 8 GB di RAM e almeno 5 GB liberi per la
 versione standard, oltre ai documenti e ai risultati. Sono indicazioni
@@ -50,23 +53,23 @@ I checksum verificano integrità, non sono una firma indipendente da GitHub.
 Linux (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.3/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.4/install-release.sh | bash
 ```
 
 Windows (PowerShell):
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.3/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.4/install-release.ps1 | iex
 ```
 
 macOS Apple Silicon (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.3/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.4/install-release.sh | bash
 ```
 
-Su Windows l'EXE crea o aggiorna un collegamento nel menu Start; macOS installa sotto
-`~/Applications/Local Reader No GPU 0.3.3`. Su Linux il percorso del
+Su Windows ogni versione conserva il proprio EXE e collegamento nel menu Start;
+macOS installa sotto `~/Applications/Local Reader No GPU 0.3.4`. Su Linux il percorso del
 pacchetto installato è mostrato nel terminale; puoi riaprirlo da quel percorso.
 Lo script Linux usa la modalità estrazione dell'AppImage, senza richiedere FUSE.
 
@@ -190,18 +193,17 @@ Non esiste garanzia assoluta di sicurezza o conformità WCAG, PDF/UA o GDPR.
 - **Microfono non disponibile:** consenti l'accesso al sito locale nelle
   impostazioni del browser; in alternativa carica un campione audio.
 - **AppImage non si avvia:** da terminale usa
-  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Reader-No-GPU-0.3.3-linux-x86_64.AppImage`.
+  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Reader-No-GPU-0.3.4-linux-x86_64.AppImage`.
 - **Aggiornamento:** dalla versione 0.3.3 l'app controlla le release all'avvio
   e ogni 12 ore. Usa **Verifica aggiornamenti** per un controllo manuale; se
   trova una release, scarica il pacchetto indicato, chiudi l'app e aprilo.
-  Su Windows basta avviare l'EXE scaricato: si installa nella cartella utente
-  e crea o aggiorna il collegamento nel menu Start per le aperture successive.
-  Dopo il primo aggiornamento, apri l'app dal menu Start per usare la nuova
-  versione. Le versioni precedenti alla 0.3.3 non possono notificare questo
+  Su Windows basta avviare l'EXE scaricato: viene installato nella cartella
+  utente e aggiunge un collegamento nel menu Start specifico per la versione,
+  lasciando disponibili le versioni già installate. Le versioni precedenti alla 0.3.3 non possono notificare questo
   primo aggiornamento: scarica una volta l'EXE della release e avvialo
   manualmente. Per i successivi aggiornamenti la verifica integrata segnala le
-  nuove release. Impostazioni, campioni e risultati restano nella cartella dati
-  locale.
+  nuove release. Le versioni condividono cronologia, impostazioni, campioni e
+  risultati nella cartella dati locale, ma usano collegamenti e porte distinti.
 - **Avvisi del sistema operativo:** controlla la release ufficiale e
   `SHA256SUMS.txt`. Non vengono forniti certificati commerciali o notarizzazione.
 
@@ -291,17 +293,17 @@ GitHub repository.
 Linux or macOS Apple Silicon, in Terminal:
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.3/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.4/install-release.sh | bash
 ```
 
 Windows, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.3/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.4/install-release.ps1 | iex
 ```
 
-Windows gets a Start menu shortcut. macOS installs under
-`~/Applications/Local Reader No GPU 0.3.3`. Linux prints the installed
+Windows gets a version-specific Start menu shortcut. macOS installs under
+`~/Applications/Local Reader No GPU 0.3.4`. Linux prints the installed
 package path and uses extraction mode, so FUSE is not required.
 
 ### Using the application
@@ -384,11 +386,10 @@ a sample. On Linux, try `APPIMAGE_EXTRACT_AND_RUN=1 ./your-package.AppImage`.
 From version 0.3.3, the app checks releases on startup and every 12 hours.
 Choose **Check for updates** for a manual check, download the offered package,
 close the app and open it. On Windows, the downloaded EXE installs under the
-user's local app-data folder and creates or refreshes the Start menu shortcut
-to launch that installed copy. After this first update, open the app from the
-Start menu to use the new version. Earlier versions cannot announce this first
-update, so download and open the EXE once manually; later releases can be
-checked in-app. Settings, samples and results stay in the local data directory.
+  user's local app-data folder and adds a version-specific Start menu shortcut;
+  earlier installations remain available. The launcher checks the server version
+  before reusing a running process, then selects another local port if needed.
+  Settings, history, samples and results remain in the shared local data directory.
 
 ### Development, verification and licensing
 

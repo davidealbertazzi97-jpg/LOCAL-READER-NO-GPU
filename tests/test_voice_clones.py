@@ -160,7 +160,10 @@ class VoiceCloneTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(
             "media-src 'self' blob:", response.headers["Content-Security-Policy"]
         )
-        self.assertIn("connect-src 'self'", response.headers["Content-Security-Policy"])
+        self.assertIn(
+            "connect-src 'self' https://api.github.com",
+            response.headers["Content-Security-Policy"],
+        )
 
     def test_offline_toggle_does_not_restore_retired_provider(self):
         self.legacy_settings()

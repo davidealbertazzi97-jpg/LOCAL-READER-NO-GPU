@@ -78,7 +78,7 @@ wheels = [
 
 [[package]]
 name = "local-reader-no-gpu"
-version = "0.3.0"
+version = "0.3.4"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },

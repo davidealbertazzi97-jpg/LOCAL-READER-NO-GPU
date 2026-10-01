@@ -30,7 +30,7 @@ def config_root() -> Path:
     home = Path.home()
     if os.name == "nt":
         local = Path(os.environ.get("LOCALAPPDATA", home / "AppData" / "Local"))
-        return local / PRODUCT.name
+        return local / PRODUCT.name / "launchers" / PRODUCT.version
     if sys.platform == "darwin":
         return home / "Library" / "Application Support" / PRODUCT.name
     xdg = Path(os.environ.get("XDG_CONFIG_HOME", home / ".config")).expanduser()
@@ -84,7 +84,11 @@ def get_json(url: str, timeout: float = 1.0) -> dict[str, Any] | None:
 
 def app_is_ready(port: int) -> bool:
     value = get_json(f"http://127.0.0.1:{port}/health")
-    return value is not None and value.get("app") == PRODUCT.slug
+    return (
+        value is not None
+        and value.get("app") == PRODUCT.slug
+        and value.get("version") == PRODUCT.version
+    )
 
 
 def token_is_authorized(port: int, token: str) -> bool:

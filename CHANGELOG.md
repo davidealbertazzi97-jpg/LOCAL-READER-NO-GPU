@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.4 — 2026-10-01
+
+- Fix Windows launches alongside an older version: each version uses its own
+  launcher token, port setting and Start menu shortcut.
+- Use Windows' certificate store for the checksum-pinned first-run runtime
+  download, and install Microsoft's signed x64 Visual C++ runtime only when
+  missing so PaddleOCR can load on a clean Windows machine.
+- Allow the release checker to connect to the official GitHub Releases API.
+- Preserve older versioned executables instead of replacing them during install.
+- Keep job history and user settings available across versions.
+- Update the Windows release installer so the app creates its own versioned
+  shortcut after checksum verification.
+- Fix history behavior when another version's server is already running.
+
 ## 0.3.3 — 2026-09-11
 
 - Remove Pocket TTS, its worker and heavyweight dependencies; migrate legacy
