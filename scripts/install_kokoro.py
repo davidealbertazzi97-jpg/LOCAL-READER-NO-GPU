@@ -10,6 +10,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+try:
+    from .windows_download import download_with_windows_trust
+except ImportError:
+    from windows_download import download_with_windows_trust
+
 APP_DIR = Path(__file__).resolve().parent.parent
 TARGET = APP_DIR / "models" / "kokoro"
 COMPACT_MODEL = (
@@ -63,20 +68,28 @@ def download(name: str, expected_size: int, expected_hash: str) -> None:
         raise RuntimeError("unexpected Kokoro download URL")
     temporary = destination.with_suffix(destination.suffix + ".download")
     temporary.unlink(missing_ok=True)
-    request = urllib.request.Request(
-        url, headers={"User-Agent": "Local-Reader-No-GPU/0.3"}
-    )
     try:
-        # HTTPS host, expected size, and SHA-256 are fixed and checked here.
-        # nosemgrep
-        response = urllib.request.urlopen(request, timeout=60)  # nosec B310
-        received = 0
-        with response, temporary.open("xb") as output:
-            while chunk := response.read(1024 * 1024):
-                received += len(chunk)
-                if received > expected_size:
-                    raise RuntimeError(f"download exceeds the approved size for {name}")
-                output.write(chunk)
+        if os.name == "nt":
+            download_with_windows_trust(
+                url, temporary, expected_size, timeout_seconds=1800
+            )
+            received = temporary.stat().st_size
+        else:
+            request = urllib.request.Request(
+                url, headers={"User-Agent": "Local-Reader-No-GPU/0.3"}
+            )
+            # HTTPS host, expected size, and SHA-256 are fixed and checked here.
+            # nosemgrep
+            response = urllib.request.urlopen(request, timeout=60)  # nosec B310
+            received = 0
+            with response, temporary.open("xb") as output:
+                while chunk := response.read(1024 * 1024):
+                    received += len(chunk)
+                    if received > expected_size:
+                        raise RuntimeError(
+                            f"download exceeds the approved size for {name}"
+                        )
+                    output.write(chunk)
         if received != expected_size or not verified(
             temporary, expected_size, expected_hash
         ):

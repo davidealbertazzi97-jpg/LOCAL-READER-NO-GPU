@@ -9,6 +9,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+try:
+    from .windows_download import download_with_windows_trust
+except ImportError:
+    from windows_download import download_with_windows_trust
+
 APP_DIR = Path(__file__).resolve().parent.parent
 TARGET = APP_DIR / "models" / "gemma4"
 NAME = "gemma-4-E4B_q4_0-it.gguf"
@@ -42,20 +47,24 @@ def main() -> int:
         raise RuntimeError("unexpected Gemma download URL")
     temporary = destination.with_suffix(destination.suffix + ".download")
     temporary.unlink(missing_ok=True)
-    request = urllib.request.Request(
-        URL, headers={"User-Agent": "Local-Reader-No-GPU/0.3"}
-    )
     try:
-        # The host, URL, expected size and SHA-256 are fixed above.
-        # nosemgrep
-        response = urllib.request.urlopen(request, timeout=120)  # nosec B310
-        received = 0
-        with response, temporary.open("xb") as output:
-            while chunk := response.read(1024 * 1024):
-                received += len(chunk)
-                if received > SIZE:
-                    raise RuntimeError("Gemma download exceeds the approved size")
-                output.write(chunk)
+        if os.name == "nt":
+            download_with_windows_trust(URL, temporary, SIZE, timeout_seconds=7200)
+            received = temporary.stat().st_size
+        else:
+            request = urllib.request.Request(
+                URL, headers={"User-Agent": "Local-Reader-No-GPU/0.3"}
+            )
+            # The host, URL, expected size and SHA-256 are fixed above.
+            # nosemgrep
+            response = urllib.request.urlopen(request, timeout=120)  # nosec B310
+            received = 0
+            with response, temporary.open("xb") as output:
+                while chunk := response.read(1024 * 1024):
+                    received += len(chunk)
+                    if received > SIZE:
+                        raise RuntimeError("Gemma download exceeds the approved size")
+                    output.write(chunk)
         if received != SIZE or not verified(temporary):
             raise RuntimeError("Gemma checksum verification failed")
         os.replace(temporary, destination)

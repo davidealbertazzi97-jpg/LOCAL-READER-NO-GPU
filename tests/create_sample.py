@@ -13,14 +13,10 @@ def main() -> int:
     args = parser.parse_args()
     image = Image.new("RGB", (1400, 620), "white")
     draw = ImageDraw.Draw(image)
-    regular = ImageFont.truetype(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        46,
-    )
-    bold = ImageFont.truetype(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        62,
-    )
+    # Pillow bundles its default TrueType font; keep the release smoke fixture
+    # independent of fonts installed on a particular CI runner.
+    regular = ImageFont.load_default(size=46)
+    bold = ImageFont.load_default(size=62)
     draw.text((65, 55), "AVVISO IMPORTANTE", font=bold, fill="black")
     draw.text(
         (65, 180),

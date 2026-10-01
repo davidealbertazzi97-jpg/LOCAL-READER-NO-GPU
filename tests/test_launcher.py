@@ -85,7 +85,7 @@ class PortableLauncherTests(unittest.TestCase):
         expected_hash = hashlib.sha256(content).hexdigest()
 
         def powershell_download(command, *, check, env):
-            self.assertEqual(command[0], "powershell.exe")
+            self.assertTrue(command[0].lower().endswith("\\powershell.exe"))
             self.assertTrue(check)
             self.assertIn("SecurityProtocolType]::Tls12", command[-1])
             self.assertTrue(env["LOCAL_READER_UV_URL"].startswith("https://"))
@@ -111,7 +111,9 @@ class PortableLauncherTests(unittest.TestCase):
             self.assertEqual(executable.name, "uv.exe")
             self.assertEqual(executable.read_bytes(), b"test")
 
-    def test_windows_vc_runtime_is_signature_checked_and_only_installed_if_missing(self):
+    def test_windows_vc_runtime_is_signature_checked_and_only_installed_if_missing(
+        self,
+    ):
         with (
             tempfile.TemporaryDirectory() as temporary,
             patch.object(launcher.platform, "system", return_value="Windows"),
@@ -120,7 +122,7 @@ class PortableLauncherTests(unittest.TestCase):
         ):
             launcher.ensure_windows_vc_runtime(Path(temporary))
             command = run.call_args.args[0]
-            self.assertEqual(command[0], "powershell.exe")
+            self.assertTrue(command[0].lower().endswith("\\powershell.exe"))
             self.assertIn("Get-AuthenticodeSignature", command[-1])
             self.assertIn("Microsoft Corporation", command[-1])
             self.assertIn("-Verb RunAs", command[-1])
@@ -151,7 +153,7 @@ class PortableLauncherTests(unittest.TestCase):
             core.touch()
             with (
                 patch.object(sys, "argv", ["launcher", "--install-only"]),
-                patch.object(launcher, "verify_payload", return_value="0.3.4"),
+                patch.object(launcher, "verify_payload", return_value="0.3.5"),
                 patch.object(launcher, "platform_root", return_value=root),
                 patch.object(launcher, "install_payload", return_value=root),
                 patch.object(launcher, "download_uv", return_value=root / "uv"),
@@ -166,7 +168,7 @@ class PortableLauncherTests(unittest.TestCase):
             self.assertFalse((root / ".bootstrap-complete").exists())
             with (
                 patch.object(sys, "argv", ["launcher", "--install-only"]),
-                patch.object(launcher, "verify_payload", return_value="0.3.4"),
+                patch.object(launcher, "verify_payload", return_value="0.3.5"),
                 patch.object(launcher, "platform_root", return_value=root),
                 patch.object(launcher, "install_payload", return_value=root),
                 patch.object(launcher, "download_uv", return_value=root / "uv"),
@@ -184,7 +186,7 @@ class PortableLauncherTests(unittest.TestCase):
             "status": "ok",
             "version": "0.3.3",
         }
-        current_health = {**old_health, "version": "0.3.4"}
+        current_health = {**old_health, "version": "0.3.5"}
         with patch.object(start_app, "get_json", return_value=old_health):
             self.assertFalse(start_app.app_is_ready(8765))
         with patch.object(start_app, "get_json", return_value=current_health):

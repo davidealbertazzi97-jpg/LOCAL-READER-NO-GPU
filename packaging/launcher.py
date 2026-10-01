@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -41,6 +42,13 @@ UV_BUILDS = {
 }
 UV_URL = f"https://github.com/astral-sh/uv/releases/download/{UV_VERSION}/"
 VC_REDIST_URL = "https://aka.ms/vc14/vc_redist.x64.exe"
+POWERSHELL_EXE = (
+    PureWindowsPath(os.environ.get("SYSTEMROOT", r"C:\Windows"))
+    / "System32"
+    / "WindowsPowerShell"
+    / "v1.0"
+    / "powershell.exe"
+)
 
 
 def platform_root() -> Path:
@@ -131,7 +139,8 @@ def refresh_windows_start_menu_shortcut(executable: Path, version: str) -> None:
         status = method(shell_link, 7, ctypes.c_wchar_p)(shell_link, label)
         if status < 0:
             raise OSError(
-                f"Could not set Windows Shell link description: 0x{status & 0xFFFFFFFF:08x}"
+                "Could not set Windows Shell link description: "
+                f"0x{status & 0xFFFFFFFF:08x}"
             )
 
         status = method(
@@ -149,17 +158,15 @@ def refresh_windows_start_menu_shortcut(executable: Path, version: str) -> None:
                 f"Could not save Windows Shell link: 0x{status & 0xFFFFFFFF:08x}"
             )
 
-        app_data = Path(
-            os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming")
-        )
+        app_data = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
         menu = app_data / "Microsoft" / "Windows" / "Start Menu" / "Programs"
         menu.mkdir(parents=True, exist_ok=True)
         shortcut = menu / f"{label}.lnk"
         temporary = shortcut.with_suffix(".lnk.tmp")
         try:
-            status = method(
-                persist_file, 6, ctypes.c_wchar_p, ctypes.c_int
-            )(persist_file, str(temporary), True)
+            status = method(persist_file, 6, ctypes.c_wchar_p, ctypes.c_int)(
+                persist_file, str(temporary), True
+            )
             if status < 0:
                 raise OSError(
                     f"Could not write Windows Shell link: 0x{status & 0xFFFFFFFF:08x}"
@@ -202,11 +209,9 @@ def register_windows_package(root: Path, version: str) -> None:
     except OSError:
         return
 
-    try:
-        refresh_windows_start_menu_shortcut(installed_executable, version)
-    except OSError:
+    with contextlib.suppress(OSError):
         # The app remains usable if Windows cannot create its Start menu link.
-        pass
+        refresh_windows_start_menu_shortcut(installed_executable, version)
 
 
 def payload_path() -> Path:
@@ -298,7 +303,7 @@ def download_uv(root: Path) -> Path:
         try:
             subprocess.run(
                 [
-                    "powershell.exe",
+                    str(POWERSHELL_EXE),
                     "-NoLogo",
                     "-NoProfile",
                     "-NonInteractive",
@@ -399,7 +404,8 @@ def ensure_windows_vc_runtime(root: Path) -> None:
         "-ArgumentList @('/install', '/quiet', '/norestart') "
         "-PassThru -Wait -Verb RunAs; "
         "if ($process.ExitCode -notin @(0, 1638, 3010)) "
-        "{ throw \"Visual C++ Redistributable returned exit code $($process.ExitCode).\" }"
+        '{ throw "Visual C++ Redistributable returned exit code '
+        '$($process.ExitCode)." }'
     )
     print(
         "Installing the Microsoft Visual C++ x64 runtime required by Windows OCR...",
@@ -408,7 +414,7 @@ def ensure_windows_vc_runtime(root: Path) -> None:
     try:
         subprocess.run(
             [
-                "powershell.exe",
+                str(POWERSHELL_EXE),
                 "-NoLogo",
                 "-NoProfile",
                 "-NonInteractive",

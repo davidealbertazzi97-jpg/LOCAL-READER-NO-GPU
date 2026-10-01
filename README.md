@@ -53,23 +53,23 @@ I checksum verificano integrità, non sono una firma indipendente da GitHub.
 Linux (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.4/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.5/install-release.sh | bash
 ```
 
 Windows (PowerShell):
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.4/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.5/install-release.ps1 | iex
 ```
 
 macOS Apple Silicon (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.4/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.5/install-release.sh | bash
 ```
 
 Su Windows ogni versione conserva il proprio EXE e collegamento nel menu Start;
-macOS installa sotto `~/Applications/Local Reader No GPU 0.3.4`. Su Linux il percorso del
+macOS installa sotto `~/Applications/Local Reader No GPU 0.3.5`. Su Linux il percorso del
 pacchetto installato è mostrato nel terminale; puoi riaprirlo da quel percorso.
 Lo script Linux usa la modalità estrazione dell'AppImage, senza richiedere FUSE.
 
@@ -193,7 +193,7 @@ Non esiste garanzia assoluta di sicurezza o conformità WCAG, PDF/UA o GDPR.
 - **Microfono non disponibile:** consenti l'accesso al sito locale nelle
   impostazioni del browser; in alternativa carica un campione audio.
 - **AppImage non si avvia:** da terminale usa
-  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Reader-No-GPU-0.3.4-linux-x86_64.AppImage`.
+  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Reader-No-GPU-0.3.5-linux-x86_64.AppImage`.
 - **Aggiornamento:** dalla versione 0.3.3 l'app controlla le release all'avvio
   e ogni 12 ore. Usa **Verifica aggiornamenti** per un controllo manuale; se
   trova una release, scarica il pacchetto indicato, chiudi l'app e aprilo.
@@ -293,17 +293,17 @@ GitHub repository.
 Linux or macOS Apple Silicon, in Terminal:
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.4/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.5/install-release.sh | bash
 ```
 
 Windows, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.4/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.5/install-release.ps1 | iex
 ```
 
 Windows gets a version-specific Start menu shortcut. macOS installs under
-`~/Applications/Local Reader No GPU 0.3.4`. Linux prints the installed
+`~/Applications/Local Reader No GPU 0.3.5`. Linux prints the installed
 package path and uses extraction mode, so FUSE is not required.
 
 ### Using the application

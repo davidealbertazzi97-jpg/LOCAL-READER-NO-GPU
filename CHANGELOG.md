@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.5 — 2026-10-01
+
+- Carry forward the Windows setup, parallel version installs, shared history
+  and automatic update fixes prepared for 0.3.4.
+- Use Windows Schannel for bounded, checksum-verified Windows model downloads,
+  including the Hugging Face LFM files that fail under Python's CA validation.
+- Make the native package smoke-test PDF use Pillow's bundled font instead of
+  a runner-specific system font.
+
 ## 0.3.4 — 2026-10-01
 
 - Fix Windows launches alongside an older version: each version uses its own

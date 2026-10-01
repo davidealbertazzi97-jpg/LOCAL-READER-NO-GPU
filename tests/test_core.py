@@ -96,7 +96,7 @@ class ProductTests(unittest.TestCase):
     def test_product_and_engine_registry(self) -> None:
         product = load_product()
         self.assertEqual(product.slug, "local-reader-no-gpu")
-        self.assertEqual(product.version, "0.3.4")
+        self.assertEqual(product.version, "0.3.5")
         self.assertEqual(TOKEN_COOKIE, "local_reader_no_gpu_token")
         self.assertEqual(
             set(ENGINES),

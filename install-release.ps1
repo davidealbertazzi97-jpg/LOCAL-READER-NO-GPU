@@ -1,6 +1,6 @@
 # Download a versioned native package, verify SHA-256, then launch it.
 $ErrorActionPreference = "Stop"
-$LasVersion = "0.3.4"
+$LasVersion = "0.3.5"
 if ($env:OS -ne "Windows_NT" -or $env:PROCESSOR_ARCHITECTURE -ne "AMD64") {
     throw "Windows x86-64 is required."
 }
