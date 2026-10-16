@@ -7,9 +7,52 @@ import importlib.util
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def diagnose_offline_speech(runtime: Path, environment: dict[str, str]) -> None:
+    """Expose the worker failure using synthetic input, never user documents."""
+    python = (
+        runtime
+        / ".venv-tts"
+        / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    )
+    guarded = {
+        **environment,
+        "PYTHONPATH": str(runtime / "runtime_guard"),
+        "HF_HUB_OFFLINE": "1",
+        "TRANSFORMERS_OFFLINE": "1",
+    }
+    with tempfile.TemporaryDirectory(prefix="native-tts-diagnostic-") as temporary:
+        fixture = Path(temporary)
+        source = fixture / "reading.txt"
+        source.write_text("Questo audio resta sul computer.", encoding="utf-8")
+        print("Diagnosing offline speech with synthetic input...", flush=True)
+        subprocess.run(
+            [
+                str(python),
+                str(runtime / "workers/kokoro_worker.py"),
+                "--input",
+                str(source),
+                "--output",
+                str(fixture / "speech"),
+                "--model",
+                str(runtime / "models/kokoro/kokoro-v1.0.onnx"),
+                "--voices",
+                str(runtime / "models/kokoro/voices-v1.0.bin"),
+                "--voice",
+                "if_sara",
+                "--language",
+                "it",
+            ],
+            cwd=runtime,
+            env=guarded,
+            check=False,
+            timeout=120,
+        )
 
 
 def main() -> None:
@@ -33,12 +76,17 @@ def main() -> None:
         runtime / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     )
     for flags in (["--offline"], ["--full"]):
-        subprocess.run(
-            [str(python), str(runtime / "tests/smoke_local.py"), *flags],
-            cwd=runtime,
-            check=True,
-            env=environment,
-        )
+        try:
+            subprocess.run(
+                [str(python), str(runtime / "tests/smoke_local.py"), *flags],
+                cwd=runtime,
+                check=True,
+                env=environment,
+            )
+        except subprocess.CalledProcessError:
+            if flags == ["--offline"]:
+                diagnose_offline_speech(runtime, environment)
+            raise
     for name in ("core", "ocr", "tts"):
         venv = ".venv" if name == "core" else f".venv-{name}"
         python = (
