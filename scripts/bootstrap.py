@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create the isolated environments for Local Reader No GPU."""
+"""Create the isolated environments for Local Accessibility Studio."""
 
 from __future__ import annotations
 
@@ -61,7 +61,9 @@ def install_requirements(uv: str, name: str, requirements: str) -> Path:
 
 
 def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(description="Pinned Local Reader No GPU installer.")
+    root = argparse.ArgumentParser(
+        description="Pinned Local Accessibility Studio installer."
+    )
     root.add_argument(
         "--core-only",
         action="store_true",
@@ -189,7 +191,7 @@ def main() -> int:
         run(["bash", str(APP_DIR / "scripts" / "install-desktop.sh")])
     if system == "Darwin" and not args.skip_desktop:
         run(["bash", str(APP_DIR / "scripts" / "install-macos-desktop.sh")])
-    print("\nLocal Reader No GPU installation complete.")
+    print("\nLocal Accessibility Studio installation complete.")
     return 0
 
 

@@ -1,8 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Local Reader No GPU">
-  <rect width="64" height="64" rx="16" fill="#123b38"/>
-  <path d="M18 13h22l8 8v30H18z" fill="#f8faf7"/>
-  <path d="M40 13v9h8" fill="none" stroke="#91cfc1" stroke-width="3"/>
-  <path d="M25 29h16M25 36h12M25 43h8" stroke="#176b64" stroke-width="3" stroke-linecap="round"/>
-  <path d="M44 36c4 0 7 3 7 7s-3 7-7 7" fill="none" stroke="#efb84d" stroke-width="3" stroke-linecap="round"/>
-  <path d="M44 40c2 0 3 1 3 3s-1 3-3 3" fill="none" stroke="#efb84d" stroke-width="2.5" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Local Accessibility Studio">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#122b48"/>
+      <stop offset="1" stop-color="#087b72"/>
+    </linearGradient>
+    <linearGradient id="page" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e8f6f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="29" fill="url(#background)"/>
+  <path d="M24 37c0-8 6-13 14-13h23v65c-9-7-20-10-37-6V37Z" fill="url(#page)"/>
+  <path d="M67 24h23c8 0 14 6 14 14v45c-17-4-28-1-37 6V24Z" fill="#e7f4f0"/>
+  <path d="M64 26v64" fill="none" stroke="#83c7b9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M33 42h18M33 53h20M33 64h15" fill="none" stroke="#24615d" stroke-width="4" stroke-linecap="round"/>
+  <path d="M77 48v17M86 40v33M95 48v17" fill="none" stroke="#e9a943" stroke-width="5" stroke-linecap="round"/>
+  <path d="M25 84c15-3 28-1 39 7 11-8 24-10 39-7" fill="none" stroke="#b6e2d8" stroke-width="3" stroke-linecap="round" opacity=".9"/>
 </svg>

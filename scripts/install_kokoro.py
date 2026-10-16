@@ -76,7 +76,7 @@ def download(name: str, expected_size: int, expected_hash: str) -> None:
             received = temporary.stat().st_size
         else:
             request = urllib.request.Request(
-                url, headers={"User-Agent": "Local-Reader-No-GPU/0.3"}
+                url, headers={"User-Agent": "Local-Accessibility-Studio/0.3"}
             )
             # HTTPS host, expected size, and SHA-256 are fixed and checked here.
             # nosemgrep

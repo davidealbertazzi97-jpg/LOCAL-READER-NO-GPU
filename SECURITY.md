@@ -24,7 +24,7 @@ signed; the macOS app is not notarized. Tests are not a security certification.
 
 ## Scope and deployment boundary
 
-Local Reader No GPU is a single-user workstation application. It is not
+Local Accessibility Studio is a single-user workstation application. It is not
 designed to be exposed to a LAN, reverse proxy, shared server, container
 platform, or the public internet.
 

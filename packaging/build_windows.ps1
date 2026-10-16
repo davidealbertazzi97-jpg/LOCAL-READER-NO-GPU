@@ -28,7 +28,8 @@ if ($LASTEXITCODE) { exit $LASTEXITCODE }
 $PyInstallerArgs = @(
     "run", "--no-project", "--python", "3.12", "--with", "pyinstaller==6.19.0",
     "pyinstaller", "--clean", "--noconfirm", "--onefile",
-    "--name", "local-reader-no-gpu",
+    "--name", "local-accessibility-studio",
+    "--icon", (Join-Path $AppDir "static\\icon.ico"),
     "--distpath", (Join-Path $BuildDir "pyinstaller-dist"),
     "--workpath", (Join-Path $BuildDir "pyinstaller-work"),
     "--specpath", $BuildDir,
@@ -38,8 +39,8 @@ $PyInstallerArgs = @(
 & $Uv @PyInstallerArgs
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
-$Output = Join-Path $DistDir "Local-Reader-No-GPU-$Version-windows-x86_64.exe"
-Copy-Item (Join-Path $BuildDir "pyinstaller-dist\local-reader-no-gpu.exe") $Output -Force
+$Output = Join-Path $DistDir "Local-Accessibility-Studio-$Version-windows-x86_64.exe"
+Copy-Item (Join-Path $BuildDir "pyinstaller-dist\local-accessibility-studio.exe") $Output -Force
 & $Output --verify-payload
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 Write-Host "Built $Output"

@@ -17,13 +17,17 @@ class WindowsDownloadTests(unittest.TestCase):
                 self.assertTrue(check)
                 self.assertTrue(command[0].lower().endswith("\\powershell.exe"))
                 self.assertEqual(
-                    env["LOCAL_READER_DOWNLOAD_URL"],
+                    env["LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_URL"],
                     "https://huggingface.co/model/download",
                 )
-                self.assertEqual(env["LOCAL_READER_DOWNLOAD_MAX_BYTES"], "64")
+                self.assertEqual(
+                    env["LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_MAX_BYTES"], "64"
+                )
                 self.assertIn("[Net.SecurityProtocolType]::Tls12", command[-1])
                 self.assertIn("$response.ContentLength -gt $limit", command[-1])
-                Path(env["LOCAL_READER_DOWNLOAD_DESTINATION"]).write_bytes(payload)
+                Path(
+                    env["LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_DESTINATION"]
+                ).write_bytes(payload)
 
             with (
                 patch.object(

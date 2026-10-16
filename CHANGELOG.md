@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.6 — 2026-10-16
+
+- Rebrand the public application as Local Accessibility Studio with a new
+  reading and speech logo and versioned native packages.
+- Keep the Windows one-file launcher, verified first-run setup, per-version
+  Start menu shortcuts and isolated launcher settings for side-by-side installs.
+- Build the Windows executable with the new application icon.
+- Validate the installed Linux and Windows packages with offline speech and
+  complete OCR, text, review, reflow and audio smoke tests; verify simultaneous
+  Windows startup alongside the public 0.3.5 package.
+
 ## 0.3.5 — 2026-10-01
 
 - Carry forward the Windows setup, parallel version installs, shared history
@@ -41,7 +52,7 @@
   file a distinct name.
 
 
-All notable changes to Local Reader No GPU are documented here.
+All notable changes to Local Accessibility Studio are documented here.
 
 ## 0.3.2 - 2026-09-10
 

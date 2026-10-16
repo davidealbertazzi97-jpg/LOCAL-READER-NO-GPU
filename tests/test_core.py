@@ -15,10 +15,12 @@ import uuid
 from pathlib import Path
 from unittest import mock
 
-_TEST_ROOT = tempfile.TemporaryDirectory(prefix="local-reader-no-gpu-unit-")
-os.environ["LOCAL_READER_NO_GPU_DATA"] = str(Path(_TEST_ROOT.name) / "data")
-os.environ["LOCAL_READER_NO_GPU_STATE"] = str(Path(_TEST_ROOT.name) / "state")
-os.environ["LOCAL_READER_NO_GPU_OUTPUTS"] = str(Path(_TEST_ROOT.name) / "outputs")
+_TEST_ROOT = tempfile.TemporaryDirectory(prefix="local-accessibility-studio-unit-")
+os.environ["LOCAL_ACCESSIBILITY_STUDIO_DATA"] = str(Path(_TEST_ROOT.name) / "data")
+os.environ["LOCAL_ACCESSIBILITY_STUDIO_STATE"] = str(Path(_TEST_ROOT.name) / "state")
+os.environ["LOCAL_ACCESSIBILITY_STUDIO_OUTPUTS"] = str(
+    Path(_TEST_ROOT.name) / "outputs"
+)
 
 from starlette.requests import Request  # noqa: E402
 
@@ -95,9 +97,9 @@ def example_document() -> dict:
 class ProductTests(unittest.TestCase):
     def test_product_and_engine_registry(self) -> None:
         product = load_product()
-        self.assertEqual(product.slug, "local-reader-no-gpu")
-        self.assertEqual(product.version, "0.3.5")
-        self.assertEqual(TOKEN_COOKIE, "local_reader_no_gpu_token")
+        self.assertEqual(product.slug, "local-accessibility-studio")
+        self.assertEqual(product.version, "0.3.6")
+        self.assertEqual(TOKEN_COOKIE, "local_accessibility_studio_token")
         self.assertEqual(
             set(ENGINES),
             {"accessible-document", "plain-text", "edge-tts", "lfm-reflow"},

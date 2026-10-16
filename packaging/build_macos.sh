@@ -30,23 +30,24 @@ VERSION="$(python3 -c 'import pathlib,tomllib; print(tomllib.loads(pathlib.Path(
 "${UV}" run --no-project --python 3.12 \
   --with "pyinstaller==6.19.0" pyinstaller \
   --clean --noconfirm --windowed --onedir \
-  --name "Local Reader No GPU" \
-  --osx-bundle-identifier "org.localreadernogpu.app" \
+  --name "Local Accessibility Studio" \
+  --icon "${APP_DIR}/static/icon.icns" \
+  --osx-bundle-identifier "org.localaccessibility.studio" \
   --distpath "${BUILD_DIR}/pyinstaller-dist" \
   --workpath "${BUILD_DIR}/pyinstaller-work" \
   --specpath "${BUILD_DIR}" \
   --add-data "${BUILD_DIR}/payload.zip:." \
   "${APP_DIR}/packaging/launcher.py"
 
-BUNDLE="${BUILD_DIR}/pyinstaller-dist/Local Reader No GPU.app"
-OUTPUT="${DIST_DIR}/Local-Reader-No-GPU-${VERSION}-macos-arm64.app"
+BUNDLE="${BUILD_DIR}/pyinstaller-dist/Local Accessibility Studio.app"
+OUTPUT="${DIST_DIR}/Local-Accessibility-Studio-${VERSION}-macos-arm64.app"
 rm -rf "${OUTPUT}"
 ditto "${BUNDLE}" "${OUTPUT}"
 ditto -c -k --sequesterRsrc --keepParent "${OUTPUT}" "${OUTPUT}.zip"
-"${OUTPUT}/Contents/MacOS/Local Reader No GPU" --verify-payload
+"${OUTPUT}/Contents/MacOS/Local Accessibility Studio" --verify-payload
 mkdir -p "${BUILD_DIR}/dmg"
-ditto "${OUTPUT}" "${BUILD_DIR}/dmg/Local Reader No GPU.app"
+ditto "${OUTPUT}" "${BUILD_DIR}/dmg/Local Accessibility Studio.app"
 ln -s /Applications "${BUILD_DIR}/dmg/Applications"
-hdiutil create -volname "Local Reader No GPU" -srcfolder "${BUILD_DIR}/dmg" \
-  -ov -format UDZO "${DIST_DIR}/Local-Reader-No-GPU-${VERSION}-macos-arm64.dmg"
+hdiutil create -volname "Local Accessibility Studio" -srcfolder "${BUILD_DIR}/dmg" \
+  -ov -format UDZO "${DIST_DIR}/Local-Accessibility-Studio-${VERSION}-macos-arm64.dmg"
 echo "Built ${OUTPUT}"

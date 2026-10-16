@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=Local Reader No GPU
+Name=Local Accessibility Studio
 Comment=OCR accessibile e sintesi vocale locale
 Exec=AppRun
-Icon=local-reader-no-gpu
+Icon=local-accessibility-studio
 Terminal=true
 Categories=Utility;Accessibility;
 StartupNotify=true

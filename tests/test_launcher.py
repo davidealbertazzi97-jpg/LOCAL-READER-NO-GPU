@@ -88,8 +88,10 @@ class PortableLauncherTests(unittest.TestCase):
             self.assertTrue(command[0].lower().endswith("\\powershell.exe"))
             self.assertTrue(check)
             self.assertIn("SecurityProtocolType]::Tls12", command[-1])
-            self.assertTrue(env["LOCAL_READER_UV_URL"].startswith("https://"))
-            Path(env["LOCAL_READER_UV_ARCHIVE"]).write_bytes(content)
+            self.assertTrue(
+                env["LOCAL_ACCESSIBILITY_STUDIO_UV_URL"].startswith("https://")
+            )
+            Path(env["LOCAL_ACCESSIBILITY_STUDIO_UV_ARCHIVE"]).write_bytes(content)
 
         with (
             tempfile.TemporaryDirectory() as temporary,
@@ -127,9 +129,9 @@ class PortableLauncherTests(unittest.TestCase):
             self.assertIn("Microsoft Corporation", command[-1])
             self.assertIn("-Verb RunAs", command[-1])
             self.assertTrue(
-                run.call_args.kwargs["env"]["LOCAL_READER_VC_URL"].startswith(
-                    "https://aka.ms/"
-                )
+                run.call_args.kwargs["env"][
+                    "LOCAL_ACCESSIBILITY_STUDIO_VC_URL"
+                ].startswith("https://aka.ms/")
             )
 
         with (
@@ -182,11 +184,11 @@ class PortableLauncherTests(unittest.TestCase):
 
     def test_running_another_version_is_not_treated_as_this_version(self):
         old_health = {
-            "app": "local-reader-no-gpu",
+            "app": "local-accessibility-studio",
             "status": "ok",
             "version": "0.3.3",
         }
-        current_health = {**old_health, "version": "0.3.5"}
+        current_health = {**old_health, "version": "0.3.6"}
         with patch.object(start_app, "get_json", return_value=old_health):
             self.assertFalse(start_app.app_is_ready(8765))
         with patch.object(start_app, "get_json", return_value=current_health):

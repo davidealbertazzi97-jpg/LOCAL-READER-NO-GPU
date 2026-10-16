@@ -1,4 +1,4 @@
-# Local Reader No GPU
+# Local Accessibility Studio
 
 [Italiano](#italiano) · [English](#english) · [Download](https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/latest)
 
@@ -8,7 +8,9 @@ Lettore assistivo local-first per trasformare PDF, immagini e testo in contenuti
 modificabili e audio. Interfaccia italiana/inglese con OpenDyslexic, controlli
 grandi e flussi separati per OCR, revisione e lettura. Non serve una GPU.
 
-La versione standard usa **Kokoro offline senza account, login o chiavi API**.
+La voce predefinita è Edge-TTS online. Attiva **Modalità offline** per usare
+**Kokoro sul computer senza account, login o chiavi API**, senza inviare il testo
+ai servizi vocali online.
 Pocket TTS è stato rimosso. Kokoro offre voci predefinite, **non clona la voce**.
 Le funzioni cloud e la clonazione opzionale sono distinte dal percorso standard.
 
@@ -35,7 +37,7 @@ Se il download si interrompe, riapri lo stesso pacchetto: la preparazione
 incompleta viene ritentata. Non chiudere il terminale mentre usi l'app.
 Su Windows, se manca il runtime Microsoft Visual C++ x64, il primo avvio chiede
 la normale approvazione UAC per installare il runtime firmato da Microsoft;
-Local Reader continua a funzionare come utente standard.
+Local Accessibility Studio continua a funzionare come utente standard.
 
 Come margine pratico, consigliamo 8 GB di RAM e almeno 5 GB liberi per la
 versione standard, oltre ai documenti e ai risultati. Sono indicazioni
@@ -53,23 +55,23 @@ I checksum verificano integrità, non sono una firma indipendente da GitHub.
 Linux (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.5/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.6/install-release.sh | bash
 ```
 
 Windows (PowerShell):
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.5/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.6/install-release.ps1 | iex
 ```
 
 macOS Apple Silicon (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.5/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.6/install-release.sh | bash
 ```
 
 Su Windows ogni versione conserva il proprio EXE e collegamento nel menu Start;
-macOS installa sotto `~/Applications/Local Reader No GPU 0.3.5`. Su Linux il percorso del
+macOS installa sotto `~/Applications/Local Accessibility Studio 0.3.6`. Su Linux il percorso del
 pacchetto installato è mostrato nel terminale; puoi riaprirlo da quel percorso.
 Lo script Linux usa la modalità estrazione dell'AppImage, senza richiedere FUSE.
 
@@ -164,11 +166,11 @@ Non clonare voci senza consenso né usare la funzione per impersonare persone.
 
 | Sistema | Dati e runtime |
 | --- | --- |
-| Linux | `~/.local/share/local-reader-no-gpu` (rispetta XDG) |
-| Windows | `%LOCALAPPDATA%\Local Reader No GPU` |
-| macOS | `~/Library/Application Support/Local Reader No GPU` |
+| Linux | `~/.local/share/local-accessibility-studio` (rispetta XDG) |
+| Windows | `%LOCALAPPDATA%\Local Accessibility Studio` |
+| macOS | `~/Library/Application Support/Local Accessibility Studio` |
 
-I risultati si trovano in `Documents/Local Reader No GPU - Results`
+I risultati si trovano in `Documents/Local Accessibility Studio - Results`
 nella cartella utente; su Linux viene usata `Documenti` se presente al posto
 di `Documents`. Cache e stato possono risiedere in cartelle separate.
 Chiavi API, token locale e campioni vocali non vanno condivisi: sono dati
@@ -193,7 +195,7 @@ Non esiste garanzia assoluta di sicurezza o conformità WCAG, PDF/UA o GDPR.
 - **Microfono non disponibile:** consenti l'accesso al sito locale nelle
   impostazioni del browser; in alternativa carica un campione audio.
 - **AppImage non si avvia:** da terminale usa
-  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Reader-No-GPU-0.3.5-linux-x86_64.AppImage`.
+  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Accessibility-Studio-0.3.6-linux-x86_64.AppImage`.
 - **Aggiornamento:** dalla versione 0.3.3 l'app controlla le release all'avvio
   e ogni 12 ore. Usa **Verifica aggiornamenti** per un controllo manuale; se
   trova una release, scarica il pacchetto indicato, chiudi l'app e aprilo.
@@ -202,8 +204,9 @@ Non esiste garanzia assoluta di sicurezza o conformità WCAG, PDF/UA o GDPR.
   lasciando disponibili le versioni già installate. Le versioni precedenti alla 0.3.3 non possono notificare questo
   primo aggiornamento: scarica una volta l'EXE della release e avvialo
   manualmente. Per i successivi aggiornamenti la verifica integrata segnala le
-  nuove release. Le versioni condividono cronologia, impostazioni, campioni e
-  risultati nella cartella dati locale, ma usano collegamenti e porte distinti.
+  nuove release. La 0.3.6 usa una cartella dati propria rispetto a Local Reader
+  No GPU: cronologia, impostazioni, campioni e risultati restano separati,
+  insieme a collegamenti e porte.
 - **Avvisi del sistema operativo:** controlla la release ufficiale e
   `SHA256SUMS.txt`. Non vengono forniti certificati commerciali o notarizzazione.
 
@@ -260,6 +263,8 @@ Local-first assistive reader for PDFs, images and text, with editable OCR,
 speech generation and an Italian/English interface using OpenDyslexic.
 The standard workflow runs on CPU: no GPU, account or API key is required.
 **Pocket TTS has been removed. Kokoro works offline but does not clone voices.**
+Speech defaults to Edge-TTS online. Enable **Offline mode** to use Kokoro on
+your computer without sending text to online speech services.
 
 ### Download and launch
 
@@ -293,17 +298,17 @@ GitHub repository.
 Linux or macOS Apple Silicon, in Terminal:
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.5/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.6/install-release.sh | bash
 ```
 
 Windows, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.5/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.6/install-release.ps1 | iex
 ```
 
 Windows gets a version-specific Start menu shortcut. macOS installs under
-`~/Applications/Local Reader No GPU 0.3.5`. Linux prints the installed
+`~/Applications/Local Accessibility Studio 0.3.6`. Linux prints the installed
 package path and uses extraction mode, so FUSE is not required.
 
 ### Using the application
@@ -365,10 +370,10 @@ Only clone voices you have consent and rights to use; do not impersonate people.
 
 ### Privacy, storage and troubleshooting
 
-Runtime/settings: Linux `~/.local/share/local-reader-no-gpu` (XDG
-overrides supported); Windows `%LOCALAPPDATA%\Local Reader No GPU`;
-macOS `~/Library/Application Support/Local Reader No GPU`.
-Results are under your user `Documents/Local Reader No GPU - Results`
+Runtime/settings: Linux `~/.local/share/local-accessibility-studio` (XDG
+overrides supported); Windows `%LOCALAPPDATA%\Local Accessibility Studio`;
+macOS `~/Library/Application Support/Local Accessibility Studio`.
+Results are under your user `Documents/Local Accessibility Studio - Results`
 folder (`Documenti` is used when applicable). Cache and state may be separate.
 Credentials, local tokens and voice samples are private local files, not an
 encrypted vault. Never publish your runtime or results directory.
@@ -389,7 +394,8 @@ close the app and open it. On Windows, the downloaded EXE installs under the
   user's local app-data folder and adds a version-specific Start menu shortcut;
   earlier installations remain available. The launcher checks the server version
   before reusing a running process, then selects another local port if needed.
-  Settings, history, samples and results remain in the shared local data directory.
+  Version 0.3.6 uses its own data directory, separate from Local Reader No GPU;
+  settings, history, samples and results remain separate as well.
 
 ### Development, verification and licensing
 

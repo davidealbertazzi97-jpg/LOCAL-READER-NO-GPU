@@ -91,7 +91,7 @@ def download(
         else:
             request = urllib.request.Request(
                 url,
-                headers={"User-Agent": "Local-Reader-No-GPU/0.3"},
+                headers={"User-Agent": "Local-Accessibility-Studio/0.3"},
             )
             # The URL is fixed above and the payload is checked before replacement.
             # nosemgrep
@@ -119,7 +119,7 @@ def local_llama_candidates() -> list[Path]:
         BIN_DIR / f"llama-cli{suffix}",
         BIN_DIR / f"llama-completion{suffix}",
     ]
-    configured = os.environ.get("LOCAL_READER_NO_GPU_LLAMA_CLI")
+    configured = os.environ.get("LOCAL_ACCESSIBILITY_STUDIO_LLAMA_CLI")
     if configured:
         candidates.insert(0, Path(configured).expanduser())
     for name in ("llama-cli", "llama-completion"):
