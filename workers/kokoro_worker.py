@@ -4,10 +4,38 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
+import tempfile
 import wave
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from audio_utils import FFMPEG, combine_audio, text_chunks
+
+
+@contextmanager
+def portable_espeak_data() -> Iterator[str]:
+    """Keep the bundled data inside eSpeak's fixed native path buffer."""
+    import espeakng_loader
+
+    data = Path(espeakng_loader.get_data_path()).resolve()
+    # eSpeak NG 1.52 uses 160 bytes on POSIX and 230 on Windows, including NUL.
+    limit = 230 if os.name == "nt" else 160
+    if len(os.fsencode(data)) < limit:
+        yield str(data)
+        return
+    # macOS's default TMPDIR can itself be long. Resolve /tmp before checking
+    # because phonemizer resolves the supplied path before calling eSpeak.
+    temporary_root = None if os.name == "nt" else "/tmp"  # nosec B108: private mkdtemp
+    with tempfile.TemporaryDirectory(
+        prefix="las-tts-", dir=temporary_root
+    ) as temporary:
+        short_data = Path(temporary).resolve() / "espeak-ng-data"
+        if len(os.fsencode(short_data)) >= limit:
+            raise RuntimeError("The temporary eSpeak data path is too long")
+        shutil.copytree(data, short_data)
+        yield str(short_data)
 
 
 def write_wav(path: Path, samples: object, sample_rate: int) -> None:
@@ -39,6 +67,7 @@ def main() -> int:
         raise ValueError("reading text is empty")
     try:
         from kokoro_onnx import Kokoro
+        from kokoro_onnx.config import EspeakConfig
     except ImportError as exc:
         raise RuntimeError(
             "Kokoro is not installed in the isolated speech environment"
@@ -52,20 +81,23 @@ def main() -> int:
     session = rt.InferenceSession(
         args.model, sess_options=session_options, providers=["CPUExecutionProvider"]
     )
-    engine = Kokoro.from_session(session, args.voices)
     output.mkdir(parents=True, exist_ok=True)
     chunks = list(text_chunks(text, maximum=4_000))
     wavs: list[Path] = []
-    for index, chunk in enumerate(chunks):
-        samples, sample_rate = engine.create(
-            chunk,
-            voice=args.voice,
-            speed=max(0.75, min(1.5, args.speed)),
-            lang="it" if args.language == "it" else "en-us",
+    with portable_espeak_data() as espeak_data:
+        engine = Kokoro.from_session(
+            session, args.voices, espeak_config=EspeakConfig(data_path=espeak_data)
         )
-        wav = output / f".kokoro-{index:05d}.wav"
-        write_wav(wav, samples, sample_rate)
-        wavs.append(wav)
+        for index, chunk in enumerate(chunks):
+            samples, sample_rate = engine.create(
+                chunk,
+                voice=args.voice,
+                speed=max(0.75, min(1.5, args.speed)),
+                lang="it" if args.language == "it" else "en-us",
+            )
+            wav = output / f".kokoro-{index:05d}.wav"
+            write_wav(wav, samples, sample_rate)
+            wavs.append(wav)
     mp3_parts: list[Path] = []
     import subprocess
 

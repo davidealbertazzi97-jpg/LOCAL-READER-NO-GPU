@@ -11,7 +11,38 @@ from unittest import mock
 from workers import audio_utils
 
 with mock.patch.dict(sys.modules, {"audio_utils": audio_utils}):
-    from workers import speech_worker
+    from workers import kokoro_worker, speech_worker
+
+
+class KokoroDataPathTests(unittest.TestCase):
+    def test_long_unicode_install_path_uses_short_lived_copy(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            # The native limit counts encoded bytes, including for Unicode names.
+            data = Path(temporary) / ("voce-" + "è" * 90) / "espeak-ng-data"
+            data.mkdir(parents=True)
+            (data / "phontab").write_bytes(b"synthetic phoneme data")
+            loader = types.SimpleNamespace(get_data_path=lambda: str(data))
+            with mock.patch.dict(sys.modules, {"espeakng_loader": loader}):
+                with kokoro_worker.portable_espeak_data() as relocated:
+                    short = Path(relocated).resolve()
+                    self.assertLess(len(bytes(short)), 160)
+                    self.assertEqual(
+                        (short / "phontab").read_bytes(), b"synthetic phoneme data"
+                    )
+                    self.assertNotEqual(short, data)
+                self.assertFalse(short.exists())
+            self.assertTrue((data / "phontab").is_file())
+
+    def test_short_install_path_keeps_bundled_data_in_place(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            data = Path(temporary).resolve()
+            loader = types.SimpleNamespace(get_data_path=lambda: str(data))
+            with (
+                mock.patch.dict(sys.modules, {"espeakng_loader": loader}),
+                kokoro_worker.portable_espeak_data() as selected,
+            ):
+                self.assertEqual(Path(selected), data)
+            self.assertTrue(data.is_dir())
 
 
 class SpeechWorkerTests(unittest.IsolatedAsyncioTestCase):

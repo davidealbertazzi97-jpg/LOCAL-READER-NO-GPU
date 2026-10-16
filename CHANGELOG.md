@@ -7,6 +7,8 @@
 - Keep the Windows one-file launcher, verified first-run setup, per-version
   Start menu shortcuts and isolated launcher settings for side-by-side installs.
 - Build the Windows executable with the new application icon.
+- Keep bundled eSpeak data usable when an installation path exceeds the native
+  path buffer, including the default macOS Application Support location.
 - Validate the installed Linux and Windows packages with offline speech and
   complete OCR, text, review, reflow and audio smoke tests; verify simultaneous
   Windows startup alongside the public 0.3.5 package.
