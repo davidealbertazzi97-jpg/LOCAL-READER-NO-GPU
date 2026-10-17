@@ -53,7 +53,7 @@ def main() -> int:
             received = temporary.stat().st_size
         else:
             request = urllib.request.Request(
-                URL, headers={"User-Agent": "Local-Accessibility-Studio/0.3"}
+                URL, headers={"User-Agent": "Local-Reader/0.3"}
             )
             # The host, URL, expected size and SHA-256 are fixed above.
             # nosemgrep

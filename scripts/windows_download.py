@@ -9,7 +9,7 @@ import urllib.parse
 from pathlib import Path, PureWindowsPath
 
 ALLOWED_HOSTS = {"github.com", "huggingface.co"}
-USER_AGENT = "Local-Accessibility-Studio/0.3"
+USER_AGENT = "Local-Reader/0.3"
 POWERSHELL = (
     PureWindowsPath(os.environ.get("SYSTEMROOT", r"C:\Windows"))
     / "System32"
@@ -38,21 +38,19 @@ def download_with_windows_trust(
     environment = os.environ.copy()
     environment.update(
         {
-            "LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_URL": url,
-            "LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_DESTINATION": str(destination),
-            "LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_MAX_BYTES": str(max_bytes),
-            "LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_TIMEOUT_MS": str(
-                timeout_seconds * 1000
-            ),
-            "LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_USER_AGENT": USER_AGENT,
+            "LOCAL_READER_DOWNLOAD_URL": url,
+            "LOCAL_READER_DOWNLOAD_DESTINATION": str(destination),
+            "LOCAL_READER_DOWNLOAD_MAX_BYTES": str(max_bytes),
+            "LOCAL_READER_DOWNLOAD_TIMEOUT_MS": str(timeout_seconds * 1000),
+            "LOCAL_READER_DOWNLOAD_USER_AGENT": USER_AGENT,
         }
     )
     powershell = r"""$ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$request = [Net.HttpWebRequest]::Create($env:LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_URL)
+$request = [Net.HttpWebRequest]::Create($env:LOCAL_READER_DOWNLOAD_URL)
 $request.Method = 'GET'
-$request.UserAgent = $env:LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_USER_AGENT
-$request.Timeout = [int]$env:LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_TIMEOUT_MS
+$request.UserAgent = $env:LOCAL_READER_DOWNLOAD_USER_AGENT
+$request.Timeout = [int]$env:LOCAL_READER_DOWNLOAD_TIMEOUT_MS
 $request.ReadWriteTimeout = 120000
 $response = $null
 $sourceStream = $null
@@ -60,11 +58,11 @@ $destinationStream = $null
 $failed = $false
 try {
     $response = $request.GetResponse()
-    $limit = [long]$env:LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_MAX_BYTES
+    $limit = [long]$env:LOCAL_READER_DOWNLOAD_MAX_BYTES
     if ($response.ContentLength -gt $limit) { throw 'Download exceeds approved size.' }
     $sourceStream = $response.GetResponseStream()
     $destinationStream = [IO.File]::Open(
-        $env:LOCAL_ACCESSIBILITY_STUDIO_DOWNLOAD_DESTINATION,
+        $env:LOCAL_READER_DOWNLOAD_DESTINATION,
         [IO.FileMode]::CreateNew,
         [IO.FileAccess]::Write,
         [IO.FileShare]::None

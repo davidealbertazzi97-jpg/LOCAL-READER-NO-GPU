@@ -1,11 +1,11 @@
 # Download a versioned native package, verify SHA-256, then launch it.
 $ErrorActionPreference = "Stop"
-$LasVersion = "0.3.9"
+$LasVersion = "0.4.0"
 if ($env:OS -ne "Windows_NT" -or $env:PROCESSOR_ARCHITECTURE -ne "AMD64") {
     throw "Windows x86-64 is required."
 }
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$LasAsset = "Local-Accessibility-Studio-$LasVersion-windows-x86_64.exe"
+$LasAsset = "Local-Reader-$LasVersion-windows-x86_64.exe"
 $LasBase = "https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/download/v$LasVersion"
 $LasTemp = Join-Path ([IO.Path]::GetTempPath()) ("las-install-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $LasTemp | Out-Null
@@ -19,7 +19,7 @@ try {
     $LasExpected = $LasLines[0].Substring(0, 64)
     $LasActual = (Get-FileHash -Algorithm SHA256 (Join-Path $LasTemp $LasAsset)).Hash
     if ($LasActual -ne $LasExpected) { throw "Checksum mismatch. Nothing executed." }
-    $LasDest = Join-Path $env:LOCALAPPDATA "Local Accessibility Studio\packages\$LasVersion"
+    $LasDest = Join-Path $env:LOCALAPPDATA "Local Reader\packages\$LasVersion"
     New-Item -ItemType Directory -Force -Path $LasDest | Out-Null
     $LasExe = Join-Path $LasDest $LasAsset
     Copy-Item -LiteralPath (Join-Path $LasTemp $LasAsset) -Destination $LasExe -Force

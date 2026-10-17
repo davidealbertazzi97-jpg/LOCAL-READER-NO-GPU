@@ -499,7 +499,7 @@ def status() -> dict[str, Any]:
             if local_model == "gemma4"
             else "LFM2.5 230M / llama.cpp",
             "model": selected_reflow_model.name,
-            "device": os.environ.get("LOCAL_ACCESSIBILITY_STUDIO_LFM_DEVICE", "auto"),
+            "device": os.environ.get("LOCAL_READER_LFM_DEVICE", "auto"),
             "reasoning": "disabled",
         },
     }
@@ -1007,7 +1007,7 @@ async def create_reflow(job_id: str, request: Request) -> dict[str, Any]:
         raise HTTPException(400, "Reflow options must be an object")
     device = options.get(
         "device",
-        os.environ.get("LOCAL_ACCESSIBILITY_STUDIO_LFM_DEVICE", "auto"),
+        os.environ.get("LOCAL_READER_LFM_DEVICE", "auto"),
     )
     if not isinstance(device, str) or device not in {"auto", "cpu", "gpu"}:
         raise HTTPException(400, "device must be auto, cpu, or gpu")

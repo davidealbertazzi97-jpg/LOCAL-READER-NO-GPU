@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""First-run launcher for the portable Local Accessibility Studio packages."""
+"""First-run launcher for the portable Local Reader packages."""
 
 from __future__ import annotations
 
@@ -22,8 +22,9 @@ import urllib.request
 import zipfile
 from pathlib import Path, PureWindowsPath
 
-APP_NAME = "Local Accessibility Studio"
-APP_SLUG = "local-accessibility-studio"
+APP_NAME = "Local Reader"
+APP_SLUG = "local-reader"
+WINDOWS_APP_ID = "AiSwarmSolutions.LocalReader"
 PYTHON_VERSION = "3.12"
 UV_VERSION = "0.11.16"
 UV_BUILDS = {
@@ -135,6 +136,11 @@ def refresh_windows_start_menu_shortcut(executable: Path, version: str) -> None:
             raise OSError(
                 f"Could not set Windows Shell link target: 0x{status & 0xFFFFFFFF:08x}"
             )
+        status = method(shell_link, 17, ctypes.c_wchar_p, ctypes.c_int)(
+            shell_link, str(executable), 0
+        )
+        if status < 0:
+            raise OSError("Could not assign the Local Reader shortcut icon")
         label = f"{APP_NAME} {version}"
         status = method(shell_link, 7, ctypes.c_wchar_p)(shell_link, label)
         if status < 0:
@@ -194,9 +200,7 @@ def register_windows_package(root: Path, version: str) -> None:
     source = Path(sys.executable).resolve()
     packages_dir = root / "packages"
     package_dir = packages_dir / version
-    installed_executable = package_dir / (
-        f"Local-Accessibility-Studio-{version}-windows-x86_64.exe"
-    )
+    installed_executable = package_dir / (f"Local-Reader-{version}-windows-x86_64.exe")
     try:
         package_dir.mkdir(parents=True, exist_ok=True)
         if source != installed_executable.resolve():
@@ -291,15 +295,15 @@ def download_uv(root: Path) -> Path:
         # The frozen launcher has no Python CA bundle. Use Windows' Schannel
         # trust store for HTTPS, then verify the pinned archive before use.
         download_env = os.environ.copy()
-        download_env["LOCAL_ACCESSIBILITY_STUDIO_UV_URL"] = download_url
-        download_env["LOCAL_ACCESSIBILITY_STUDIO_UV_ARCHIVE"] = str(archive_path)
+        download_env["LOCAL_READER_UV_URL"] = download_url
+        download_env["LOCAL_READER_UV_ARCHIVE"] = str(archive_path)
         powershell = (
             "$ErrorActionPreference = 'Stop'; "
             "[Net.ServicePointManager]::SecurityProtocol = "
             "[Net.SecurityProtocolType]::Tls12; "
             "Invoke-WebRequest -UseBasicParsing "
-            "-Uri $env:LOCAL_ACCESSIBILITY_STUDIO_UV_URL "
-            "-OutFile $env:LOCAL_ACCESSIBILITY_STUDIO_UV_ARCHIVE"
+            "-Uri $env:LOCAL_READER_UV_URL "
+            "-OutFile $env:LOCAL_READER_UV_ARCHIVE"
         )
         try:
             subprocess.run(
@@ -322,7 +326,7 @@ def download_uv(root: Path) -> Path:
     else:
         request = urllib.request.Request(
             download_url,
-            headers={"User-Agent": "Local-Accessibility-Studio/0.3"},
+            headers={"User-Agent": "Local-Reader/0.3"},
         )
         with (
             urllib.request.urlopen(  # nosec B310
@@ -390,20 +394,20 @@ def ensure_windows_vc_runtime(root: Path) -> None:
     tools.mkdir(parents=True, exist_ok=True)
     installer = tools / "vc_redist.x64.exe"
     environment = os.environ.copy()
-    environment["LOCAL_ACCESSIBILITY_STUDIO_VC_URL"] = VC_REDIST_URL
-    environment["LOCAL_ACCESSIBILITY_STUDIO_VC_INSTALLER"] = str(installer)
+    environment["LOCAL_READER_VC_URL"] = VC_REDIST_URL
+    environment["LOCAL_READER_VC_INSTALLER"] = str(installer)
     powershell = (
         "$ErrorActionPreference = 'Stop'; "
         "Invoke-WebRequest -UseBasicParsing -TimeoutSec 240 "
-        "-Uri $env:LOCAL_ACCESSIBILITY_STUDIO_VC_URL "
-        "-OutFile $env:LOCAL_ACCESSIBILITY_STUDIO_VC_INSTALLER; "
+        "-Uri $env:LOCAL_READER_VC_URL "
+        "-OutFile $env:LOCAL_READER_VC_INSTALLER; "
         "$signature = Get-AuthenticodeSignature -LiteralPath "
-        "$env:LOCAL_ACCESSIBILITY_STUDIO_VC_INSTALLER; "
+        "$env:LOCAL_READER_VC_INSTALLER; "
         "if ($signature.Status -ne 'Valid' -or "
         "$signature.SignerCertificate.Subject -notlike '*Microsoft Corporation*') "
         "{ throw 'Microsoft Visual C++ installer signature is invalid.' }; "
         "$process = Start-Process "
-        "-FilePath $env:LOCAL_ACCESSIBILITY_STUDIO_VC_INSTALLER "
+        "-FilePath $env:LOCAL_READER_VC_INSTALLER "
         "-ArgumentList @('/install', '/quiet', '/norestart') "
         "-PassThru -Wait -Verb RunAs; "
         "if ($process.ExitCode -notin @(0, 1638, 3010)) "
@@ -435,7 +439,7 @@ def ensure_windows_vc_runtime(root: Path) -> None:
 
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(
-        description="Install local models and start Local Accessibility Studio."
+        description="Install local models and start Local Reader."
     )
     root.add_argument("--no-browser", action="store_true")
     root.add_argument("--console", action="store_true", help=argparse.SUPPRESS)
@@ -490,6 +494,10 @@ def verify_payload(payload: Path) -> str:
 
 
 def main() -> int:
+    if os.name == "nt":
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(WINDOWS_APP_ID)
     args = parser().parse_args()
     if args.version:
         print(f"{APP_NAME} {verify_payload(payload_path())}")

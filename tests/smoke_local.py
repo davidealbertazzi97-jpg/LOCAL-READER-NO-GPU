@@ -109,18 +109,16 @@ def parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = parser().parse_args()
     port = free_port()
-    with tempfile.TemporaryDirectory(
-        prefix="local-accessibility-studio-smoke-"
-    ) as temporary:
+    with tempfile.TemporaryDirectory(prefix="local-reader-smoke-") as temporary:
         root = Path(temporary)
         environment = os.environ.copy()
         environment.update(
             {
                 "LOCAL_AI_APP_TOKEN": TOKEN,
                 "LOCAL_AI_APP_PORT": str(port),
-                "LOCAL_ACCESSIBILITY_STUDIO_DATA": str(root / "data"),
-                "LOCAL_ACCESSIBILITY_STUDIO_STATE": str(root / "state"),
-                "LOCAL_ACCESSIBILITY_STUDIO_OUTPUTS": str(root / "outputs"),
+                "LOCAL_READER_DATA": str(root / "data"),
+                "LOCAL_READER_STATE": str(root / "state"),
+                "LOCAL_READER_OUTPUTS": str(root / "outputs"),
                 "PYTHONPATH": str(APP_DIR / "runtime_guard"),
                 "HF_HUB_OFFLINE": "1",
                 "TRANSFORMERS_OFFLINE": "1",
@@ -171,7 +169,7 @@ def main() -> int:
             assert status == 401
             status, product = request_json(f"{base}/api/product", token=True)
             assert status == 200
-            assert product["slug"] == "local-accessibility-studio"
+            assert product["slug"] == "local-reader"
             header_request = urllib.request.Request(
                 f"{base}/api/product",
                 headers={"X-Local-AI-Token": TOKEN},
@@ -333,6 +331,24 @@ def main() -> int:
                 assert speech_job["summary"]["voice"] == "if_sara"
                 audio = root / "outputs" / speech_job["id"] / "speech.mp3"
                 assert audio.stat().st_size > 10_000
+                _, before_live = request_json(f"{base}/api/jobs", token=True)
+                live_request = urllib.request.Request(
+                    f"{base}/api/live/audio",
+                    data=json.dumps({"text": "Lettura offline locale."}).encode(),
+                    headers={
+                        "X-Local-AI-Token": TOKEN,
+                        "Origin": base,
+                        "Content-Type": "application/json",
+                    },
+                )
+                with urllib.request.urlopen(live_request, timeout=120) as response:
+                    wav = response.read()
+                    assert response.headers.get_content_type() == "audio/wav"
+                    assert wav.startswith(b"RIFF") and wav[8:12] == b"WAVE"
+                    assert len(wav) > 10_000
+                _, after_live = request_json(f"{base}/api/jobs", token=True)
+                assert len(before_live) == len(after_live)
+                print("Offline live Kokoro WAV smoke test passed without History jobs.")
                 print("Offline Kokoro speech smoke test passed.")
                 return 0
 

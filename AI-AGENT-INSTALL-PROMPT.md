@@ -1,7 +1,7 @@
 # AI-agent installation prompt
 
 Copy only the section matching your language into an AI coding agent that has
-permission to use a terminal on the computer where Local Accessibility Studio will run.
+permission to use a terminal on the computer where Local Reader will run.
 
 Never attach a personal, school, medical, assessment, or confidential document
 to the agent. Installation and verification do not require one.
@@ -9,7 +9,7 @@ to the agent. Installation and verification do not require one.
 ## English prompt
 
 ```text
-Install and start Local Accessibility Studio from this official repository:
+Install and start Local Reader from this official repository:
 
 https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU
 
@@ -54,7 +54,7 @@ Work only on this computer and follow these rules:
 ## Prompt italiano
 
 ```text
-Installa e avvia Local Accessibility Studio da questo repository ufficiale:
+Installa e avvia Local Reader da questo repository ufficiale:
 
 https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 — 2026-10-17
+
+- Ship Local Reader as a separate app, alongside legacy Local Accessibility
+  Studio and Local Reader No GPU: separate runtime, settings, history, results,
+  authentication cookie, browser checkpoints, Start menu links and port 8766.
+- Add an original purple book/play/highlight logo to the interface, Windows
+  executable and shortcuts, Linux launcher and macOS bundle.
+- Add native Windows product/version metadata and a dedicated application ID.
+- Include offline Kokoro Live reading and the settings fix from 0.3.9.
+
 ## 0.3.9 — 2026-10-17
 
 - Add local Kokoro audio directly to Live reading, including browsers with no

@@ -1,4 +1,11 @@
-# Local Accessibility Studio
+# Local Reader
+
+**Local Reader 0.4.0 è un’app separata dalla legacy Local Accessibility Studio
+e da Local Reader No GPU.** Ha nome, logo, cartelle, impostazioni, cronologia,
+cookie, collegamenti e porta locale propri (8766). Puoi installare e aprire
+entrambe le app contemporaneamente. L’installazione non importa, modifica o
+rimuove i dati della legacy. Gli aggiornamenti di Local Reader sostituiscono
+solo la nuova app; i pacchetti storici rimangono disponibili nelle release.
 
 [Italiano](#italiano) · [English](#english) · [Download](https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/latest)
 
@@ -14,7 +21,7 @@ ai servizi vocali online.
 Pocket TTS è stato rimosso. Kokoro offre voci predefinite, **non clona la voce**.
 Le funzioni cloud e la clonazione opzionale sono distinte dal percorso standard.
 
-### Lettura live (0.3.9)
+### Lettura live (0.4.0)
 
 Apri **Lettura live**, incolla il testo oppure apri un file `.txt` / `.md` e
 premi **Apri il testo**. Puoi anche usare **Lettura live** in Cronologia o negli
@@ -65,7 +72,7 @@ Se il download si interrompe, riapri lo stesso pacchetto: la preparazione
 incompleta viene ritentata. Non chiudere il terminale mentre usi l'app.
 Su Windows, se manca il runtime Microsoft Visual C++ x64, il primo avvio chiede
 la normale approvazione UAC per installare il runtime firmato da Microsoft;
-Local Accessibility Studio continua a funzionare come utente standard.
+Local Reader continua a funzionare come utente standard.
 
 Come margine pratico, consigliamo 8 GB di RAM e almeno 5 GB liberi per la
 versione standard, oltre ai documenti e ai risultati. Sono indicazioni
@@ -83,23 +90,23 @@ I checksum verificano integrità, non sono una firma indipendente da GitHub.
 Linux (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.8/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.0/install-release.sh | bash
 ```
 
 Windows (PowerShell):
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.8/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.0/install-release.ps1 | iex
 ```
 
 macOS Apple Silicon (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.8/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.0/install-release.sh | bash
 ```
 
 Su Windows ogni versione conserva il proprio EXE e collegamento nel menu Start;
-macOS installa sotto `~/Applications/Local Accessibility Studio 0.3.8`. Su Linux il percorso del
+macOS installa sotto `~/Applications/Local Reader 0.4.0`. Su Linux il percorso del
 pacchetto installato è mostrato nel terminale; puoi riaprirlo da quel percorso.
 Lo script Linux usa la modalità estrazione dell'AppImage, senza richiedere FUSE.
 
@@ -194,11 +201,11 @@ Non clonare voci senza consenso né usare la funzione per impersonare persone.
 
 | Sistema | Dati e runtime |
 | --- | --- |
-| Linux | `~/.local/share/local-accessibility-studio` (rispetta XDG) |
-| Windows | `%LOCALAPPDATA%\Local Accessibility Studio` |
-| macOS | `~/Library/Application Support/Local Accessibility Studio` |
+| Linux | `~/.local/share/local-reader` (rispetta XDG) |
+| Windows | `%LOCALAPPDATA%\Local Reader` |
+| macOS | `~/Library/Application Support/Local Reader` |
 
-I risultati si trovano in `Documents/Local Accessibility Studio - Results`
+I risultati si trovano in `Documents/Local Reader - Results`
 nella cartella utente; su Linux viene usata `Documenti` se presente al posto
 di `Documents`. Cache e stato possono risiedere in cartelle separate.
 Chiavi API, token locale e campioni vocali non vanno condivisi: sono dati
@@ -223,7 +230,7 @@ Non esiste garanzia assoluta di sicurezza o conformità WCAG, PDF/UA o GDPR.
 - **Microfono non disponibile:** consenti l'accesso al sito locale nelle
   impostazioni del browser; in alternativa carica un campione audio.
 - **AppImage non si avvia:** da terminale usa
-  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Accessibility-Studio-0.3.8-linux-x86_64.AppImage`.
+  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Reader-0.4.0-linux-x86_64.AppImage`.
 - **Aggiornamento:** dalla versione 0.3.3 l'app controlla le release all'avvio
   e ogni 12 ore. Usa **Verifica aggiornamenti** per un controllo manuale; se
   trova una release, scarica il pacchetto indicato, chiudi l'app e aprilo.
@@ -345,17 +352,17 @@ GitHub repository.
 Linux or macOS Apple Silicon, in Terminal:
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.8/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.0/install-release.sh | bash
 ```
 
 Windows, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.8/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.0/install-release.ps1 | iex
 ```
 
 Windows gets a version-specific Start menu shortcut. macOS installs under
-`~/Applications/Local Accessibility Studio 0.3.8`. Linux prints the installed
+`~/Applications/Local Reader 0.4.0`. Linux prints the installed
 package path and uses extraction mode, so FUSE is not required.
 
 ### Using the application
@@ -417,10 +424,10 @@ Only clone voices you have consent and rights to use; do not impersonate people.
 
 ### Privacy, storage and troubleshooting
 
-Runtime/settings: Linux `~/.local/share/local-accessibility-studio` (XDG
-overrides supported); Windows `%LOCALAPPDATA%\Local Accessibility Studio`;
-macOS `~/Library/Application Support/Local Accessibility Studio`.
-Results are under your user `Documents/Local Accessibility Studio - Results`
+Runtime/settings: Linux `~/.local/share/local-reader` (XDG
+overrides supported); Windows `%LOCALAPPDATA%\Local Reader`;
+macOS `~/Library/Application Support/Local Reader`.
+Results are under your user `Documents/Local Reader - Results`
 folder (`Documenti` is used when applicable). Cache and state may be separate.
 Credentials, local tokens and voice samples are private local files, not an
 encrypted vault. Never publish your runtime or results directory.

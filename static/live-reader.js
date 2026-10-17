@@ -269,7 +269,7 @@
       }
     };
     const tr = key => (copy[document.documentElement.lang] || copy.it)[key] || key;
-    const storageKey = "local-accessibility-studio-live-v1";
+    const storageKey = "local-reader-live-v1";
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { /* A damaged checkpoint must not block reading. */ }
     const initialVoice = saved.voice;

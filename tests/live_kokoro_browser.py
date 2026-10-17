@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.error
@@ -20,19 +21,19 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from scripts.start import stop_process  # noqa: E402
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--chrome", required=True)
-    parser.add_argument("--screenshot", default="/tmp/las-live-kokoro.png")
+    parser.add_argument("--screenshot", default="live-kokoro.png")
     args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix="las-live-kokoro-") as temporary:
         env = os.environ.copy()
         for suffix in ("DATA", "STATE", "OUTPUTS"):
-            env[f"LOCAL_ACCESSIBILITY_STUDIO_{suffix}"] = str(
-                Path(temporary) / suffix.lower()
-            )
+            env[f"LOCAL_READER_{suffix}"] = str(Path(temporary) / suffix.lower())
         token = "kokoro-browser-test-" + "x" * 48
         env.update(LOCAL_AI_APP_TOKEN=token, LOCAL_AI_APP_PORT="18768")
         # Apply the same Python network guard as the installed launcher.
@@ -40,7 +41,11 @@ def main() -> None:
         with (Path(temporary) / "server.log").open("w") as log:
             server = subprocess.Popen(
                 [
-                    str(ROOT / ".venv/bin/python"),
+                    str(
+                        ROOT
+                        / ".venv"
+                        / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+                    ),
                     "-m",
                     "uvicorn",
                     "app.main:app",
@@ -54,6 +59,11 @@ def main() -> None:
                 env=env,
                 stdout=log,
                 stderr=log,
+                **(
+                    {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+                    if os.name == "nt"
+                    else {"start_new_session": True}
+                ),
             )
             try:
                 base = "http://127.0.0.1:18768"
@@ -93,6 +103,7 @@ Object.defineProperty(window, 'SpeechSynthesisUtterance', {value: undefined});
 
                     context.route("**/*", route_request)
                     page = context.new_page()
+                    page.set_default_timeout(120000)
                     errors = []
                     audio_requests = []
                     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -104,7 +115,11 @@ Object.defineProperty(window, 'SpeechSynthesisUtterance', {value: undefined});
                             else None
                         ),
                     )
-                    page.goto(base + "/?token=" + token)
+                    page.goto(
+                        base + "/?token=" + token,
+                        timeout=120000,
+                        wait_until="domcontentloaded",
+                    )
                     page.locator("#main-nav [data-view-link=live]").click()
                     page.wait_for_function(
                         "() => document.querySelector('#live-voice').value "
@@ -216,8 +231,7 @@ Object.defineProperty(window, 'SpeechSynthesisUtterance', {value: undefined});
                     )
                     browser.close()
             finally:
-                server.terminate()
-                server.wait(timeout=20)
+                stop_process(server)
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 APP_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_PORT = 8765
+DEFAULT_PORT = 8766
 sys.path.insert(0, str(APP_DIR))
 from app.product import PRODUCT  # noqa: E402
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Download a versioned native package, verify SHA-256, then launch it.
 set -euo pipefail
-LAS_VERSION="0.3.9"
+LAS_VERSION="0.4.0"
 LAS_BASE="https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/download/v${LAS_VERSION}"
 case "$(uname -s)-$(uname -m)" in
-  Linux-x86_64) LAS_ASSET="Local-Accessibility-Studio-${LAS_VERSION}-linux-x86_64.AppImage" ;;
-  Darwin-arm64) LAS_ASSET="Local-Accessibility-Studio-${LAS_VERSION}-macos-arm64.app.zip" ;;
+  Linux-x86_64) LAS_ASSET="Local-Reader-${LAS_VERSION}-linux-x86_64.AppImage" ;;
+  Darwin-arm64) LAS_ASSET="Local-Reader-${LAS_VERSION}-macos-arm64.app.zip" ;;
   *) echo 'Supported: Linux x86-64 / macOS Apple Silicon.' >&2; exit 1 ;;
 esac
 LAS_TEMP="$(mktemp -d -t las-install.XXXXXXXX)"
@@ -24,12 +24,12 @@ else
 fi
 [[ "${LAS_ACTUAL}" == "${LAS_EXPECTED}" ]] || { echo 'Checksum mismatch. Nothing executed.' >&2; exit 1; }
 if [[ "$(uname -s)" == Darwin ]]; then
-  LAS_DEST="${HOME}/Applications/Local Accessibility Studio ${LAS_VERSION}"
+  LAS_DEST="${HOME}/Applications/Local Reader ${LAS_VERSION}"
   mkdir -p "${LAS_DEST}"
   ditto -x -k "${LAS_TEMP}/${LAS_ASSET}" "${LAS_DEST}"
-  open "${LAS_DEST}/Local-Accessibility-Studio-${LAS_VERSION}-macos-arm64.app"
+  open "${LAS_DEST}/Local-Reader-${LAS_VERSION}-macos-arm64.app"
 else
-  LAS_DEST="${XDG_DATA_HOME:-${HOME}/.local/share}/local-accessibility-studio/packages/${LAS_VERSION}"
+  LAS_DEST="${XDG_DATA_HOME:-${HOME}/.local/share}/local-reader/packages/${LAS_VERSION}"
   mkdir -p "${LAS_DEST}"
   install -m 0755 "${LAS_TEMP}/${LAS_ASSET}" "${LAS_DEST}/${LAS_ASSET}"
   echo "Pacchetto installato / Installed: ${LAS_DEST}/${LAS_ASSET}"

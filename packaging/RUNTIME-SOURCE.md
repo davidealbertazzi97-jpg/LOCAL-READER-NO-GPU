@@ -2,7 +2,7 @@
 
 ## Italiano
 
-La release contiene `Local-Accessibility-Studio-source.zip` (sorgente GPLv3
+La release contiene `Local-Reader-source.zip` (sorgente GPLv3
 dell'app, test, script e documentazione) e `Third-party-runtime-sources.zip`.
 Quest'ultimo conserva senza modifiche gli archivi upstream elencati in
 `third_party_sources.json`, verificati con SHA-256.
@@ -50,7 +50,7 @@ dei sorgenti per una distribuzione ampliata.
 
 ## English
 
-`Local-Accessibility-Studio-source.zip` contains the app's GPLv3 source,
+`Local-Reader-source.zip` contains the app's GPLv3 source,
 tests, build scripts and documentation. `Third-party-runtime-sources.zip`
 contains unchanged, SHA-256-verified upstream CPython 3.12.13, PyInstaller
 6.19.0, type2-runtime 20251108, libfuse 3.15.0 and squashfuse 0.5.2 sources.

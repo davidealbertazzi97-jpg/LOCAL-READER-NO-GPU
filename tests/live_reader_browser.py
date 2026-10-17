@@ -44,9 +44,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="las-live-browser-") as temporary:
         env = os.environ.copy()
         for suffix in ("DATA", "STATE", "OUTPUTS"):
-            env[f"LOCAL_ACCESSIBILITY_STUDIO_{suffix}"] = str(
-                Path(temporary) / suffix.lower()
-            )
+            env[f"LOCAL_READER_{suffix}"] = str(Path(temporary) / suffix.lower())
         env["LOCAL_AI_APP_TOKEN"] = "live-browser-test-" + "x" * 48
         env["LOCAL_AI_APP_PORT"] = "18767"
         with (Path(temporary) / "server.log").open("w") as log:

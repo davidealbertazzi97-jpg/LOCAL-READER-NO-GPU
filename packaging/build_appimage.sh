@@ -33,7 +33,7 @@ VERSION="$(python3 -c 'import pathlib,tomllib; print(tomllib.loads(pathlib.Path(
 "${UV}" run --no-project --python 3.12 \
   --with "pyinstaller==6.19.0" pyinstaller \
   --clean --noconfirm --onefile \
-  --name local-accessibility-studio \
+  --name local-reader \
   --distpath "${BUILD_DIR}/pyinstaller-dist" \
   --workpath "${BUILD_DIR}/pyinstaller-work" \
   --specpath "${BUILD_DIR}" \
@@ -45,17 +45,17 @@ rm -rf "${APP_ROOT}"
 mkdir -p "${APP_ROOT}/usr/bin" \
   "${APP_ROOT}/usr/share/applications" \
   "${APP_ROOT}/usr/share/icons/hicolor/scalable/apps"
-install -m 0755 "${BUILD_DIR}/pyinstaller-dist/local-accessibility-studio" \
-  "${APP_ROOT}/usr/bin/local-accessibility-studio"
+install -m 0755 "${BUILD_DIR}/pyinstaller-dist/local-reader" \
+  "${APP_ROOT}/usr/bin/local-reader"
 install -m 0755 "${APP_DIR}/packaging/AppRun" "${APP_ROOT}/AppRun"
-install -m 0644 "${APP_DIR}/packaging/local-accessibility-studio.desktop" \
-  "${APP_ROOT}/local-accessibility-studio.desktop"
-install -m 0644 "${APP_DIR}/packaging/local-accessibility-studio.desktop" \
-  "${APP_ROOT}/usr/share/applications/local-accessibility-studio.desktop"
+install -m 0644 "${APP_DIR}/packaging/local-reader.desktop" \
+  "${APP_ROOT}/local-reader.desktop"
+install -m 0644 "${APP_DIR}/packaging/local-reader.desktop" \
+  "${APP_ROOT}/usr/share/applications/local-reader.desktop"
 install -m 0644 "${APP_DIR}/static/icon.svg" \
-  "${APP_ROOT}/local-accessibility-studio.svg"
+  "${APP_ROOT}/local-reader.svg"
 install -m 0644 "${APP_DIR}/static/icon.svg" \
-  "${APP_ROOT}/usr/share/icons/hicolor/scalable/apps/local-accessibility-studio.svg"
+  "${APP_ROOT}/usr/share/icons/hicolor/scalable/apps/local-reader.svg"
 
 APPIMAGETOOL="${APPIMAGETOOL:-}"
 if [[ -z "${APPIMAGETOOL}" ]]; then
@@ -66,7 +66,7 @@ if [[ -z "${APPIMAGETOOL}" || ! -x "${APPIMAGETOOL}" ]]; then
   exit 1
 fi
 
-OUTPUT="${DIST_DIR}/Local-Accessibility-Studio-${VERSION}-linux-x86_64.AppImage"
+OUTPUT="${DIST_DIR}/Local-Reader-${VERSION}-linux-x86_64.AppImage"
 APPIMAGE_EXTRACT_AND_RUN=1 "${APPIMAGETOOL}" --runtime-file "${APP_DIR}/build/appimage-runtime-x86_64" "${APP_ROOT}" "${OUTPUT}"
 chmod 0755 "${OUTPUT}"
 APPIMAGE_EXTRACT_AND_RUN=1 "${OUTPUT}" --verify-payload

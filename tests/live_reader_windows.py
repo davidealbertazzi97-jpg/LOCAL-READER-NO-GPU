@@ -27,9 +27,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="las-native-live-") as temporary:
         env = os.environ.copy()
         for suffix in ("DATA", "STATE", "OUTPUTS"):
-            env[f"LOCAL_ACCESSIBILITY_STUDIO_{suffix}"] = str(
-                Path(temporary) / suffix.lower()
-            )
+            env[f"LOCAL_READER_{suffix}"] = str(Path(temporary) / suffix.lower())
         env["LOCAL_AI_APP_TOKEN"] = "live-native-test-" + "x" * 48
         env["LOCAL_AI_APP_PORT"] = "18768"
         with (Path(temporary) / "server.log").open("w") as log:

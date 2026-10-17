@@ -265,7 +265,7 @@ const COPY = {
     guideCustomStep3: "Inserisci il nome esatto del modello e la chiave API.",
     guideCustomStep4: "Salva e prova “Solo organizza”.",
     helpCompleteTitle: "Studio completo",
-    helpCompleteBody: "Carica un PDF o un’immagine. Local Accessibility Studio estrae il testo con OCR e crea un audio. Tu devi solo scegliere il file e, se vuoi, la voce.",
+    helpCompleteBody: "Carica un PDF o un’immagine. Local Reader estrae il testo con OCR e crea un audio. Tu devi solo scegliere il file e, se vuoi, la voce.",
     helpOcrTitle: "Solo OCR",
     helpOcrBody: "Usa questa modalità quando vuoi soltanto estrarre il testo. Il documento originale non viene modificato e il risultato resta nella cronologia locale.",
     helpOrganizeTitle: "Solo organizza",
@@ -578,7 +578,7 @@ const COPY = {
     guideCustomStep3: "Enter the exact model name and API key.",
     guideCustomStep4: "Save and try “Organize only”.",
     helpCompleteTitle: "Full studio",
-    helpCompleteBody: "Upload a PDF or image. Local Accessibility Studio extracts the text with OCR and creates audio. You only need to choose the file and, if you want, the voice.",
+    helpCompleteBody: "Upload a PDF or image. Local Reader extracts the text with OCR and creates audio. You only need to choose the file and, if you want, the voice.",
     helpOcrTitle: "OCR only",
     helpOcrBody: "Use this mode when you only need the extracted text. The original document is not changed and the result stays in local history.",
     helpOrganizeTitle: "Organize only",
@@ -656,7 +656,7 @@ const HELP_COPY_KEYS = {
   cloneSettings: ["helpCloneSettingsTitle", "helpCloneSettingsBody"],
 };
 
-let language = localStorage.getItem("accessibility-language") || "it";
+let language = localStorage.getItem("local-reader-language") || "it";
 let product = null;
 let engines = [];
 let updateCheckInProgress = false;
@@ -685,7 +685,7 @@ let editingTextJob = null;
 let textValue = null;
 let browsedModels = [];
 let selectedBrowseModel = "";
-const RESUME_STORAGE_KEY = "local-accessibility-studio-session-v1";
+const RESUME_STORAGE_KEY = "local-reader-session-v1";
 const MAX_RESUME_TEXT = 512 * 1024;
 let sessionReady = false;
 let resumeTimer = null;
@@ -813,7 +813,7 @@ async function checkForUpdates() {
 
 function audioDownloadFilename(jobId) {
   const suffix = String(jobId || "").replace(/[^a-z0-9]/gi, "").slice(0, 8);
-  return `local-accessibility-studio-audio${suffix ? `-${suffix}` : ""}.mp3`;
+  return `local-reader-audio${suffix ? `-${suffix}` : ""}.mp3`;
 }
 
 function sleep(milliseconds) {
@@ -2394,7 +2394,7 @@ window.addEventListener("beforeunload", persistSession);
 window.addEventListener("online", () => void checkForUpdates());
 document.querySelector("#dismiss-resume").addEventListener("click", () => { document.querySelector("#resume-banner").hidden = true; });
 document.querySelector("#check-updates").addEventListener("click", () => void checkForUpdates());
-document.querySelector("#language-select").addEventListener("change", (event) => { language = event.target.value; localStorage.setItem("accessibility-language", language); renderLanguage(); schedulePersist(); });
+document.querySelector("#language-select").addEventListener("change", (event) => { language = event.target.value; localStorage.setItem("local-reader-language", language); renderLanguage(); schedulePersist(); });
 document.querySelector("#offline-mode-toggle").addEventListener("click", () => void setOfflineMode(!offlineMode));
 document.querySelector("#default-audio-provider").addEventListener("change", (event) => void setOfflineMode(event.target.value !== "edge-tts", event.target.value));
 document.querySelector("#complete-form").addEventListener("submit", (event) => void startFullWorkflow(event));

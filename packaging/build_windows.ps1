@@ -25,11 +25,16 @@ $Version = $VersionLine.Matches[0].Groups[1].Value
     --licenses (Join-Path $BuildDir "licenses") --output (Join-Path $BuildDir "payload.zip")
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
+$VersionFile = Join-Path $BuildDir "version.txt"
+& $Uv run --no-project --python 3.12 python (Join-Path $AppDir "packaging\windows_version.py") $VersionFile
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
 $PyInstallerArgs = @(
     "run", "--no-project", "--python", "3.12", "--with", "pyinstaller==6.19.0",
     "pyinstaller", "--clean", "--noconfirm", "--onefile",
-    "--name", "local-accessibility-studio",
+    "--name", "local-reader",
     "--icon", (Join-Path $AppDir "static\\icon.ico"),
+    "--version-file", $VersionFile,
     "--distpath", (Join-Path $BuildDir "pyinstaller-dist"),
     "--workpath", (Join-Path $BuildDir "pyinstaller-work"),
     "--specpath", $BuildDir,
@@ -39,8 +44,8 @@ $PyInstallerArgs = @(
 & $Uv @PyInstallerArgs
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
-$Output = Join-Path $DistDir "Local-Accessibility-Studio-$Version-windows-x86_64.exe"
-Copy-Item (Join-Path $BuildDir "pyinstaller-dist\local-accessibility-studio.exe") $Output -Force
+$Output = Join-Path $DistDir "Local-Reader-$Version-windows-x86_64.exe"
+Copy-Item (Join-Path $BuildDir "pyinstaller-dist\local-reader.exe") $Output -Force
 & $Output --verify-payload
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 Write-Host "Built $Output"

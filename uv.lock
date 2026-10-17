@@ -77,8 +77,8 @@ wheels = [
 ]
 
 [[package]]
-name = "local-accessibility-studio"
-version = "0.3.6"
+name = "local-reader"
+version = "0.4.0"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },

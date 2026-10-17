@@ -53,7 +53,7 @@ jobs:
           if [ "$RUNNER_OS" = Linux ]; then
             python packaging/test_native_package.py dist/*.AppImage
           elif [ "$RUNNER_OS" = macOS ]; then
-            python packaging/test_native_package.py dist/*.app/Contents/MacOS/"Local Accessibility Studio"
+            python packaging/test_native_package.py dist/*.app/Contents/MacOS/"Local Reader"
           else
             python packaging/test_native_package.py dist/*.exe
           fi
@@ -61,7 +61,7 @@ jobs:
       - name: Include source and third-party corresponding source
         if: runner.os == 'Linux'
         run: |
-          python packaging/create_payload.py --output dist/Local-Accessibility-Studio-source.zip
+          python packaging/create_payload.py --output dist/Local-Reader-source.zip
           python packaging/collect_sources.py
       - name: Upload package artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -97,4 +97,4 @@ jobs:
           cd dist
           sha256sum * > SHA256SUMS.txt
           gh release create "$RELEASE_TAG" ./* --verify-tag \
-            --title "Local Accessibility Studio $RELEASE_TAG" --notes-file "../docs/releases/$RELEASE_TAG.md"
+            --title "Local Reader $RELEASE_TAG" --notes-file "../docs/releases/$RELEASE_TAG.md"
