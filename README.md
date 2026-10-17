@@ -1,6 +1,6 @@
 # Local Reader
 
-**Local Reader 0.4.0 è un’app separata dalla legacy Local Accessibility Studio
+**Local Reader 0.4.1 è un’app separata dalla legacy Local Accessibility Studio
 e da Local Reader No GPU.** Ha nome, logo, cartelle, impostazioni, cronologia,
 cookie, collegamenti e porta locale propri (8766). Puoi installare e aprire
 entrambe le app contemporaneamente. L’installazione non importa, modifica o
@@ -21,7 +21,7 @@ ai servizi vocali online.
 Pocket TTS è stato rimosso. Kokoro offre voci predefinite, **non clona la voce**.
 Le funzioni cloud e la clonazione opzionale sono distinte dal percorso standard.
 
-### Lettura live (0.4.0)
+### Lettura live (0.4.1)
 
 Apri **Lettura live**, incolla il testo oppure apri un file `.txt` / `.md` e
 premi **Apri il testo**. Puoi anche usare **Lettura live** in Cronologia o negli
@@ -90,23 +90,23 @@ I checksum verificano integrità, non sono una firma indipendente da GitHub.
 Linux (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.0/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.1/install-release.sh | bash
 ```
 
 Windows (PowerShell):
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.0/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.1/install-release.ps1 | iex
 ```
 
 macOS Apple Silicon (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.0/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.1/install-release.sh | bash
 ```
 
 Su Windows ogni versione conserva il proprio EXE e collegamento nel menu Start;
-macOS installa sotto `~/Applications/Local Reader 0.4.0`. Su Linux il percorso del
+macOS installa sotto `~/Applications/Local Reader 0.4.1`. Su Linux il percorso del
 pacchetto installato è mostrato nel terminale; puoi riaprirlo da quel percorso.
 Lo script Linux usa la modalità estrazione dell'AppImage, senza richiedere FUSE.
 
@@ -230,7 +230,7 @@ Non esiste garanzia assoluta di sicurezza o conformità WCAG, PDF/UA o GDPR.
 - **Microfono non disponibile:** consenti l'accesso al sito locale nelle
   impostazioni del browser; in alternativa carica un campione audio.
 - **AppImage non si avvia:** da terminale usa
-  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Reader-0.4.0-linux-x86_64.AppImage`.
+  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Reader-0.4.1-linux-x86_64.AppImage`.
 - **Aggiornamento:** dalla versione 0.3.3 l'app controlla le release all'avvio
   e ogni 12 ore. Usa **Verifica aggiornamenti** per un controllo manuale; se
   trova una release, scarica il pacchetto indicato, chiudi l'app e aprilo.
@@ -352,17 +352,17 @@ GitHub repository.
 Linux or macOS Apple Silicon, in Terminal:
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.0/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.1/install-release.sh | bash
 ```
 
 Windows, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.0/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.4.1/install-release.ps1 | iex
 ```
 
 Windows gets a version-specific Start menu shortcut. macOS installs under
-`~/Applications/Local Reader 0.4.0`. Linux prints the installed
+`~/Applications/Local Reader 0.4.1`. Linux prints the installed
 package path and uses extraction mode, so FUSE is not required.
 
 ### Using the application

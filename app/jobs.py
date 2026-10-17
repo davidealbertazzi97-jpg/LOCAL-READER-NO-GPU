@@ -145,6 +145,9 @@ class JobRunner:
                     )
                     audio_provider = job["options"].get("speech_provider", "edge-tts")
                     summary["audio"] = f"{audio_provider} could not be queued"
+            # Publish completion only after disposing of the private input copy.
+            # Windows callers can observe the status before the finally block runs.
+            remove_work_tree(work_dir)
             STORE.update(
                 job_id,
                 status="completed",

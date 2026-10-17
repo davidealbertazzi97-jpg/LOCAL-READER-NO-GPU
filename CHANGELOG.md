@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 — 2026-10-17
+
+- Publish job completion after private input cleanup to avoid a Windows race
+  during native OCR verification.
+
 ## 0.4.0 — 2026-10-17
 
 - Ship Local Reader as a separate app, alongside legacy Local Accessibility
