@@ -184,6 +184,35 @@ def main() -> int:
                 assert "default-src 'self'" in headers["Content-Security-Policy"]
             status, engines = request_json(f"{base}/api/engines", token=True)
             assert status == 200 and len(engines) == 4
+            status, _ = request_json(f"{base}/api/live/status")
+            assert status == 401
+            status, live = request_json(f"{base}/api/live/status", token=True)
+            assert status == 200 and live["provider"] == "kokoro"
+            assert live["network"] is False
+            status, _ = request_json(
+                f"{base}/api/live/audio", token=True, data=b"{}", origin=False
+            )
+            assert status == 403
+            for invalid in (
+                b"{",
+                b"null",
+                b'{"text":""}',
+                json.dumps({"text": "x" * 481}).encode(),
+            ):
+                status, _ = request_json(
+                    f"{base}/api/live/audio",
+                    token=True,
+                    data=invalid,
+                    content_type="application/json",
+                )
+                assert status == 400
+            status, _ = request_json(
+                f"{base}/api/live/audio",
+                token=True,
+                data=b"x" * 8193,
+                content_type="application/json",
+            )
+            assert status == 413
             status, _ = request_json(
                 f"{base}/api/jobs",
                 token=True,

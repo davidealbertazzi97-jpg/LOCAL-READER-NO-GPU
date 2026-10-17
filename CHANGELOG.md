@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.9 — 2026-10-17
+
+- Add local Kokoro audio directly to Live reading, including browsers with no
+  device voices: Italian Sara/Nicola and English Heart/Michael.
+- Keep the isolated CPU model warm, prefetch one phrase, and keep temporary
+  speech/audio in memory without creating History jobs or using Internet.
+- Underline the phrase on actual audio playback; support exact audio pause and
+  resume, speed controls, paragraph jumps, and cancellation of stale requests.
+- Fix a mismatched provider status element that interrupted loading settings
+  and prevented the offline indicator from reflecting the saved mode.
+
 ## 0.3.8 — 2026-10-17
 
 - Make pause work with Firefox Speech Dispatcher voices on Linux: cancel the

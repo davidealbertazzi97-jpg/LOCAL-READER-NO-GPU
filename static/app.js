@@ -1195,7 +1195,8 @@ async function loadSettings() {
     document.querySelector("#kokoro-voice-it").value = value.tts.kokoro.voice_it || "if_sara";
     document.querySelector("#kokoro-voice-en").value = value.tts.kokoro.voice_en || "af_heart";
     for (const provider of ["mistral", "fish", "elevenlabs"]) {
-      document.querySelector(`#${provider}-status`).textContent = value.tts[provider].configured ? t("keyConfigured") : t("keyMissing");
+      const statusId = provider === "elevenlabs" ? "eleven" : provider;
+      document.querySelector(`#${statusId}-status`).textContent = value.tts[provider].configured ? t("keyConfigured") : t("keyMissing");
     }
     renderOfflineMode();
     renderClones(value.clones || []);

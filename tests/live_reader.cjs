@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const {Reader, paragraphs, chunks, words} = require('../static/live-reader.js');
+const {Reader, KokoroSynth, HybridSynth, paragraphs, chunks, words} = require('../static/live-reader.js');
 
 assert.deepEqual(paragraphs('  Primo.\r\n\r\n Secondo.\n \nTerzo. '), ['Primo.', 'Secondo.', 'Terzo.']);
 const unicode = 'Ciao 🌍, città! Un’altra frase.';
@@ -85,3 +85,63 @@ assert.equal(reader.restartOnResume, false);
 assert.equal(utterances.at(-1).text, pausedText, 'resume starts from the same actual text position');
 reader.stop();
 console.log('Linux Speech Dispatcher pause/resume regression passed.');
+
+async function kokoroTests() {
+  const audioElements = [], requests = [], revoked = [];
+  class Audio {
+    constructor() { audioElements.push(this); this.currentTime = 0; this.src = ''; }
+    async play() { this.playing = true; this.onplaying?.(); }
+    pause() { this.playing = false; }
+    removeAttribute() { this.src = ''; }
+    load() {}
+  }
+  const fetcher = (url, options) => new Promise(resolve => requests.push({url, options, resolve}));
+  const kokoro = new KokoroSynth(Audio, fetcher, {createObjectURL: () => 'blob:local', revokeObjectURL: url => revoked.push(url)});
+  const updates = [];
+  // Native utterances cannot accept a plain Kokoro voice; no native API is needed.
+  const live = new Reader(new HybridSynth(null, kokoro), class {constructor() {throw Error('native synthesis used');}}, event => updates.push(event));
+  live.voice = {provider: 'kokoro', voiceURI: 'kokoro:if_sara', id: 'if_sara', lang: 'it', localService: true};
+  live.load('Prima frase. Seconda frase.\n\nAltro paragrafo.');
+  live.rate = 1.5;
+  live.play();
+  assert.equal(live.state, 'loading');
+  assert.equal(updates.at(-1).chunk, undefined, 'do not highlight before audio actually starts');
+  assert.equal(requests.length, 2, 'prefetch only the next phrase');
+  assert.equal(requests[0].url, '/api/live/audio');
+  assert.equal(JSON.parse(requests[0].options.body).voice, 'if_sara');
+  live.toggle();
+  requests[0].resolve({ok: true, blob: async () => ({})});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(live.state, 'paused', 'pause while model is loading is respected');
+  assert.ok(!audioElements[0].playing);
+  live.toggle();
+  assert.equal(live.state, 'speaking');
+  assert.equal(updates.findLast(event => event.chunk).chunk.text, 'Prima frase.');
+  assert.equal(audioElements[0].playbackRate, 1.5);
+  audioElements[0].currentTime = 1.25;
+  live.toggle(); live.toggle();
+  assert.equal(audioElements[0].currentTime, 1.25, 'resume retains actual audio position');
+  requests[1].resolve({ok: true, blob: async () => ({})});
+  audioElements[0].onended();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests.length, 2, 'play prefetched audio without another request');
+  assert.equal(updates.at(-1).chunk.text, 'Seconda frase.');
+  const obsoleteEnd = audioElements[1].onended;
+  live.play(1, 0);
+  obsoleteEnd();
+  assert.equal(live.paragraph, 1, 'late audio event cannot change a new paragraph');
+  live.stop();
+  requests.at(-1).resolve({ok: true, blob: async () => ({})});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(live.state, 'idle');
+  assert.ok(!audioElements.at(-1).playing, 'stopped fetch cannot start playback');
+  assert.ok(requests.at(-1).options.signal.aborted);
+  assert.ok(revoked.length > 0, 'release in-memory audio URLs');
+  live.play(0, 0);
+  requests.at(-2).resolve({ok: false});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(live.state, 'error', 'no silent cloud fallback after a local error');
+  live.stop();
+  console.log('Kokoro live audio passed: no native voices, real playback highlighting, prefetch, pause during loading, exact resume, speed, stale events, cancellation, local errors.');
+}
+kokoroTests().catch(error => {console.error(error); process.exitCode = 1;});

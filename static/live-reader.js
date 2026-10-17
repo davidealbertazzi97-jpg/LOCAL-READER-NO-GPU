@@ -1,4 +1,4 @@
-/* Speech events are the clock: never estimate word positions with a timer. */
+/* Actual audio/speech events drive highlighting; never estimate word positions. */
 (function (root) {
   "use strict";
   const MAX_TEXT = 512 * 1024;
@@ -8,7 +8,7 @@
   function words(text) {
     return Array.from(text.matchAll(/\S+/gu), match => ({text: match[0], start: match.index, end: match.index + match[0].length}));
   }
-  function chunks(text, start = 0, locale = "it") {
+  function chunks(text, start = 0, locale = "it", maximum = 240) {
     const tail = text.slice(start);
     const sentences = typeof Intl.Segmenter === "function"
       ? Array.from(new Intl.Segmenter(locale, {granularity: "sentence"}).segment(tail), s => ({text: s.segment, start: start + s.index}))
@@ -18,7 +18,7 @@
       // Short utterances also work around browser limits on long synthesis.
       let offset = 0;
       while (offset < sentence.text.length) {
-        let end = Math.min(offset + 240, sentence.text.length);
+        let end = Math.min(offset + maximum, sentence.text.length);
         if (end < sentence.text.length) {
           const space = sentence.text.lastIndexOf(" ", end);
           if (space > offset) end = space + 1;
@@ -32,6 +32,101 @@
       }
     }
     return result;
+  }
+  class KokoroSynth {
+    constructor(Audio = root.Audio, fetcher = (...args) => root.fetch(...args), urls = root.URL) {
+      this.Audio = Audio;
+      this.fetcher = fetcher;
+      this.urls = urls;
+      this.cache = new Map();
+      this.sequence = 0;
+      this.paused = false;
+    }
+    phrase(text, voice) {
+      const key = `${voice.voiceURI}:${text}`;
+      if (!this.cache.has(key)) {
+        const controller = new AbortController();
+        const promise = this.fetcher("/api/live/audio", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({text, voice: voice.id, language: voice.lang}),
+          signal: controller.signal
+        }).then(response => {
+          if (!response.ok) throw new Error("kokoro-unavailable");
+          return response.blob();
+        });
+        // Prefetch errors are handled when this phrase becomes the active one.
+        promise.catch(() => {
+          // A transient prefetch failure must be retried when playback reaches it.
+          if (this.cache.get(key)?.promise === promise) this.cache.delete(key);
+        });
+        this.cache.set(key, {promise, controller});
+        while (this.cache.size > 3) {
+          const oldest = this.cache.keys().next().value;
+          this.cache.get(oldest).controller.abort();
+          this.cache.delete(oldest);
+        }
+      }
+      return this.cache.get(key).promise;
+    }
+    prefetch(text, voice) { if (text && voice?.provider === "kokoro") this.phrase(text, voice); }
+    cancel() {
+      this.sequence++;
+      if (this.audio) {
+        this.audio.onplaying = this.audio.onended = this.audio.onerror = null;
+        this.audio.pause();
+        this.audio.removeAttribute("src");
+        this.audio.load();
+        this.audio = null;
+      }
+      if (this.url) { this.urls.revokeObjectURL(this.url); this.url = null; }
+      for (const entry of this.cache.values()) entry.controller.abort();
+      this.cache.clear();
+      this.paused = false;
+    }
+    speak(utterance) {
+      const sequence = ++this.sequence;
+      if (this.url) { this.urls.revokeObjectURL(this.url); this.url = null; }
+      const audio = new this.Audio();
+      this.audio = audio;
+      let started = false;
+      const error = () => { if (sequence === this.sequence) utterance.onerror({error: "kokoro-unavailable"}); };
+      audio.onplaying = () => {
+        if (sequence === this.sequence && !started) { started = true; utterance.onstart(); }
+      };
+      audio.onended = () => { if (sequence === this.sequence) utterance.onend(); };
+      audio.onerror = error;
+      audio.playbackRate = utterance.rate;
+      this.phrase(utterance.text, utterance.voice).then(blob => {
+        if (sequence !== this.sequence) return;
+        this.url = this.urls.createObjectURL(blob);
+        audio.src = this.url;
+        // Loading a media resource can reset playbackRate to its default.
+        audio.defaultPlaybackRate = utterance.rate;
+        audio.playbackRate = utterance.rate;
+        if (!this.paused) audio.play().catch(error);
+      }).catch(error);
+    }
+    pause() { this.paused = true; this.audio?.pause(); }
+    resume() {
+      this.paused = false;
+      if (this.audio?.src) {
+        const sequence = this.sequence;
+        this.audio.play().catch(() => {
+          if (sequence === this.sequence) this.audio?.onerror?.();
+        });
+      }
+    }
+  }
+  class HybridSynth {
+    constructor(native, kokoro) { this.native = native; this.kokoro = kokoro; }
+    cancel() { this.native?.cancel(); this.kokoro.cancel(); }
+    speak(utterance) {
+      if (utterance.voice?.provider === "kokoro") this.kokoro.speak(utterance);
+      else this.native.speak(utterance);
+    }
+    pause() { this.native?.pause(); this.kokoro.pause(); }
+    resume() { this.native?.resume(); this.kokoro.resume(); }
+    prefetch(text, voice) { this.kokoro.prefetch(text, voice); }
   }
   class Reader {
     constructor(synth, Utterance, update = () => {}) {
@@ -76,7 +171,7 @@
       return true;
     }
     speakParagraph(generation) {
-      const queue = chunks(this.texts[this.paragraph], this.offset, this.voice.lang);
+      const queue = chunks(this.texts[this.paragraph], this.offset, this.voice.lang, this.voice.provider === "kokoro" ? 120 : 240);
       const next = () => {
         if (generation !== this.generation) return;
         const chunk = queue.shift();
@@ -92,7 +187,9 @@
           }
           return;
         }
-        const utterance = new this.Utterance(chunk.text);
+        this.state = "loading";
+        this.emit();
+        const utterance = this.voice.provider === "kokoro" ? {text: chunk.text} : new this.Utterance(chunk.text);
         // Hold a reference until completion (some browsers otherwise lose events).
         this.utterance = utterance;
         utterance.voice = this.voice;
@@ -118,6 +215,7 @@
         };
         try { this.synth.speak(utterance); }
         catch { this.state = "error"; this.emit({error: "synthesis-failed"}); }
+        this.synth.prefetch?.(queue[0]?.text, this.voice);
       };
       next();
     }
@@ -142,7 +240,7 @@
       } else this.play(this.state === "finished" && this.continuous ? 0 : this.paragraph, this.state === "finished" ? 0 : this.offset);
     }
   }
-  const exports = {Reader, paragraphs, words, chunks, MAX_TEXT};
+  const exports = {Reader, KokoroSynth, HybridSynth, paragraphs, words, chunks, MAX_TEXT};
   if (typeof module !== "undefined" && module.exports) module.exports = exports;
   else { root.LiveReader = exports; mount(); }
 
@@ -153,20 +251,20 @@
     const copy = {
       it: {
         liveTitle: "Lettura live", liveHelp: "Ascolta e segui il testo. Fai clic su un paragrafo per leggerlo subito, oppure raggiungilo con Tab e premi Invio. Le frecce spostano il fuoco tra i paragrafi.",
-        liveInput: "Incolla il testo da leggere", liveFile: "Oppure apri un file di testo (.txt, .md)", liveLoad: "Apri il testo", liveEdit: "Modifica testo", liveVoice: "Voce del dispositivo", liveRate: "Velocità", liveSize: "Dimensione testo", liveFollow: "Segui la lettura", liveContinue: "Continua nei paragrafi successivi",
+        liveInput: "Incolla il testo da leggere", liveFile: "Oppure apri un file di testo (.txt, .md)", liveLoad: "Apri il testo", liveEdit: "Modifica testo", liveVoice: "Voce", liveRate: "Velocità", liveSize: "Dimensione testo", liveFollow: "Segui la lettura", liveContinue: "Continua nei paragrafi successivi",
         livePlay: "Leggi", livePause: "Pausa", liveResume: "Riprendi", liveResumeSentence: "Riprendi la frase", liveStop: "Interrompi", livePrevious: "Paragrafo precedente", liveNext: "Paragrafo successivo", liveEmpty: "Apri un testo per iniziare. Puoi anche aprire i risultati OCR e i testi dalla Cronologia.",
-        livePrivacy: "Questa pagina usa le voci del dispositivo. Le voci non confermate come locali possono inviare il testo al servizio vocale; in Modalità offline sono escluse. Per creare un MP3 con Kokoro o altre voci usa Solo voce.",
-        liveSync: "La sottolineatura segue le parole quando la voce le segnala; altrimenti segue la frase in lettura.",
-        liveNoVoices: "Nessuna voce disponibile. Su Windows aggiungi una voce in Impostazioni → Data/ora e lingua → Funzionalità vocali, quindi riapri il browser. Su Linux usa Firefox con Speech Dispatcher e una voce installata. Puoi creare un audio anche dalla pagina Solo voce.",
+        livePrivacy: "Kokoro legge sul computer anche senza Internet: il testo resta locale. Le altre voci dipendono dal dispositivo; in Modalità offline sono disponibili solo quelle confermate come locali.",
+        liveSync: "Con Kokoro la sottolineatura segue la frase realmente in riproduzione. Le voci del dispositivo possono seguire anche le singole parole.",
+        liveNoVoices: "Nessuna voce disponibile. Completa l’installazione di Kokoro per leggere offline, oppure installa una voce del dispositivo e riapri il browser.",
         liveReady: "Pronto. Scegli un paragrafo oppure premi Leggi.", liveLoading: "Avvio della voce…", liveSpeaking: "Lettura in corso", livePaused: "In pausa", liveFinished: "Lettura completata", liveError: "La voce non è partita. Seleziona un’altra voce e premi Leggi.", liveTooLong: "Usa un testo o un file fino a 512 KB.", liveMissing: "Incolla o apri un testo prima di continuare.", liveStorage: "Il browser non consente di salvare il punto di lettura. Il testo rimane disponibile in questa pagina.", liveParagraph: "Paragrafo", liveLocal: "locale", liveOnline: "locale non confermato", liveFileError: "Non riesco ad aprire questo file di testo."
       },
       en: {
         liveTitle: "Live reading", liveHelp: "Listen and follow the text. Click a paragraph to read it immediately, or reach it with Tab and press Enter. Arrow keys move focus between paragraphs.",
-        liveInput: "Paste the text to read", liveFile: "Or open a text file (.txt, .md)", liveLoad: "Open text", liveEdit: "Edit text", liveVoice: "Device voice", liveRate: "Speed", liveSize: "Text size", liveFollow: "Follow reading", liveContinue: "Continue through the next paragraphs",
+        liveInput: "Paste the text to read", liveFile: "Or open a text file (.txt, .md)", liveLoad: "Open text", liveEdit: "Edit text", liveVoice: "Voice", liveRate: "Speed", liveSize: "Text size", liveFollow: "Follow reading", liveContinue: "Continue through the next paragraphs",
         livePlay: "Read", livePause: "Pause", liveResume: "Resume", liveResumeSentence: "Resume sentence", liveStop: "Stop", livePrevious: "Previous paragraph", liveNext: "Next paragraph", liveEmpty: "Open text to begin. You can also open OCR results and texts from History.",
-        livePrivacy: "This page uses device voices. Voices not confirmed as local may send text to the speech service; Offline mode excludes them. To create an MP3 with Kokoro or other voices, use Voice only.",
-        liveSync: "Underlining follows words when reported by the voice; otherwise it follows the sentence being read.",
-        liveNoVoices: "No voices available. On Windows add a voice in Settings → Time & language → Speech, then reopen the browser. On Linux use Firefox with Speech Dispatcher and an installed voice. You can also create audio from Voice only.",
+        livePrivacy: "Kokoro reads on your computer without Internet: your text stays local. Other voices depend on your device; Offline mode only includes voices confirmed as local.",
+        liveSync: "With Kokoro, underlining follows the phrase actually playing. Device voices may also follow individual words.",
+        liveNoVoices: "No voices available. Finish installing Kokoro to read offline, or install a device voice and reopen the browser.",
         liveReady: "Ready. Choose a paragraph or press Read.", liveLoading: "Starting voice…", liveSpeaking: "Reading", livePaused: "Paused", liveFinished: "Reading completed", liveError: "The voice could not start. Choose another voice and press Read.", liveTooLong: "Use text or a file up to 512 KB.", liveMissing: "Paste or open some text first.", liveStorage: "The browser cannot save your reading position. Your text remains available on this page.", liveParagraph: "Paragraph", liveLocal: "local", liveOnline: "locality unconfirmed", liveFileError: "I could not open this text file."
       }
     };
@@ -174,7 +272,9 @@
     const storageKey = "local-accessibility-studio-live-v1";
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(storageKey)) || {}; } catch { /* A damaged checkpoint must not block reading. */ }
-    const reader = new Reader(root.speechSynthesis, root.SpeechSynthesisUtterance, update);
+    const initialVoice = saved.voice;
+    const reader = new Reader(new HybridSynth(root.speechSynthesis, new KokoroSynth()), root.SpeechSynthesisUtterance || class {constructor(text) {this.text = text;}}, update);
+    let kokoroReady = false;
     let nodes = [];
     let highlighted = [];
     let activeNode = null;
@@ -244,10 +344,16 @@
       $("live-progress").value = reader.state === "finished" ? reader.paragraph + 1 : reader.paragraph;
       $("live-progress").setAttribute("aria-label", tr("liveParagraph"));
     }
-    function voices() {
-      const preferred = $("live-voice").value || saved.voice;
+    function voices(preferKokoro = false) {
+      const preferred = preferKokoro === true ? initialVoice?.startsWith("kokoro:") ? initialVoice : "" : $("live-voice").value || saved.voice;
       const offline = document.querySelector("#offline-mode-toggle")?.getAttribute("aria-pressed") === "true";
-      availableVoices = (root.speechSynthesis?.getVoices() || []).filter(v => !offline || v.localService).sort((a, b) => Number(b.localService) - Number(a.localService) || a.name.localeCompare(b.name));
+      const kokoro = kokoroReady ? [
+        {id: "if_sara", name: "Kokoro · Sara", lang: "it"},
+        {id: "im_nicola", name: "Kokoro · Nicola", lang: "it"},
+        {id: "af_heart", name: "Kokoro · Heart", lang: "en-us"},
+        {id: "am_michael", name: "Kokoro · Michael", lang: "en-us"}
+      ].map(v => ({...v, voiceURI: `kokoro:${v.id}`, localService: true, provider: "kokoro"})) : [];
+      availableVoices = [...kokoro, ...(root.speechSynthesis?.getVoices() || []).filter(v => !offline || v.localService).sort((a, b) => Number(b.localService) - Number(a.localService) || a.name.localeCompare(b.name))];
       $("live-voice").replaceChildren(...availableVoices.map(v => {
         const option = document.createElement("option");
         option.value = v.voiceURI;
@@ -366,5 +472,10 @@
     preferences();
     translate();
     if (typeof saved.text === "string" && saved.text.trim()) load(saved.text, true);
+    root.fetch("/api/live/status").then(response => response.ok ? response.json() : null).then(status => {
+      kokoroReady = !!status?.ready;
+      // Prefer offline Kokoro on first use; keep an explicitly saved voice.
+      voices(kokoroReady && reader.state === "idle");
+    }).catch(() => {});
   }
 })(typeof window !== "undefined" ? window : globalThis);

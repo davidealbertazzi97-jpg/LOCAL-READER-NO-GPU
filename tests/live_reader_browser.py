@@ -80,6 +80,17 @@ def main() -> None:
                     errors = []
                     page.on("pageerror", lambda error: errors.append(str(error)))
                     page.route("https://api.github.com/**", lambda route: route.abort())
+                    # This suite covers device voices; Kokoro has a real-audio suite.
+                    page.route(
+                        "**/api/live/status",
+                        lambda route: route.fulfill(
+                            json={
+                                "ready": False,
+                                "provider": "kokoro",
+                                "network": False,
+                            }
+                        ),
+                    )
                     page.goto(
                         "http://127.0.0.1:18767/?token=" + env["LOCAL_AI_APP_TOKEN"]
                     )

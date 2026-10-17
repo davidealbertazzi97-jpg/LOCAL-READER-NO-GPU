@@ -14,7 +14,7 @@ ai servizi vocali online.
 Pocket TTS è stato rimosso. Kokoro offre voci predefinite, **non clona la voce**.
 Le funzioni cloud e la clonazione opzionale sono distinte dal percorso standard.
 
-### Lettura live (0.3.7)
+### Lettura live (0.3.9)
 
 Apri **Lettura live**, incolla il testo oppure apri un file `.txt` / `.md` e
 premi **Apri il testo**. Puoi anche usare **Lettura live** in Cronologia o negli
@@ -26,14 +26,19 @@ ingrandire il testo, seguire la lettura e scegliere se continuare nei paragrafi
 successivi. Il punto viene conservato nel browser e ripristinato senza avviare
 la voce automaticamente.
 
-La pagina usa le **voci del dispositivo**, distinte dai motori che generano MP3.
-La sottolineatura segue gli eventi della voce: parole quando disponibili,
-altrimenti la frase in corso, senza stimare i tempi. In Modalità offline vengono
-mostrate solo voci locali. Su Windows, se non compaiono, aggiungi una voce in
-Impostazioni → Data/ora e lingua → Funzionalità vocali e riapri il browser.
-Su Linux, se il browser non elenca voci, usa Firefox con Speech Dispatcher
-e una voce locale installata. Con Speech Dispatcher la pausa interrompe la
-voce e **Riprendi la frase** riparte dalla frase corrente.
+La pagina usa **Kokoro offline** direttamente, anche quando il browser non ha
+voci installate. Scegli Sara o Nicola per l’italiano, Heart o Michael per
+l’inglese. Il modello resta caricato e la frase successiva viene preparata
+durante l’ascolto. Testo e audio passano solo dal server locale e non vengono
+aggiunti alla Cronologia; l’audio temporaneo resta in memoria. È necessario
+completare una prima volta l’installazione dei modelli, poi Internet non serve.
+La sottolineatura segue la frase realmente in riproduzione, senza stimare i
+tempi delle parole. Pausa e ripresa conservano il punto preciso dell’audio.
+
+Restano disponibili le **voci del dispositivo**, con sottolineatura delle parole
+quando la voce ne fornisce i tempi. In Modalità offline vengono escluse quelle
+non confermate come locali. Con Speech Dispatcher la pausa interrompe la voce
+e **Riprendi la frase** riparte dalla frase corrente.
 Per esportare MP3 con Kokoro/Edge-TTS e provider opzionali resta disponibile
 **Solo voce**. Testo e posizione sono salvati solo nel browser del computer.
 

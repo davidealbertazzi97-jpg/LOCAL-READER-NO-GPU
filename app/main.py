@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware import Middleware
@@ -22,6 +22,7 @@ from .documents import load_document, validate_document, write_exports
 from .engines import ENGINES
 from .engines.speech import external_environment
 from .jobs import RUNNER
+from .live_speech import LIVE_SPEECH, LiveSpeechBusy, live_options
 from .processes import run_worker
 from .product import PRODUCT
 from .provider_config import (
@@ -156,8 +157,11 @@ def normalized_processing_options(
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     RUNNER.start()
-    yield
-    RUNNER.stop()
+    try:
+        yield
+    finally:
+        LIVE_SPEECH.close()
+        RUNNER.stop()
 
 
 app = FastAPI(
@@ -175,6 +179,7 @@ app = FastAPI(
                 "/api/settings",
                 "/api/provider-models",
                 "/api/voice-clones",
+                "/api/live/audio",
             ),
             maximum=MAX_UPLOAD_REQUEST_BYTES,
         )
@@ -382,6 +387,29 @@ def product() -> dict[str, str]:
 @app.get("/api/engines")
 def engines() -> list[dict[str, Any]]:
     return [engine.public_dict() for engine in ENGINES.values()]
+
+
+@app.get("/api/live/status")
+def live_status() -> dict[str, Any]:
+    return {"ready": LIVE_SPEECH.ready(), "provider": "kokoro", "network": False}
+
+
+@app.post("/api/live/audio")
+async def live_audio(request: Request) -> Response:
+    body = await limited_body(request, 8192, "Live reading phrase")
+    try:
+        options = live_options(json.loads(body))
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if not LIVE_SPEECH.ready():
+        raise HTTPException(503, "Install Kokoro to use offline live reading")
+    try:
+        audio = await run_in_threadpool(LIVE_SPEECH.render, options)
+    except LiveSpeechBusy as exc:
+        raise HTTPException(429, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    return Response(audio, media_type="audio/wav")
 
 
 @app.get("/api/status")
