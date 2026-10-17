@@ -32,7 +32,8 @@ altrimenti la frase in corso, senza stimare i tempi. In Modalità offline vengon
 mostrate solo voci locali. Su Windows, se non compaiono, aggiungi una voce in
 Impostazioni → Data/ora e lingua → Funzionalità vocali e riapri il browser.
 Su Linux, se il browser non elenca voci, usa Firefox con Speech Dispatcher
-e una voce locale installata.
+e una voce locale installata. Con Speech Dispatcher la pausa interrompe la
+voce e **Riprendi la frase** riparte dalla frase corrente.
 Per esportare MP3 con Kokoro/Edge-TTS e provider opzionali resta disponibile
 **Solo voce**. Testo e posizione sono salvati solo nel browser del computer.
 
@@ -77,23 +78,23 @@ I checksum verificano integrità, non sono una firma indipendente da GitHub.
 Linux (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.7/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.8/install-release.sh | bash
 ```
 
 Windows (PowerShell):
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.7/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.8/install-release.ps1 | iex
 ```
 
 macOS Apple Silicon (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.7/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.8/install-release.sh | bash
 ```
 
 Su Windows ogni versione conserva il proprio EXE e collegamento nel menu Start;
-macOS installa sotto `~/Applications/Local Accessibility Studio 0.3.7`. Su Linux il percorso del
+macOS installa sotto `~/Applications/Local Accessibility Studio 0.3.8`. Su Linux il percorso del
 pacchetto installato è mostrato nel terminale; puoi riaprirlo da quel percorso.
 Lo script Linux usa la modalità estrazione dell'AppImage, senza richiedere FUSE.
 
@@ -217,7 +218,7 @@ Non esiste garanzia assoluta di sicurezza o conformità WCAG, PDF/UA o GDPR.
 - **Microfono non disponibile:** consenti l'accesso al sito locale nelle
   impostazioni del browser; in alternativa carica un campione audio.
 - **AppImage non si avvia:** da terminale usa
-  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Accessibility-Studio-0.3.7-linux-x86_64.AppImage`.
+  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Accessibility-Studio-0.3.8-linux-x86_64.AppImage`.
 - **Aggiornamento:** dalla versione 0.3.3 l'app controlla le release all'avvio
   e ogni 12 ore. Usa **Verifica aggiornamenti** per un controllo manuale; se
   trova una release, scarica il pacchetto indicato, chiudi l'app e aprilo.
@@ -302,6 +303,8 @@ the voice provides them; otherwise it follows the current spoken sentence.
 Offline mode excludes online voices. If Windows lists no voices, add one in
 Settings → Time & language → Speech and reopen the browser. On Linux use
 Firefox with Speech Dispatcher and a local voice if your browser lists none.
+For Speech Dispatcher voices, pause cancels speech and **Resume sentence**
+restarts the current sentence.
 MP3 creation with
 Kokoro, Edge-TTS and optional providers remains in **Voice only**.
 
@@ -337,17 +340,17 @@ GitHub repository.
 Linux or macOS Apple Silicon, in Terminal:
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.7/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.8/install-release.sh | bash
 ```
 
 Windows, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.7/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.8/install-release.ps1 | iex
 ```
 
 Windows gets a version-specific Start menu shortcut. macOS installs under
-`~/Applications/Local Accessibility Studio 0.3.7`. Linux prints the installed
+`~/Applications/Local Accessibility Studio 0.3.8`. Linux prints the installed
 package path and uses extraction mode, so FUSE is not required.
 
 ### Using the application

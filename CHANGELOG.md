@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.8 — 2026-10-17
+
+- Make pause work with Firefox Speech Dispatcher voices on Linux: cancel the
+  current utterance and resume from the current sentence instead of relying
+  on the backend's unimplemented native pause operation.
+- Label this action Resume sentence and ignore late events from canceled
+  utterances so a paused reader cannot advance to the next paragraph.
+
 ## 0.3.7 — 2026-10-17
 
 - Add Live reading with instant paragraph playback using device voices, actual

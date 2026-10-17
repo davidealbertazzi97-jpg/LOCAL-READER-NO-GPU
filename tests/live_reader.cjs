@@ -67,3 +67,21 @@ assert.equal(reader.state, 'idle');
 reader.voice = null;
 assert.equal(reader.play(), false);
 console.log('Live reader passed: Unicode offsets, chunking, real boundaries, pause/resume, paragraph jumps, stale events, continuous/single reading and missing voices.');
+// Speech Dispatcher has no native pause. Cancel without advancing and restart
+// the current phrase, while native Windows/device pause keeps its exact timing.
+reader.voice = {voiceURI: 'urn:moz-tts:speechd:Italian?it', lang: 'it', localService: false};
+reader.play(0, 13);
+utterance = utterances.at(-1);
+utterance.onstart();
+const pausedText = utterance.text;
+reader.toggle();
+assert.equal(reader.state, 'paused');
+assert.equal(reader.restartOnResume, true);
+const pausedCount = utterances.length;
+utterance.onend();
+assert.equal(utterances.length, pausedCount, 'cancel completion cannot advance paused speech');
+reader.toggle();
+assert.equal(reader.restartOnResume, false);
+assert.equal(utterances.at(-1).text, pausedText, 'resume starts from the same actual text position');
+reader.stop();
+console.log('Linux Speech Dispatcher pause/resume regression passed.');

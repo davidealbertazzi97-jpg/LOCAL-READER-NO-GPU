@@ -46,12 +46,14 @@
       this.continuous = true;
       this.rate = 1;
       this.voice = null;
+      this.restartOnResume = false;
     }
     emit(extra = {}) { this.update({state: this.state, paragraph: this.paragraph, offset: this.offset, ...extra}); }
     stop() {
       this.generation++;
       this.synth?.cancel();
       this.state = "idle";
+      this.restartOnResume = false;
       this.emit();
     }
     load(text) {
@@ -121,13 +123,22 @@
     }
     toggle() {
       if (this.state === "speaking" || this.state === "loading") {
-        this.synth.pause();
+        // Firefox's Speech Dispatcher backend does not implement native pause.
+        // Cancel its utterance, then resume from the last real text position.
+        if (this.voice?.voiceURI?.startsWith("urn:moz-tts:speechd:")) {
+          this.generation++;
+          this.synth.cancel();
+          this.restartOnResume = true;
+        } else this.synth.pause();
         this.state = "paused";
         this.emit({keepHighlight: true});
       } else if (this.state === "paused") {
-        this.synth.resume();
-        this.state = "speaking";
-        this.emit({keepHighlight: true});
+        if (this.restartOnResume) this.play();
+        else {
+          this.synth.resume();
+          this.state = "speaking";
+          this.emit({keepHighlight: true});
+        }
       } else this.play(this.state === "finished" && this.continuous ? 0 : this.paragraph, this.state === "finished" ? 0 : this.offset);
     }
   }
@@ -143,20 +154,20 @@
       it: {
         liveTitle: "Lettura live", liveHelp: "Ascolta e segui il testo. Fai clic su un paragrafo per leggerlo subito, oppure raggiungilo con Tab e premi Invio. Le frecce spostano il fuoco tra i paragrafi.",
         liveInput: "Incolla il testo da leggere", liveFile: "Oppure apri un file di testo (.txt, .md)", liveLoad: "Apri il testo", liveEdit: "Modifica testo", liveVoice: "Voce del dispositivo", liveRate: "Velocità", liveSize: "Dimensione testo", liveFollow: "Segui la lettura", liveContinue: "Continua nei paragrafi successivi",
-        livePlay: "Leggi", livePause: "Pausa", liveResume: "Riprendi", liveStop: "Interrompi", livePrevious: "Paragrafo precedente", liveNext: "Paragrafo successivo", liveEmpty: "Apri un testo per iniziare. Puoi anche aprire i risultati OCR e i testi dalla Cronologia.",
-        livePrivacy: "Questa pagina usa le voci del dispositivo. Le voci indicate come online possono inviare il testo al servizio vocale; in Modalità offline sono escluse. Per creare un MP3 con Kokoro o altre voci usa Solo voce.",
+        livePlay: "Leggi", livePause: "Pausa", liveResume: "Riprendi", liveResumeSentence: "Riprendi la frase", liveStop: "Interrompi", livePrevious: "Paragrafo precedente", liveNext: "Paragrafo successivo", liveEmpty: "Apri un testo per iniziare. Puoi anche aprire i risultati OCR e i testi dalla Cronologia.",
+        livePrivacy: "Questa pagina usa le voci del dispositivo. Le voci non confermate come locali possono inviare il testo al servizio vocale; in Modalità offline sono escluse. Per creare un MP3 con Kokoro o altre voci usa Solo voce.",
         liveSync: "La sottolineatura segue le parole quando la voce le segnala; altrimenti segue la frase in lettura.",
         liveNoVoices: "Nessuna voce disponibile. Su Windows aggiungi una voce in Impostazioni → Data/ora e lingua → Funzionalità vocali, quindi riapri il browser. Su Linux usa Firefox con Speech Dispatcher e una voce installata. Puoi creare un audio anche dalla pagina Solo voce.",
-        liveReady: "Pronto. Scegli un paragrafo oppure premi Leggi.", liveLoading: "Avvio della voce…", liveSpeaking: "Lettura in corso", livePaused: "In pausa", liveFinished: "Lettura completata", liveError: "La voce non è partita. Seleziona un’altra voce e premi Leggi.", liveTooLong: "Usa un testo o un file fino a 512 KB.", liveMissing: "Incolla o apri un testo prima di continuare.", liveStorage: "Il browser non consente di salvare il punto di lettura. Il testo rimane disponibile in questa pagina.", liveParagraph: "Paragrafo", liveLocal: "locale", liveOnline: "online", liveFileError: "Non riesco ad aprire questo file di testo."
+        liveReady: "Pronto. Scegli un paragrafo oppure premi Leggi.", liveLoading: "Avvio della voce…", liveSpeaking: "Lettura in corso", livePaused: "In pausa", liveFinished: "Lettura completata", liveError: "La voce non è partita. Seleziona un’altra voce e premi Leggi.", liveTooLong: "Usa un testo o un file fino a 512 KB.", liveMissing: "Incolla o apri un testo prima di continuare.", liveStorage: "Il browser non consente di salvare il punto di lettura. Il testo rimane disponibile in questa pagina.", liveParagraph: "Paragrafo", liveLocal: "locale", liveOnline: "locale non confermato", liveFileError: "Non riesco ad aprire questo file di testo."
       },
       en: {
         liveTitle: "Live reading", liveHelp: "Listen and follow the text. Click a paragraph to read it immediately, or reach it with Tab and press Enter. Arrow keys move focus between paragraphs.",
         liveInput: "Paste the text to read", liveFile: "Or open a text file (.txt, .md)", liveLoad: "Open text", liveEdit: "Edit text", liveVoice: "Device voice", liveRate: "Speed", liveSize: "Text size", liveFollow: "Follow reading", liveContinue: "Continue through the next paragraphs",
-        livePlay: "Read", livePause: "Pause", liveResume: "Resume", liveStop: "Stop", livePrevious: "Previous paragraph", liveNext: "Next paragraph", liveEmpty: "Open text to begin. You can also open OCR results and texts from History.",
-        livePrivacy: "This page uses device voices. Voices marked online may send text to the speech service; Offline mode excludes them. To create an MP3 with Kokoro or other voices, use Voice only.",
+        livePlay: "Read", livePause: "Pause", liveResume: "Resume", liveResumeSentence: "Resume sentence", liveStop: "Stop", livePrevious: "Previous paragraph", liveNext: "Next paragraph", liveEmpty: "Open text to begin. You can also open OCR results and texts from History.",
+        livePrivacy: "This page uses device voices. Voices not confirmed as local may send text to the speech service; Offline mode excludes them. To create an MP3 with Kokoro or other voices, use Voice only.",
         liveSync: "Underlining follows words when reported by the voice; otherwise it follows the sentence being read.",
         liveNoVoices: "No voices available. On Windows add a voice in Settings → Time & language → Speech, then reopen the browser. On Linux use Firefox with Speech Dispatcher and an installed voice. You can also create audio from Voice only.",
-        liveReady: "Ready. Choose a paragraph or press Read.", liveLoading: "Starting voice…", liveSpeaking: "Reading", livePaused: "Paused", liveFinished: "Reading completed", liveError: "The voice could not start. Choose another voice and press Read.", liveTooLong: "Use text or a file up to 512 KB.", liveMissing: "Paste or open some text first.", liveStorage: "The browser cannot save your reading position. Your text remains available on this page.", liveParagraph: "Paragraph", liveLocal: "local", liveOnline: "online", liveFileError: "I could not open this text file."
+        liveReady: "Ready. Choose a paragraph or press Read.", liveLoading: "Starting voice…", liveSpeaking: "Reading", livePaused: "Paused", liveFinished: "Reading completed", liveError: "The voice could not start. Choose another voice and press Read.", liveTooLong: "Use text or a file up to 512 KB.", liveMissing: "Paste or open some text first.", liveStorage: "The browser cannot save your reading position. Your text remains available on this page.", liveParagraph: "Paragraph", liveLocal: "local", liveOnline: "locality unconfirmed", liveFileError: "I could not open this text file."
       }
     };
     const tr = key => (copy[document.documentElement.lang] || copy.it)[key] || key;
@@ -223,7 +234,7 @@
       $("live-stop").disabled = !["speaking", "loading", "paused"].includes(reader.state);
       $("live-previous").disabled = !ready || reader.paragraph <= 0;
       $("live-next").disabled = !ready || reader.paragraph >= reader.texts.length - 1;
-      $("live-play").textContent = tr(reader.state === "paused" ? "liveResume" : ["speaking", "loading"].includes(reader.state) ? "livePause" : "livePlay");
+      $("live-play").textContent = tr(reader.state === "paused" ? (reader.restartOnResume ? "liveResumeSentence" : "liveResume") : ["speaking", "loading"].includes(reader.state) ? "livePause" : "livePlay");
       $("live-play").setAttribute("aria-pressed", String(["speaking", "loading"].includes(reader.state)));
       const message = tr(!reader.voice ? "liveNoVoices" : statusKey);
       if ($("live-status").textContent !== message) $("live-status").textContent = message;
