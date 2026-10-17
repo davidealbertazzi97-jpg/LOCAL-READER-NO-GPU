@@ -988,7 +988,7 @@ async function restoreSession() {
     workflows = {...workflows, ...(restoredSession.workflows || {})};
     audioProgress = {...audioProgress, ...(restoredSession.audio || {})};
     restoreResumeForms(restoredSession.forms || {});
-    if (["complete", "ocr", "organize", "tts", "history", "settings"].includes(restoredSession.activeView)) {
+    if (["complete", "ocr", "organize", "tts", "live", "history", "settings"].includes(restoredSession.activeView)) {
       showView(restoredSession.activeView, false);
     }
     await restoreEditor(restoredSession.editor);
@@ -1104,6 +1104,7 @@ function renderOfflineMode() {
   renderWorkflowVoices();
   updateTtsAvailability();
   updateCompleteAvailability();
+  document.dispatchEvent(new Event("studio-offline"));
 }
 
 async function setOfflineMode(enabled) {
@@ -1498,6 +1499,7 @@ function renderLanguage() {
   renderAiProviderMenu();
   if (documentValue) renderDocument();
   renderJobs();
+  document.dispatchEvent(new Event("studio-language"));
 }
 
 async function renderStatus() {
@@ -1527,7 +1529,7 @@ async function renderStatus() {
 }
 
 function showView(view, updateHash = true) {
-  const allowed = ["complete", "ocr", "organize", "tts", "history", "settings"];
+  const allowed = ["complete", "ocr", "organize", "tts", "live", "history", "settings"];
   activeView = allowed.includes(view) ? view : "complete";
   document.querySelectorAll(".view").forEach((section) => {
     const active = section.id === `view-${activeView}`;
@@ -1551,6 +1553,7 @@ function showView(view, updateHash = true) {
       heading.focus({preventScroll: true});
     });
   }
+  document.dispatchEvent(new CustomEvent("studio-view", {detail: activeView}));
   schedulePersist();
 }
 
@@ -1675,6 +1678,22 @@ function jobCard(job) {
     download.className = "button-link";
     download.textContent = t("downloadAudio");
     actions.append(download);
+  }
+  if (job.status === "completed" && ["accessible-document", "plain-text", "lfm-reflow"].includes(job.engine)) {
+    const live = document.createElement("button");
+    live.type = "button";
+    live.className = "secondary";
+    live.textContent = language === "it" ? "Lettura live" : "Live reading";
+    live.addEventListener("click", async () => {
+      live.disabled = true;
+      try {
+        const response = await fetch(artifactUrl(job.id, "reading.txt"));
+        if (!response.ok) throw new Error(t("jobFailed"));
+        window.openLiveReader(await response.text());
+      } catch (error) { setStatus(message, `${t("failed")} ${error.message}`, true); }
+      finally { live.disabled = false; }
+    });
+    actions.append(live);
   }
   addArtifactLinks(actions, job);
   if (["completed", "failed"].includes(job.status)) {
@@ -2349,7 +2368,7 @@ async function initialize() {
   document.title = product.name;
   document.querySelector("#product-name").textContent = product.name;
   const hash = window.location.hash.slice(1);
-  activeView = ["complete", "ocr", "organize", "tts", "history", "settings"].includes(hash) ? hash : "complete";
+  activeView = ["complete", "ocr", "organize", "tts", "live", "history", "settings"].includes(hash) ? hash : "complete";
   document.querySelector("#complete-language").value = language === "en" ? "en-us" : "it";
   document.querySelector("#tts-language").value = language === "en" ? "en-us" : "it";
   document.querySelector("#speech-language").value = language === "en" ? "en-us" : "it";
@@ -2419,6 +2438,11 @@ document.querySelector("#close-text-editor").addEventListener("click", closeRevi
 document.querySelector("#save-document").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveDocument(); } catch (error) { setStatus(document.querySelector("#save-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
 document.querySelector("#create-speech").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveDocument(); const speechLanguage = document.querySelector("#speech-language").value; const provider = workflowSpeechProvider(); const voice = speechVoiceForProvider(provider, speechLanguage, document.querySelector("#voice").value); await queueSpeech(editingJob.id, voice, Number(document.querySelector("#speed").value), speechLanguage, provider); setStatus(document.querySelector("#save-status"), t("speechQueued")); await renderJobs(); } catch (error) { setStatus(document.querySelector("#save-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
 document.querySelector("#reflow-document").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveDocument(); await queueReflow(editingJob.id, document.querySelector("#document-reflow-device").value); setStatus(document.querySelector("#save-status"), t("reflowQueued")); await renderJobs(); } catch (error) { setStatus(document.querySelector("#save-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
+document.querySelector("#text-live").addEventListener("click", () => window.openLiveReader(document.querySelector("#text-workspace").value));
+document.querySelector("#document-live").addEventListener("click", () => {
+  const text = (documentValue?.pages || []).flatMap(page => page.blocks.filter(block => !["exclude", "page_number"].includes(block.role)).map(block => block.text)).join("\n\n");
+  window.openLiveReader(text);
+});
 document.querySelector("#save-text").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveText(); setStatus(document.querySelector("#text-editor-status"), t("saved")); } catch (error) { setStatus(document.querySelector("#text-editor-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
 document.querySelector("#create-text-speech").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveText(); const provider = workflowSpeechProvider(); await queueSpeech(editingTextJob.id, speechVoiceForProvider(provider, "it"), 1, "it", provider); setStatus(document.querySelector("#text-editor-status"), t("speechQueued")); await renderJobs(); } catch (error) { setStatus(document.querySelector("#text-editor-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });
 document.querySelector("#reflow-text").addEventListener("click", async (event) => { const button = event.currentTarget; button.disabled = true; try { await saveText(); await queueReflow(editingTextJob.id, "auto"); setStatus(document.querySelector("#text-editor-status"), t("reflowQueued")); await renderJobs(); } catch (error) { setStatus(document.querySelector("#text-editor-status"), `${t("failed")} ${error.message}`, true); } finally { button.disabled = false; } });

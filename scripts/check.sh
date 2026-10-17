@@ -38,6 +38,8 @@ bash -n install.sh install-release.sh install-macos.sh start.sh packaging/AppRun
 if command -v node >/dev/null 2>&1; then
   node --check static/app.js
   node tests/voice_clones_ui.cjs
+  node --check static/live-reader.js
+  node tests/live_reader.cjs
 fi
 
 .venv/bin/python -m compileall -q app packaging runtime_guard scripts tests workers

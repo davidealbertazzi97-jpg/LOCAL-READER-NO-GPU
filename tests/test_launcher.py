@@ -188,7 +188,7 @@ class PortableLauncherTests(unittest.TestCase):
             "status": "ok",
             "version": "0.3.3",
         }
-        current_health = {**old_health, "version": "0.3.6"}
+        current_health = {**old_health, "version": start_app.PRODUCT.version}
         with patch.object(start_app, "get_json", return_value=old_health):
             self.assertFalse(start_app.app_is_ready(8765))
         with patch.object(start_app, "get_json", return_value=current_health):

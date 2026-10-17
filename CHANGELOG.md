@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.7 — 2026-10-17
+
+- Add Live reading with instant paragraph playback using device voices, actual
+  speech boundary events for word underlining and sentence highlighting when
+  a voice does not report word timing.
+- Add keyboard paragraph navigation, pause/resume, speed, font size, automatic
+  scrolling, single-paragraph/continuous reading and a local reading checkpoint.
+- Open text files, OCR results, edited documents and history texts in the reader.
+- Exclude online device voices in Offline mode; keep MP3 generation with Kokoro
+  and optional providers in the existing Voice only page.
+
 ## 0.3.6 — 2026-10-16
 
 - Rebrand the public application as Local Accessibility Studio with a new

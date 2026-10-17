@@ -35,6 +35,36 @@
 }
 
 * { box-sizing: border-box; }
+.live-source { margin-bottom: 18px; }
+.live-source > summary { cursor: pointer; font-weight: 750; }
+.live-source[open] > summary { margin-bottom: 18px; }
+.live-toolbar { position: sticky; top: 10px; z-index: 5; padding: 18px; background: #fffdfa; }
+.live-transport, .live-options, .live-toggles { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.live-transport { margin-bottom: 14px; }
+.live-options { align-items: start; }
+.live-options label { flex: 1 1 130px; min-width: 0; }
+.live-options .live-voice-label { flex: 3 1 300px; }
+.live-options label > span { display: block; color: var(--muted); font-size: .8rem; margin-bottom: 5px; }
+.live-toggles { margin: 12px 0; font-size: .8rem; }
+.live-toggles label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.live-toggles input { width: 18px; height: 18px; min-height: 18px; accent-color: var(--teal); }
+.live-position { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; color: var(--muted); font-size: .8rem; }
+.live-position progress { flex: 1; height: 8px; accent-color: var(--teal); }
+.live-paper { max-width: 900px; margin: 26px auto; padding: 24px clamp(12px, 4vw, 48px); background: var(--cream); border: 1px solid var(--line); border-radius: 20px; line-height: 1.95; overflow-wrap: anywhere; }
+.live-paper:empty { display: none; }
+.live-paragraph { margin: 0 0 24px; padding: 16px 18px; border-left: 4px solid transparent; border-radius: 8px; white-space: pre-wrap; cursor: pointer; }
+.live-paragraph:last-child { margin-bottom: 0; }
+.live-paragraph:hover { background: #f0f5f2; }
+.live-paragraph:focus-visible { outline: 3px solid #e3a21f; outline-offset: 3px; }
+.live-active { border-left-color: var(--teal); background: #edf5f0; }
+.live-current { color: #073f39; background: #ffe6a3; text-decoration: underline; text-decoration-thickness: .12em; text-underline-offset: .23em; border-radius: 3px; }
+.live-sync-note, .live-privacy { margin: 16px auto; max-width: 900px; font-size: .8rem; line-height: 1.7; }
+@media (max-width: 680px) {
+  .live-toolbar { position: static; padding: 12px; }
+  .live-transport > button { flex: 1 1 135px; font-size: .8rem; padding: 10px; }
+  .live-paper { padding: 12px 5px; }
+  .live-paragraph { padding: 12px 10px; }
+}
 html { scroll-behavior: smooth; }
 body { margin: 0; min-height: 100vh; overflow-x: hidden; }
 a { color: var(--teal-dark); }
@@ -52,12 +82,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .skip-link { position: fixed; left: 14px; top: -100px; z-index: 20; padding: 11px 14px; background: #fff; color: #111; border-radius: 8px; }
 .skip-link:focus { top: 14px; }
 .site-header, main, footer { width: min(1180px, calc(100% - 40px)); margin-inline: auto; }
-.site-header { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 18px; padding: 24px 0 18px; }
+.site-header { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 18px; padding: 24px 0 18px; }
 .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; min-width: 225px; }
 .brand img { width: 44px; height: 44px; }
 .brand strong { display: block; font-size: 1.02rem; letter-spacing: -.025em; }
 .brand small { display: block; color: var(--muted); font-size: .73rem; margin-top: 3px; }
-.main-nav { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
+.main-nav { grid-column: 1 / -1; grid-row: 2; display: flex; justify-content: flex-start; gap: 4px; flex-wrap: wrap; }
 .nav-link { min-height: 38px; padding: 7px 11px; background: transparent; color: #526460; border-radius: 9px; box-shadow: none; font-size: .82rem; }
 .nav-link:hover { color: var(--teal-dark); background: #eaf2ef; }
 .nav-link.active { background: var(--ink); color: white; }
@@ -368,6 +398,8 @@ footer a { color: var(--muted); }
 }
 
 @media (prefers-color-scheme: dark) {
+  .live-toolbar { background: #172421; }
+  .live-active, .live-paragraph:hover { background: #203b31; }
   :root { color-scheme: dark; background: #101a18; color: #e7f0ec; --line: #30443e; --line-strong: #597269; --muted: #afc0ba; --cream: #172421; }
   .brand, .brand strong, .job-head strong { color: #e7f0ec; }
   .panel, .job, .dropzone, .block-editor, .info-pill, .tip, .result-card, .privacy-note, .updates-panel { background: #172421; }

@@ -14,6 +14,28 @@ ai servizi vocali online.
 Pocket TTS è stato rimosso. Kokoro offre voci predefinite, **non clona la voce**.
 Le funzioni cloud e la clonazione opzionale sono distinte dal percorso standard.
 
+### Lettura live (0.3.7)
+
+Apri **Lettura live**, incolla il testo oppure apri un file `.txt` / `.md` e
+premi **Apri il testo**. Puoi anche usare **Lettura live** in Cronologia o negli
+editor OCR/testo: le correzioni correnti vengono portate nel lettore.
+
+Fai clic su un paragrafo per ascoltarlo subito; con la tastiera usa Tab,
+Invio/Spazio e le frecce su/giù. Puoi mettere in pausa, cambiare velocità,
+ingrandire il testo, seguire la lettura e scegliere se continuare nei paragrafi
+successivi. Il punto viene conservato nel browser e ripristinato senza avviare
+la voce automaticamente.
+
+La pagina usa le **voci del dispositivo**, distinte dai motori che generano MP3.
+La sottolineatura segue gli eventi della voce: parole quando disponibili,
+altrimenti la frase in corso, senza stimare i tempi. In Modalità offline vengono
+mostrate solo voci locali. Su Windows, se non compaiono, aggiungi una voce in
+Impostazioni → Data/ora e lingua → Funzionalità vocali e riapri il browser.
+Su Linux, se il browser non elenca voci, usa Firefox con Speech Dispatcher
+e una voce locale installata.
+Per esportare MP3 con Kokoro/Edge-TTS e provider opzionali resta disponibile
+**Solo voce**. Testo e posizione sono salvati solo nel browser del computer.
+
 ### Scarica e apri
 
 I pacchetti sono nella [release](https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/latest).
@@ -55,23 +77,23 @@ I checksum verificano integrità, non sono una firma indipendente da GitHub.
 Linux (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.6/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.7/install-release.sh | bash
 ```
 
 Windows (PowerShell):
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.6/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.7/install-release.ps1 | iex
 ```
 
 macOS Apple Silicon (Terminale):
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.6/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.7/install-release.sh | bash
 ```
 
 Su Windows ogni versione conserva il proprio EXE e collegamento nel menu Start;
-macOS installa sotto `~/Applications/Local Accessibility Studio 0.3.6`. Su Linux il percorso del
+macOS installa sotto `~/Applications/Local Accessibility Studio 0.3.7`. Su Linux il percorso del
 pacchetto installato è mostrato nel terminale; puoi riaprirlo da quel percorso.
 Lo script Linux usa la modalità estrazione dell'AppImage, senza richiedere FUSE.
 
@@ -195,7 +217,7 @@ Non esiste garanzia assoluta di sicurezza o conformità WCAG, PDF/UA o GDPR.
 - **Microfono non disponibile:** consenti l'accesso al sito locale nelle
   impostazioni del browser; in alternativa carica un campione audio.
 - **AppImage non si avvia:** da terminale usa
-  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Accessibility-Studio-0.3.6-linux-x86_64.AppImage`.
+  `APPIMAGE_EXTRACT_AND_RUN=1 ./Local-Accessibility-Studio-0.3.7-linux-x86_64.AppImage`.
 - **Aggiornamento:** dalla versione 0.3.3 l'app controlla le release all'avvio
   e ogni 12 ore. Usa **Verifica aggiornamenti** per un controllo manuale; se
   trova una release, scarica il pacchetto indicato, chiudi l'app e aprilo.
@@ -266,6 +288,23 @@ The standard workflow runs on CPU: no GPU, account or API key is required.
 Speech defaults to Edge-TTS online. Enable **Offline mode** to use Kokoro on
 your computer without sending text to online speech services.
 
+### Live reading (0.3.7)
+
+Open **Live reading**, paste text or open a `.txt` / `.md` file, then choose
+**Open text**. OCR/text editors and History also offer **Live reading**.
+Click a paragraph for immediate playback; keyboard users can use Tab,
+Enter/Space and Up/Down. Pause/resume, speed, text size, scrolling and
+single-paragraph or continuous reading are available. The browser saves your
+position locally and restores it without automatic playback.
+
+This page uses **device voices**. Underlining follows actual word events when
+the voice provides them; otherwise it follows the current spoken sentence.
+Offline mode excludes online voices. If Windows lists no voices, add one in
+Settings → Time & language → Speech and reopen the browser. On Linux use
+Firefox with Speech Dispatcher and a local voice if your browser lists none.
+MP3 creation with
+Kokoro, Edge-TTS and optional providers remains in **Voice only**.
+
 ### Download and launch
 
 Get the [latest release](https://github.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/releases/latest):
@@ -298,17 +337,17 @@ GitHub repository.
 Linux or macOS Apple Silicon, in Terminal:
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.6/install-release.sh | bash
+curl -fsSL --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.7/install-release.sh | bash
 ```
 
 Windows, in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.6/install-release.ps1 | iex
+irm https://raw.githubusercontent.com/davidealbertazzi97-jpg/LOCAL-READER-NO-GPU/v0.3.7/install-release.ps1 | iex
 ```
 
 Windows gets a version-specific Start menu shortcut. macOS installs under
-`~/Applications/Local Accessibility Studio 0.3.6`. Linux prints the installed
+`~/Applications/Local Accessibility Studio 0.3.7`. Linux prints the installed
 package path and uses extraction mode, so FUSE is not required.
 
 ### Using the application

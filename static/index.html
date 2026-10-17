@@ -8,6 +8,7 @@
     <link rel="icon" href="/assets/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/assets/app.css" />
     <script src="/assets/app.js" defer></script>
+    <script src="/assets/live-reader.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main" data-i18n="skip">Vai al contenuto</a>
@@ -63,6 +64,7 @@
         >
           Solo voce
         </button>
+        <button class="nav-link" type="button" data-view-link="live" data-live-i18n="liveTitle">Lettura live</button>
         <button
           class="nav-link"
           type="button"
@@ -751,6 +753,49 @@
             </div>
           </aside>
         </div>
+      </section>
+
+      <section id="view-live" class="view" aria-labelledby="live-title" hidden>
+        <div class="page-intro">
+          <p class="eyebrow">LOCAL READER</p>
+          <h1 id="live-title" data-live-i18n="liveTitle">Lettura live</h1>
+          <p class="intro-copy" data-live-i18n="liveHelp"></p>
+        </div>
+        <details id="live-source" class="panel live-source" open>
+          <summary data-live-i18n="liveInput">Incolla il testo da leggere</summary>
+          <form id="live-form" class="guided-form">
+            <label for="live-input" class="visually-hidden" data-live-i18n="liveInput">Incolla il testo da leggere</label>
+            <textarea id="live-input" rows="8" maxlength="524288" spellcheck="false"></textarea>
+            <label><span data-live-i18n="liveFile"></span><input id="live-file" type="file" accept=".txt,.md,text/plain,text/markdown" /></label>
+            <button type="submit" data-live-i18n="liveLoad">Apri il testo</button>
+          </form>
+        </details>
+        <p id="live-input-status" class="form-status error" role="status"></p>
+        <div id="live-toolbar" class="panel live-toolbar" role="group" aria-labelledby="live-title">
+          <div class="live-transport">
+            <button id="live-previous" type="button" class="secondary" data-live-i18n="livePrevious">Paragrafo precedente</button>
+            <button id="live-play" type="button" aria-pressed="false">Leggi</button>
+            <button id="live-stop" type="button" class="secondary" data-live-i18n="liveStop">Interrompi</button>
+            <button id="live-next" type="button" class="secondary" data-live-i18n="liveNext">Paragrafo successivo</button>
+            <button id="live-edit" type="button" class="secondary" data-live-i18n="liveEdit" hidden>Modifica testo</button>
+          </div>
+          <div class="live-options">
+            <label class="live-voice-label"><span data-live-i18n="liveVoice">Voce del dispositivo</span><select id="live-voice"></select></label>
+            <label><span data-live-i18n="liveRate">Velocità</span><select id="live-rate"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select><output id="live-rate-value" class="visually-hidden"></output></label>
+            <label><span data-live-i18n="liveSize">Dimensione testo</span><input id="live-size" type="range" min="18" max="36" value="24" /><output id="live-size-value"></output></label>
+          </div>
+          <div class="live-toggles">
+            <label><input id="live-follow" type="checkbox" checked /><span data-live-i18n="liveFollow">Segui la lettura</span></label>
+            <label><input id="live-continue" type="checkbox" checked /><span data-live-i18n="liveContinue">Continua nei paragrafi successivi</span></label>
+          </div>
+          <div class="live-position"><span id="live-position"></span><progress id="live-progress" max="1" value="0"></progress></div>
+          <p id="live-status" class="form-status" role="status" aria-live="polite"></p>
+        </div>
+        <p class="live-sync-note muted" data-live-i18n="liveSync"></p>
+        <p id="live-empty" class="panel" data-live-i18n="liveEmpty"></p>
+        <article id="live-paper" class="live-paper" aria-labelledby="live-title"></article>
+        <p id="live-storage-status" class="form-status" role="status"></p>
+        <p class="live-privacy muted" data-live-i18n="livePrivacy"></p>
       </section>
 
       <section
@@ -1740,6 +1785,7 @@
             >
           </div>
           <div class="editor-actions">
+            <button id="document-live" type="button" data-live-i18n="liveTitle">Lettura live</button>
             <button id="save-document" type="button" data-i18n="save">
               Salva correzioni</button
             ><a
@@ -1852,6 +1898,7 @@
             rows="18"
           ></textarea>
           <div class="editor-actions">
+            <button id="text-live" type="button" data-live-i18n="liveTitle">Lettura live</button>
             <button id="save-text" type="button" data-i18n="saveText">
               Salva testo</button
             ><button

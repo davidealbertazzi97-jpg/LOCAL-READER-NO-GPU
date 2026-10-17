@@ -45,6 +45,8 @@ jobs:
           bash -n install.sh start.sh packaging/AppRun
           node --check static/app.js
           node tests/voice_clones_ui.cjs
+          node --check static/live-reader.js
+          node tests/live_reader.cjs
           bash -n install-release.sh install-macos.sh
           test -z "$(git ls-files models .venv .venv-ocr .venv-tts bin data outputs)"
           private_marker='-----BEGIN '"(RSA |EC |OPENSSH )?PRIVATE KEY-----"

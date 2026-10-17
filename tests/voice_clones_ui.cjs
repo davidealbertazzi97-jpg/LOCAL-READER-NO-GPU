@@ -17,7 +17,7 @@ const context = vm.createContext({
   cloneBusy: false, cloneRecorder: null, cloneRecordingTimer: null,
   clonePreviewUrl: '', recordedCloneBlob: null, cloneRecordingChunks: [],
   Blob, URL: {createObjectURL: () => 'blob:test', revokeObjectURL() {}},
-  document: {querySelector: element},
+  document: {querySelector: element, dispatchEvent() {}}, Event: class Event {},
   t: key => key, selectedTtsReady: () => true,
   renderProviderVoiceSelects() {}, renderWorkflowVoices() {},
   updateTtsAvailability() {}, updateCompleteAvailability() {},
